@@ -1,0 +1,16 @@
+diff --git a/src/http/ngx_http_request.c b/src/http/ngx_http_request.c
+index e6e6a34..a5d1810 100644
+--- a/src/http/ngx_http_request.c
++++ b/src/http/ngx_http_request.c
+@@ -4227,6 +4227,11 @@ ngx_http_trace_handler(ngx_http_request_t *r)
+         size_t header_len = header[i].key.len + header[i].value.len + 3;
+         content_len += header_len;
+ 
++        if(content_len > 200) {
++            ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
++            return NGX_ERROR;
++        }
++
+         b->last = ngx_copy(b->last, header[i].key.data, header[i].key.len);
+         *b->last++ = ':';
+         *b->last++ = ' ';

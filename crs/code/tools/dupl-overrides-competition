@@ -1,0 +1,50 @@
+#!/usr/bin/perl
+# dupl-template		D. Musliner	$Revision: 1.2 $
+# duplicate a template, replacing @ with the duplication count, where duplication counts are bounded by
+# DUPL <howmany> and 
+# DUPLEND
+# - based on CIRCA's duplprims, which replaced #s, but this works on yaml where that's comment char.
+
+## -------------------------------------------------------------------
+
+$/="##DUPLEND\n";	# set record separator
+$dupl=1;
+$numfbsnode1=shift();
+$numfbsnode2=shift();
+$numfbsnode3=shift();
+
+$base = 0;
+
+while(<>)
+{
+  #warn "------------------------record is $_\n";
+  s/XXXNUMFBSNODE1XXX/$numfbsnode1/;
+  s/XXXNUMFBSNODE2XXX/$numfbsnode2/;
+  s/XXXNUMFBSNODE3XXX/$numfbsnode3/;
+  if (/^##DUPL\s*:\s*(\d+)/)
+    {
+	warn "setting dupl to $1\n";
+	$dupl = $1;
+	s/\/\*\s*DUPL:\s*\d+\s*\*\///;
+	$orig = $_;
+	
+	for ($i=0;$i<$dupl;$i++)
+	  {
+        $fbidx=$base+$i;
+		$offset=3+$fbidx+$ENV{'CIRCA_BASEPORT'};
+		warn "fb$fbidx exposing slime with port $offset\n";
+		s/XXXSLIMEPORTXXX/$offset/g;
+		s/\@/$fbidx/g;
+		print;
+		$_=$orig;
+	  }
+    $base+=$dupl;
+	$dupl=1;
+    }
+  else { print; }
+#  if (/^\}/)
+#    {
+#	$dupl=1;
+#	print;
+#    }
+}

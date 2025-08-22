@@ -1,0 +1,72 @@
+#!/bin/bash
+# Creates an override file under the user's systemd Docker configuration.
+# Usage: ./setup-docker-override
+# Define DEBUG env var on way in if you want debugging output, ala DEBUG=1 ./setup-docker-override
+
+if [ "$#" -ne 0 ]; then
+    echo "Usage: $0"
+    exit 1
+fi
+
+PROGNAME=$(basename "$0")
+warn()  { echo "$PROGNAME: ${@}" 1>&2; }
+die()   { warn "${@}"; exit 1; }
+dbug()  { test -z $DEBUG || echo "$PROGNAME: ${@}" 1>&2; }
+
+# Example usage:
+# dbug This only prints if DEBUG is defined
+# test -e foo || die file foo must exist
+# test -z $FOO && die Environment variable FOO must be defined
+
+# bash-ism to get location of script. Must use /bin/pwd to get absolute path.
+thisdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && /bin/pwd )"
+dbug thisdir is $thisdir
+
+# Define the directory and file path
+CONFIG_DIR="$HOME/.config/systemd/user/docker.service.d"
+OVERRIDE_FILE="$CONFIG_DIR/override.conf"
+
+# Create the directory if it doesn't exist
+if mkdir -p "$CONFIG_DIR"; then
+    echo "Directory created: $CONFIG_DIR"
+else
+    echo "Failed to create directory: $CONFIG_DIR"
+fi
+
+# Create the override file if it doesn't exist
+if touch "$OVERRIDE_FILE"; then
+    echo "Override file created at: $OVERRIDE_FILE"
+else
+    echo "Failed to create override file: $OVERRIDE_FILE"
+fi
+
+# Add the specified content to the override file
+cat <<EOL > "$OVERRIDE_FILE"
+[Service]
+Environment="DOCKERD_ROOTLESS_ROOTLESSKIT_DISABLE_HOST_LOOPBACK=false"
+Environment="DOCKERD_ROOTLESS_ROOTLESSKIT_ALLOW_HOST_LOOPBACK=true"
+Environment="DOCKERD_ROOTLESS_ROOTLESSKIT_NET=slirp4netns"
+Environment="DOCKERD_ROOTLESS_ROOTLESSKIT_PORT_DRIVER=slirp4netns"
+EOL
+
+if [ $? -eq 0 ]; then
+    echo "Successfully added content to $OVERRIDE_FILE"
+else
+    echo "Failed to add content to $OVERRIDE_FILE"
+fi
+
+# Reload the systemd user daemon and restart the Docker service
+if systemctl --user daemon-reload; then
+    echo "Systemd user daemon reloaded"
+else
+    echo "Failed to reload systemd user daemon"
+fi
+
+if systemctl --user restart docker; then
+    echo "Docker service restarted"
+else
+    echo "Failed to restart Docker service"
+fi
+
+# Print a message indicating success
+echo "Override file created, configured, and Docker service restarted at: $OVERRIDE_FILE"

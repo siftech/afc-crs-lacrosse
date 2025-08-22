@@ -1,0 +1,59 @@
+=================================================================
+==283021==ERROR: AddressSanitizer: heap-use-after-free on address 0x602000000010 at pc 0x7f8a641dcf7d bp 0x7ffdc459de90 sp 0x7ffdc459d638
+READ of size 2 at 0x602000000010 thread T0
+    #0 0x7f8a641dcf7c in __interceptor_puts ../../../../src/libsanitizer/sanitizer_common/sanitizer_common_interceptors.inc:1226
+    #1 0x558d65120934 in printLine (/home/musliner/laxified-juliet-bydave/42416/juliet_code_cleaned/bad_functions_only/301.out+0x2934)
+    #2 0x558d65120886 in foofooreturn_freed_ptr_01_stuff() 301.c:52
+    #3 0x558d651208be in main 301.c:62
+    #4 0x7f8a63c51082 in __libc_start_main ../csu/libc-start.c:308
+    #5 0x558d651204cd in _start (/home/musliner/laxified-juliet-bydave/42416/juliet_code_cleaned/bad_functions_only/301.out+0x24cd)
+
+0x602000000010 is located 0 bytes inside of 10-byte region [0x602000000010,0x60200000001a)
+freed by thread T0 here:
+    #0 0x7f8a6429b40f in __interceptor_free ../../../../src/libsanitizer/asan/asan_malloc_linux.cc:122
+    #1 0x558d651206ec in helperstuff 301.c:17
+    #2 0x558d65120876 in foofooreturn_freed_ptr_01_stuff() 301.c:51
+    #3 0x558d651208be in main 301.c:62
+    #4 0x7f8a63c51082 in __libc_start_main ../csu/libc-start.c:308
+
+previously allocated by thread T0 here:
+    #0 0x7f8a6429b808 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cc:144
+    #1 0x558d651205d3 in helperstuff 301.c:10
+    #2 0x558d65120876 in foofooreturn_freed_ptr_01_stuff() 301.c:51
+    #3 0x558d651208be in main 301.c:62
+    #4 0x7f8a63c51082 in __libc_start_main ../csu/libc-start.c:308
+
+SUMMARY: AddressSanitizer: heap-use-after-free ../../../../src/libsanitizer/sanitizer_common/sanitizer_common_interceptors.inc:1226 in __interceptor_puts
+Shadow bytes around the buggy address:
+  0x0c047fff7fb0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x0c047fff7fc0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x0c047fff7fd0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x0c047fff7fe0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x0c047fff7ff0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+=>0x0c047fff8000: fa fa[fd]fd fa fa fa fa fa fa fa fa fa fa fa fa
+  0x0c047fff8010: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x0c047fff8020: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x0c047fff8030: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x0c047fff8040: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x0c047fff8050: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07 
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+  Shadow gap:              cc
+==283021==ABORTING

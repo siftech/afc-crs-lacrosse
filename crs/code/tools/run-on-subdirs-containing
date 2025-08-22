@@ -1,0 +1,54 @@
+#!/bin/bash
+
+# Check if the required arguments are provided
+if [ $# -lt 2 ]; then
+    echo "Usage: $0 <blob> <script_to_run>"
+    exit 1
+fi
+
+blob=$1
+script_to_run=$2
+
+shift 2
+
+if [ -z "$blob" ]; then
+   echo "Usage: $0 <blob> <script_to_run>"
+   exit 1
+fi
+
+# Validate that the script is executable and in the PATH
+if ! command -v "$script_to_run" >/dev/null 2>&1; then
+    echo "Error: '$script_to_run' is not found in PATH or is not executable."
+    exit 1
+fi
+
+echo "Look for $blob"
+
+# Parent directory (default to the current directory)
+parent_dir="."
+
+# Collect matching subdirectories
+matching_subdirs=()
+
+# Loop through immediate subdirectories
+for subdir in "$parent_dir"/*; do
+    # Ensure it's a directory
+    if [ -d "$subdir" ]; then
+	# Check if the relative path matching the blob exists
+	if find -wholename "$subdir/$blob" -type f | grep -q .; then
+       	    # Add the subdirectory name to the list of matches
+	    matching_subdirs+=("$(basename "$subdir")")
+	fi
+    fi
+done
+
+# Print the matching subdirectory names
+echo "Matching subdirectories (${#matching_subdirs[@]}): ${matching_subdirs[*]}"
+
+for subdir in "${matching_subdirs[@]}"; do
+    echo
+    cd ./$subdir
+    echo "Running $script_to_run in $subdir with arguments: $*"
+    $script_to_run $@
+    cd ..
+done

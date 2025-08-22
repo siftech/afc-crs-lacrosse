@@ -1,0 +1,142 @@
+#!/bin/bash
+
+# [MDM] Note this wrapper is now bespoke to be used with the AIxCC helper.py script,
+# because it uses the OSS_FUZZ_SAVE_CONTAINERS_NAME env var to set the container name.
+
+set -euo pipefail
+
+if [[ $# -lt 2 ]]; then
+    echo "Usage: $0 <timeout_duration> <command> [args...]"
+    exit 1
+fi
+
+TIMEOUT_DURATION=$1
+shift
+RAW_CMD=("$@")
+
+# Generate a unique container name
+if command -v openssl >/dev/null 2>&1; then
+    RAND_SUFFIX=$(openssl rand -hex 4)
+else
+    RAND_SUFFIX=$RANDOM$RANDOM
+fi
+CONTAINER_NAME="dc-$$-$RAND_SUFFIX"
+echo "[INFO] Using container name: $CONTAINER_NAME"
+
+# Export for use by helper.py
+export OSS_FUZZ_SAVE_CONTAINERS_NAME="$CONTAINER_NAME"
+
+# Run the command with timeout in a subshell
+EXITCODE_FILE=$(mktemp)
+(
+    set +e
+    timeout "$TIMEOUT_DURATION" "${RAW_CMD[@]}"
+    echo $? > "$EXITCODE_FILE"
+) &
+CMD_PID=$!
+wait "$CMD_PID"
+exit_code=$(cat "$EXITCODE_FILE")
+rm -f "$EXITCODE_FILE"
+
+##############################################################################
+# Functions
+##############################################################################
+
+print_container_info() {
+    local name="$1"
+    echo "[DEBUG] Checking current state for container $name"
+    docker ps -a --filter "name=$name" --format "table {{.ID}}\t{{.Names}}\t{{.Status}}"
+}
+
+poll_for_state() {
+    local name="$1" phase="$2" attempts="$3" delay="$4"
+    for (( i=1; i<=attempts; i++ )); do
+	state=$(docker inspect -f '{{.State.Status}}' "$name" 2>/dev/null || echo "missing")
+	if [[ "$state" == "exited" || "$state" == "dead" ]]; then
+	    echo "[INFO] Container $name reached state '$state' after $phase"
+	    return 0
+	fi
+	echo "[INFO] Waiting for container $name to stop (current state: $state) after $phase (attempt $i/$attempts, ${delay}s)…"
+	sleep "$delay"
+    done
+    echo "[ERROR] [STATE_WAIT_FAILURE_${phase^^}] Container $name did not stop after $phase and polling"
+    return 1
+}
+
+poll_for_removal() {
+    local name="$1" phase="$2" attempts="$3" delay="$4"
+    for (( i=1; i<=attempts; i++ )); do
+	if ! docker inspect "$name" &>/dev/null; then
+	    echo "[INFO] Container $name removed successfully after $phase"
+	    return 0
+	fi
+	echo "[INFO] Waiting for container $name to disappear after $phase (attempt $i/$attempts, ${delay}s)…"
+	sleep "$delay"
+    done
+    echo "[ERROR] [POLL_FAILURE_AFTER_${phase^^}] Container $name still exists after $phase and polling"
+    return 1
+}
+
+kill_container() {
+    local name="$1"
+    echo "[INFO] Attempting docker kill of $name"
+    print_container_info "$name"
+    local kill_output
+    if kill_output=$(docker kill "$name" 2>&1); then
+	echo "[INFO] docker kill exited 0"
+    else
+	local kill_status=$?
+	echo "[WARN] docker kill failed (exit $kill_status)"
+	echo "[WARN] kill output: $kill_output"
+    fi
+    poll_for_state "$name" "kill" 10 2
+}
+
+remove_container() {
+    local name="$1"
+    echo "[INFO] Attempting docker rm -f of $name"
+    print_container_info "$name"
+    if rm_output=$(docker rm -f "$name" 2>&1); then
+	echo "[INFO] docker rm -f succeeded"
+    else
+	local rm_status=$?
+	echo "[ERROR] docker rm -f failed (exit $rm_status)"
+	echo "[ERROR] rm output: $rm_output"
+    fi
+    poll_for_removal "$name" "rm" 10 2
+
+    echo "[DEBUG] Post-RM container listing (sanity check):"
+    print_container_info "$name"
+}
+
+##############################################################################
+# Cleanup logic
+##############################################################################
+
+if docker inspect "$CONTAINER_NAME" &>/dev/null; then
+    echo "[INFO] Cleaning up container $CONTAINER_NAME"
+    print_container_info "$CONTAINER_NAME"
+
+    echo "[INFO] Attempting graceful stop…"
+    if docker stop -t 5 "$CONTAINER_NAME" 2>&1; then
+	echo "[INFO] docker stop exited 0"
+	if ! poll_for_state "$CONTAINER_NAME" "stop" 10 2; then
+	    echo "[WARN] Container did not stop gracefully, escalating to kill"
+	    kill_container "$CONTAINER_NAME"
+	fi
+    else
+	local stop_status=$?
+	echo "[WARN] docker stop failed (exit $stop_status), escalating to kill"
+	kill_container "$CONTAINER_NAME"
+    fi
+
+    remove_container "$CONTAINER_NAME"
+else
+    echo "[INFO] No container $CONTAINER_NAME found — skipping cleanup"
+fi
+
+echo "[WRAPPER] Exiting with code $exit_code" >&2
+sleep 1
+exec 1>&-
+exec 2>&-
+exit $exit_code

@@ -1,0 +1,86 @@
+#!/bin/bash
+
+# FIXME This maybe should be an env var odcumented in a local README, but bringing it to the
+# top of the file here is a step in the right direction.
+
+# SET THIS!
+CHALLENGE_CP_PATH="$HOME/projects/lacrosse/sift-gitlab/challenge-004-nginx-cp"
+
+# Mostly this just untars one or more lax ref bundles matching substring into (destination) parent dir.
+#   SEE FIXME below...
+
+# Ensure the script exits on any errors
+set -e
+
+# Check if the required arguments are provided
+if [ "$#" -ne 2 ]; then
+    echo "Usage: $0 <substring> <dest_parent_directory>"
+    exit 1
+fi
+
+# Read the arguments
+SUBSTRING=$1
+PARENT_DIR=$2
+
+# Ensure the parent directory exists
+mkdir -p "$PARENT_DIR"
+
+# Extract .tgz files matching the substring
+for FILE in *"$SUBSTRING"*.tgz; do
+    if [ -f "$FILE" ]; then
+	# Extract the subdirectory name from the file name
+	SUBDIR_NAME=$(basename "$FILE" .tgz | sed "s/^$SUBSTRING-//")
+
+	# Ensure the subdirectory exists under the parent directory
+	TARGET_DIR="$PARENT_DIR/$SUBDIR_NAME"
+	mkdir -p "$TARGET_DIR"
+
+	# Extract the .tgz file into the target directory
+	echo "Extracting $FILE into $TARGET_DIR..."
+	tar -xvzf "$FILE" -C "$TARGET_DIR"
+    fi
+done
+
+# Copy the patches directory, if it exists
+PATCHES_DIR="${SUBSTRING}-patches"
+if [ -d "$PATCHES_DIR" ]; then
+    echo "Copying $PATCHES_DIR to $PARENT_DIR/patches..."
+    cp -r "$PATCHES_DIR" "$PARENT_DIR/patches"
+fi
+
+# Copy the summ.txt file, if it exists
+SUMM_FILE="${SUBSTRING}-summ.txt"
+if [ -f "$SUMM_FILE" ]; then
+    echo "Copying $SUMM_FILE to $PARENT_DIR/summ.txt..."
+    cp "$SUMM_FILE" "$PARENT_DIR/summ.txt"
+fi
+
+mkdir -p $PARENT_DIR/patches
+
+# FIXME or delete mostly hardcoded path to good and bad patches 
+# See top of file [MDM]
+
+# Copy the good_patch.diff file, if it exists
+GOOD_PATCH_FILE="${CHALLENGE_CP_PATH}/.internal_only/${PARENT_DIR}/patches/nginx/good_patch.diff"
+echo "Trying to copy good patch from $GOOD_PATCH_FILE"
+if [ -f "$GOOD_PATCH_FILE" ]; then
+    echo "Copying $GOOD_PATCH_FILE to $PARENT_DIR/patches/good_patch.diff..."
+    cp "$GOOD_PATCH_FILE" "$PARENT_DIR/patches/good_patch.diff"
+fi
+
+# Copy the bad_patch.diff file, if it exists
+BAD_PATCH_FILE="${CHALLENGE_CP_PATH}/.internal_only/${PARENT_DIR}/patches/nginx/bad_patch.diff"
+echo "Trying to copy bad patch from $BAD_PATCH_FILE"
+if [ -f "$BAD_PATCH_FILE" ]; then
+    echo "Copying $BAD_PATCH_FILE to $PARENT_DIR/patches/bad_patch.diff..."
+    cp "$BAD_PATCH_FILE" "$PARENT_DIR/patches/bad_patch.diff"
+fi
+
+echo "Performed initial extraction in $PARENT_DIR"
+
+# Change to the destination directory
+#cd "$PARENT_DIR" || { echo "Failed to cd into $PARENT_DIR"; exit 1; }
+
+# Call the second script
+#echo "Calling setup_lax_ref_patch_data from $PARENT_DIR"
+#./setup_lax_ref_patch_data

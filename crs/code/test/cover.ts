@@ -1,0 +1,32 @@
+curl -X 'POST' $LOCAL_EX_COMP_SERVER_ENDPOINT -H 'Content-Type: application/json' -d '{
+  "challenge_repo_url": "https://github.com/aixcc-finals/afc-zookeeper.git",
+  "challenge_repo_head_ref": "challenges/zk-full-01",
+  "fuzz_tooling_url": "https://github.com/aixcc-finals/oss-fuzz-aixcc.git",
+  "fuzz_tooling_ref": "challenge-state/zk-full-01",
+  "fuzz_tooling_project_name": "zookeeper",
+  "duration": 36000
+}'
+
+sleep 30s;
+
+curl -X 'POST' $LOCAL_EX_COMP_SERVER_ENDPOINT -H 'Content-Type: application/json' -d '{
+  "challenge_repo_url": "https://github.com/aixcc-finals/afc-libpostal.git",
+  "challenge_repo_head_ref": "challenges/libpostal-full-01",
+  "fuzz_tooling_url": "https://github.com/aixcc-finals/oss-fuzz-aixcc.git",
+  "fuzz_tooling_ref": "challenge-state/libpostal-full-01",
+  "fuzz_tooling_project_name": "libpostal",
+  "duration": 36000
+}'
+
+sleep 30s;
+
+curl -X 'POST' $LOCAL_EX_COMP_SERVER_ENDPOINT -H 'Content-Type: application/json' -d '{
+  "challenge_repo_url": "https://github.com/aixcc-finals/afc-curl.git",
+  "challenge_repo_base_ref": "a29184fc5f9b1474c08502d1545cd90375fadd51",
+  "challenge_repo_head_ref": "challenges/cu-delta-01",
+  "fuzz_tooling_url": "https://github.com/aixcc-finals/oss-fuzz-aixcc.git",
+  "fuzz_tooling_ref": "challenge-state/cu-delta-01",
+  "fuzz_tooling_project_name": "curl",
+  "duration": 36000
+}'
+              

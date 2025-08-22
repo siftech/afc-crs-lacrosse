@@ -1,0 +1,91 @@
+do "./defaults.pl" || die "Can't do './defaults.pl': $@";
+
+$run_in_compose = 0;
+$final_smoketest = 1;
+
+our $cp_config = "../crs-sandbox-items/sift/mock-cp-config.yaml";
+our $task_id = "2D21A837-170D-44CB-B06F-052E27484883";
+
+our $url1 = 'https://apitestchallengetasks.blob.core.windows.net/test-lax-challenge-task-container/585cb8b229439b5abdec19668c571a4df37df56883adef490d7d6bfc262d7ff8.tar.gz?se=2025-08-01T00%3A00%3A00Z&sp=r&sv=2022-11-02&sr=b&sig=Ck64zwxkCT8iIVr%2BH4fL96lCfgyA1%2FXem3usMS9I7Yc%3D';
+
+our $url2 = 'https://apitestchallengetasks.blob.core.windows.net/test-lax-challenge-task-container/27a298a3d4759052ebf1353bce4c4b549a42b4a3b188073219568290e4eec2f3.tar.gz?se=2025-08-01T00%3A00%3A00Z&sp=r&sv=2022-11-02&sr=b&sig=uyySQhsoWIsPKBZKPpdsGMcOn5%2ByJdVif3ST5NudaRU%3D';
+
+our $url3 = 'https://apitestchallengetasks.blob.core.windows.net/test-lax-challenge-task-container/cd590d7038570916fd48f762878e0c1df5b543d77f214e3e255684bfe040fd6f.tar.gz?se=2025-08-01T00%3A00%3A00Z&sp=r&sv=2022-11-02&sr=b&sig=1fWEM0o1EA8L0zA0eSFrJYxbWXE%2BUMgjqY7k9sXHOdc%3D';
+
+sbcl_test();
+
+# NOTE: task_id, project_name, harnesses_included will be the correct afc naming schema
+our $experiment = '
+  (push :msg *debug-list*)
+  (push :amp *debug-list*)
+  (push :target *debug-list*)
+  (setf *run-fake-bridge* t)
+  (setf *fake-fuzz* nil)
+  (setf *lacrosse* t)
+  (setf *fuzzer-timeout* "1m")
+  (setf *lax-final* t)
+  (setf *use-oss-fuzz* t)
+  (setf *use-llm-hypothesize-vulns-task* nil)
+  (setf *fake-bridge-script*
+    \'(
+       (1
+         ((:TYPE :V1-TASK--POST)
+          (:MESSAGE-ID  "73131b0c-eceb-4f67-8198-23387d372ca3")
+          (:MESSAGE-TIME  1740776799000)
+          (:TASKS
+            (
+             ((:TASK_ID  "2D21A837-170D-44CB-B06F-052E27484883")
+              (:TYPE  "delta")
+              (:METADATA
+               ((:ROUND-ID  "local-dev")
+                (:TASK-ID  "2D21A837-170D-44CB-B06F-052E27484883")))
+              (:DEADLINE  1740791199000)
+              (:FOCUS  "example-libpng")
+              (:HARNESSES_INCLUDED "true")
+              (:PROJECT_NAME  "libpng")
+              (:SOURCE
+               (((:TYPE  "repo")
+                 (:URL  "repo-placeholder")
+                 (:PATH "example-libpng")
+                 (:SHA-256  ""))
+                ((:TYPE  "fuzz-tooling")
+                 (:URL  "oss-fuzz-placeholder")
+                 (:PATH "fuzz-tooling")
+                 (:SHA-256  ""))
+                ((:TYPE  "diff")
+                 (:URL  "diff-placeholder")
+                 (:PATH "diff")
+                 (:SHA-256  "")))))))))
+
+;;       (12000 ((:type :halt)))
+))
+';
+
+our $numfbs = 3;
+our $allocationmethod = "balanced";
+
+#our $success_pattern = "AFC-Submit: Submitted patch for task id";
+our $success_pattern = "AFC-Submit: Posting patch for task_id";
+
+
+# (Tentatively) treat failed patch generation as a fail
+our $fail_pattern = "process-patch-generation-failed-msg";
+
+our $success_timeout = "12h";
+
+do "./common.pl" || die "Can't do './common.pl': $@";
+
+$ENV{'LAX_LOAD_CP_IMAGES'} = "false";
+
+$test = {
+    defaultIgnore => 1,
+    keywords => [ qw / lacrosse afc / ],
+    cleanup => \&condor_killer,
+    agents => [
+        @clean_and_start_agents,
+    ],
+};
+
+$test;
+
+# vim: set ft=perl :

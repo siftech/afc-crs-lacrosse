@@ -1,0 +1,17 @@
+#!/bin/bash
+
+thisdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && /bin/pwd )"
+
+export CONTAINER_PREFIX=${CONTAINER_PREFIX:-$USER}       # Set default container prefix if not already set
+#dbug CONTAINER_PREFIX is $CONTAINER_PREFIX
+CONTAINER_NAME=${CONTAINER_PREFIX}-neo-fuzz-ccl
+
+export HOST_LOGDIR=$1
+export HOST_LACROSSE_HOME=${thisdir}/../../../crs
+
+$thisdir/start-neo-fuzz-sbcl -d
+$thisdir/wait-for-container ${CONTAINER_NAME}
+cmd="cd \${DOCKER_LACROSSE_HOME}/code/lisp; sbcl --no-userinit --disable-debugger --load load.lisp $* --eval '(musliner::dbug :top \"printenv: ~s\" (uiop:run-program \"printenv\" :output :string))' --eval '(uiop:quit 0)'"
+echo "$0: compile command is:"
+echo "    ${cmd}"
+$thisdir/docker exec ${CONTAINER_NAME} /realuser.sh /bin/bash -c "${cmd}"

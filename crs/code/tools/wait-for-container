@@ -1,0 +1,13 @@
+#!/bin/bash
+# this is a shell script because nf-ccl-launcher and potentially other things use it in distributed cluster runs 
+# pass it a container name and make sure the container's bashrc prints the canonical "container is up" msg at end
+
+echo Waiting for container $1
+
+thisdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && /bin/pwd )"
+echo thisdir is $thisdir
+
+${thisdir}/../prt/logwatcher.pl -e -d $1 \
+        -p "container is up"\
+        -q "error" \
+        -q "Error"

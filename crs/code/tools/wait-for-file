@@ -1,0 +1,17 @@
+#!/bin/bash
+if [ "$#" == "0" ]; then
+        echo "Usage: $0 filename [max-wait-seconds 10]"
+        exit 1
+fi
+
+file="$1"; shift
+wait_seconds="${1:-1000}"; 
+test $wait_seconds -lt 1 && echo 'At least 1 second is required' && return 1
+
+limit=$wait_seconds
+until test $((wait_seconds--)) -eq 0 -o -e "$file" ; do sleep 1; done
+
+test $wait_seconds -ge 0 || {
+echo "File $file missing after waiting for $limit seconds"
+exit 1
+}

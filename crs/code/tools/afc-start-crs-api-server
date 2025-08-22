@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+
+PROGNAME=$(basename "$0")
+warn()  { echo "$PROGNAME: ${@}" 1>&2; }
+die()   { warn "${@}"; exit 1; }
+dbug()   { test -z $DEBUG || warn "${@}"; }
+
+thisdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && /bin/pwd )"
+
+export CIRCA_BASEPORT=${CIRCA_BASEPORT:-10000}
+dbug CIRCA_BASEPORT is $CIRCA_BASEPORT
+
+export CONTAINER_PREFIX=${CONTAINER_PREFIX:-$USER}
+dbug CONTAINER_PREFIX is $CONTAINER_PREFIX
+
+# TODO export CIRCA_MM_HOST override to make configurable where the API looks for optimus.
+# Currently, API assumes it is always running on the same host as optimus.
+
+# Comp client api is live on 88. CRS server api is live on 80.
+export CRS_API_PORT=${CRS_API_PORT:-$(( CIRCA_BASEPORT + 80 ))}
+dbug CRS_API_PORT is $CRS_API_PORT
+
+export CRS_API_KEY_ID=${CRS_API_KEY_ID:-"lax-username"}
+export CRS_API_KEY_TOKEN=${CRS_API_KEY_TOKEN:-"lax-password"}
+
+export COMPETITION_API_TEAM_ID=${COMPETITION_API_TEAM_ID:-"11111111-1111-1111-1111-111111111111"}
+export COMPETITION_API_TEAM_SECRET=${COMPETITION_API_TEAM_SECRET:-"secret"}
+export LAX_COMP_API_PORT=${LAX_COMP_API_PORT:-$(( CIRCA_BASEPORT + 501))}
+
+# export COMPETITION_API_TEAM_ENDPOINT=${COMPETITION_API_TEAM_ENDPOINT:-"http://localhost:${LAX_COMP_API_PORT}"}
+export COMPETITION_API_TEAM_ENDPOINT=${COMPETITION_API_TEAM_ENDPOINT:-"http://10.0.2.2:${LAX_COMP_API_PORT}"}
+
+export CRS_LAX_RELEASE_TAG=${CRS_LAX_RELEASE_TAG:-"v1.0"}
+
+# FIXME start-image requires HOST_LOGDIR is set so it can mount $HOST_LOGDIR:/logdir
+# The doit script sets this when spinning up optimus and the fuzzbombs.
+# We need to mimic that behavior for the CRS API
+export HOST_LOGDIR=$1
+
+# Start the AFC CRS Server API container
+# $thisdir/start-nf-image afc-crs-server -d -v $CP_ROOT:$CP_ROOT -p $CRS_API_PORT:8000
+#     -e CIRCA_MM_HOST=${CONTAINER_PREFIX}-neo-fuzz-ccl \
+
+# TODO set the actual environment vars to actual keys
+$thisdir/start-nf-image afc-crs-server -d \
+    --add-host=$(hostname -f)=10.0.2.2 \
+    -e CIRCA_BASEPORT=${CIRCA_BASEPORT} \
+    -e CIRCA_MM_HOST=$(hostname -f) \
+    -e CRS_API_KEY_ID=$CRS_API_KEY_ID \
+    -e CRS_API_KEY_TOKEN=$CRS_API_KEY_TOKEN \
+    -e COMPETITION_API_TEAM_ID=$COMPETITION_API_TEAM_ID \
+    -e COMPETITION_API_TEAM_SECRET=$COMPETITION_API_TEAM_SECRET \
+    -e COMPETITION_API_ENDPOINT=$COMPETITION_API_TEAM_ENDPOINT \
+    -e CRS_LAX_RELEASE_TAG=$CRS_LAX_RELEASE_TAG \
+    -p $CRS_API_PORT:8000
+
+# Start the AFC CRS Server
+$thisdir/wait-for-container ${CONTAINER_PREFIX}-afc-crs-server
+# $thisdir/docker exec ${CONTAINER_PREFIX}-afc-crs-server uvicorn server:app --host 0.0.0.0 --port 8000
+$thisdir/docker exec ${CONTAINER_PREFIX}-afc-crs-server uvicorn server:app --host 0.0.0.0 --port 8000

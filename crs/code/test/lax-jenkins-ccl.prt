@@ -1,0 +1,44 @@
+do "./defaults.pl" || die "Can't do './defaults.pl': $@";
+
+$run_in_compose = 1;
+ccl_test();
+
+our $experiment = '
+  (push :msg *debug-list*)
+  (push :amp *debug-list*)
+  (push :target *debug-list*)
+  (setf *run-fake-bridge* t)
+  (setf *lacrosse* t)
+  (setf *fuzzer-timeout* "1m")
+  (setf *fake-bridge-script*
+    \'(
+       (1 ((:type :new-challenge-project)
+           (:target (()))))
+;;       (12000 ((:type :halt)))
+))
+';
+
+our $numfbs = 1;
+our $allocationmethod = "balanced";
+
+our $cp_config = "../crs-sandbox-items/sift/jenkins-cp-config.yaml";
+our $success_logfile = "FUZZBOMB0.log";
+our $success_pattern = "Running with entropic power schedule";
+our $success_timeout = "10m";
+
+do "./common.pl" || die "Can't do './common.pl': $@";
+
+
+
+$test = {
+    defaultIgnore => 1,
+    keywords => [ qw / lacrosse / ],
+    cleanup => \&condor_killer,
+    agents => [
+        @clean_and_start_agents,
+    ],
+};
+
+$test;
+
+# vim: set ft=perl :

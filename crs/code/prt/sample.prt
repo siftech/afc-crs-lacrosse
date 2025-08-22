@@ -1,0 +1,183 @@
+# Hey EMACS, this should be in -*- perl -*- mode
+#
+# PRT (Perl Regression Tester) sample test specification file
+#
+# Test specification hash reference
+#  - The name of the variable is NOT important; 
+#  - It MUST be "returned" by this file; 
+#    i.e. it should be the the last reference in the file
+$test = { 
+  # -- Name: single-word (no spaces) name of the test
+  #    DEFAULT: basename of filename sans .prt file extension
+  # name => "sample",
+
+  # -- Description: arbitrary text for human consumption only
+  #    DEFAULT: ""  (no description)
+  description => "fodder",
+
+  # -- Keywords: arbitrary list of key words by which can be used to
+  #        filter the tests when running or showing results, etc...
+  #    DEFAULT: [ ] - empty list
+  keywords => [ qw / sample / ],  
+
+  # -- DefaultIgnore: if true, will skip this test unless either:
+  #      a) the filename or test-name is explicitly listed on the command line
+  #      b) the `--all` argument is given to prt
+  #    DEFAULT: undef/0/false
+  # defaultIgnore => 1,
+
+  # -- Inter-Agent Delay: delay (in seconds) between each agent startup
+  #    Default: 0 (seconds)
+  # agent_delay => 1,
+
+  # --  all_daemons_must_survive: all daemon agents must survive until all the non-daemon agents
+  #      end; if any daemon agent ends earlier, the test is aborted (and failed).
+  #    DEFAULT: 0
+  # all_daemons_must_survive       => 1,
+
+  # -- lowercase_logfile_names:  log files constructed based on the name of an agent 
+  #      are changed to all lowercase letters.  NOTE:  The case lowering is overridden 
+  #      by specifying an agent name with the logfile option of an agent.
+  #    DEFAULT: 1
+  # lowercase_logfile_names => 0,
+
+
+  # -- Agents: Array-ref of agents, each of which MUST specify: 
+  #  + name: name of the agent, without spaces
+  #  + command: the command to run
+  agents => [ 
+      { # Agent 1: It does the good stuff
+        name         => "neo", 
+        description  => "Neo",
+
+        # -- Command: command line (including args) to run for this agent;
+        #    DEFAULT: undef;
+	#    This can take several forms:
+	#  + command = 'string',
+        #command   => "true",
+	#
+	#  + command = [ array ref ]',
+	#command      => [ 'perl', '-e', 'exit 2' ],
+	#
+	#  + command = sub { return array }, 
+	#      Command will be results of 'running' that code block.
+	#      The code block will have the agent spec as it's only argument passed in.
+	#command      => sub { my $agent=shift; 
+	#                       return  'perl', '-e',
+	#                               "print 'running agent $agent->name\n'; exit 2;" },
+
+	# -- Exit Code: _EXPECTED_ exit code for this agent;
+	#     a) If 'undef', the exit code will not be checked
+	#     b) otherwise, agent _MUST_ exit with the specified value or the
+	#        entire test will be aborted and all other agents will be
+	#        terminated early.  Note that this will be checked regardless of
+	#        agent termination; c.f. 'daemon' flag below.
+	#    DEFAULT: 0
+	#exit_code    => 0,
+
+	# -- Daemon: this agent is _NOT_ required to exit of its own volition
+	#      before the test concludes successfully.  In other words, PRT will
+	#      not wait for this agent to complete and if all other non-daemon
+	#      agents complete, this agent will be terminated by PRT.
+	#    DEFAULT: 0
+	#daemon       => 1,
+
+	# -- must_survive: this agent is a daemon that must survive until all the non-daemon agents
+	#      end; if this daemon agent ends earlier, the test is aborted (and failed).
+	#    DEFAULT: 0
+	#must_survive       => 1,
+
+	# [engstrom:20101118.1648CST] - start here with updates
+
+	# -- Complete_before_continuing: PRT will wait for this agent to
+	#      complete before subsequent agents are started. This can be used
+	#      for initializing or other sequential steps.
+        #    DEFAULT: 0
+	#complete_before_continuing => 1,
+
+	# -- Comparo: define a custom comparo to verify the outputs
+	#             from this agent. The comparo is an instance of a
+	#             class. It is legal to define a comparo and store
+	#             it to a variable at the head of this file and
+	#             then reuse it for multiple agents.
+	#             DEFAULT: new PRT::PRSFactComparo()
+	#             SOON: DEFAULT: new PRT::LineComparo()
+	# Here are several examples:
+	#
+	# Default values (verbatim).
+	#comparo      => new PRT::LineComparo(),
+	# No comparo - also will not barf if no rubric exists
+	#comparo      => undef,
+	# Explictly specified verbatim:
+	#comparo      => new PRT::LineComparo(
+	#                    show_comparisons   => 0,
+	#                    ignore_fact_regexp => undef,
+	#                    key_fact_regexp    => ".*",
+	# Descriptions of arguments for general-purpose line comparo:
+	#comparo      => new PRT::LineComparo(
+	#                    # 0 -- (default) no comparisons
+	#                    # 1 -- show comparisons which match
+	#                    # 2 -- show comparisons and all non-matching lines
+	#                    show_comparisons   => 0,
+	#                    # String specifying regex. If regex
+        #                    # matches a fact, the fact is ignored.
+        #                    # If this is undef, no facts are ignored.
+	#                    ignore_fact_regexp => undef,
+	#                    # String specifying regex. If regex
+        #                    # matches a line, the line is checked.
+        #                    # If this is undef, no lines are checked;
+        #                    # in other words, all outputs are ignored.
+        #                    # If specified, this pattern should contain
+	#                    # a single capturing group. This capturing
+	#                    # group defines the part which is compared
+        #                    # between the rubric and the results. If no
+	#                    # capturing group is present, the entire
+	#                    # expression will be compared.
+	#                    key_fact_regexp    => ".*",
+	#                    ),
+	# Ignore everything but barf if there is no rubric:
+	#comparo      => new PRT::LineComparo(
+	#                    show_comparisons   => 0,
+	#                    ignore_fact_regexp => ".*",
+	#comparo      => new PRT::LineComparo(
+	#                    show_comparisons   => 0,
+	#                    key_fact_regexp    => undef,
+        # Built in classes for PRS comparisons:
+	#comparo      => new PRT::PRSFactComparo(
+	#                    show_comparisons   => 0,
+	#                    # Ignore user-trace-start-time, start-time,
+	#                    # and any facts containing op instance pointers.
+	#                    # This already sets: ignore_fact_regexp => "user-trace-start-time|start-time|<Op_instance",
+        #                    # The content within the parens is the fact.
+	#                    # This already sets key_fact_regexp    => "Posting the fact:",
+	#                    ),
+	#comparo      => new PRT::PRSGoalComparo(
+	#                    show_comparisons   => 0,
+	#                    # Ignore everything, goals are not currently checked.
+	#                    ignore_fact_regexp => ".*",
+        #                    # The content within the parens is the goal.
+	#                    #This already sets: key_fact_regexp    => "Posting the goal:",
+	#                    ),
+
+        # -- Executable: program to run for this agent (DEPRECATED - use 'command')
+        #    DEFAULT: "undef";
+	#    Typically, this is a string.
+        #executable   => "xoprs",
+
+        # -- Arguments: _ADDED_ to agent executable to form whole command -  (DEPRECATED - use 'command')
+        #    DEFAULT: [ ] - empty list
+        #add_args     => [ "-c" , 'add (test (fact))' ],
+
+      },
+      { # Agent 2: It does the bad stuff
+        name         => "smith",   # no spaces
+        description  => "Smith is the 'antagonist' that we love to hate",
+        includes     => [ "agent-2.inc", "i-am-evil.inc" ],
+      },
+    ]
+  };
+
+# you could put other code here, but not sure what that would serve.
+
+# Always end with a reference to the test specification hash reference.
+$test;

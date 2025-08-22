@@ -1,0 +1,38 @@
+# Hey EMACS, this should be in -*- perl -*- mode
+# ------------------------------------------------------------
+# COPYRIGHT START
+# Copyright (c) 2014, Smart Information Flow Technologies (SIFT).
+# COPYRIGHT END
+# ------------------------------------------------------------
+use PRT::Perf qw(smaller_is_better bigger_is_better
+                 numeric_in_range same_number);
+use FindBin;
+
+$test = {
+  description => "Tests of the PerfChecker comparer functions.",
+  keywords => [ qw / perf / ],
+  agents => [
+    {
+      name         => "optimus",
+      description  => "Runs optimus on a fixed workload",
+      command      => ["cat", "$FindBin::RealBin/selftest/perf-comparers-src.log"],
+      exit_code    => 0,
+      comparo      => new PRT::LineComparo( key_fact_regexp => "^This" ),
+      perfchecks   => [
+        {
+          regex => "^([a-zA-Z0-9]+) +([a-zA-Z0-9_]*) +([0-9.]+)",
+          tests => [
+            { labels => ['.*', 'smallBetterPct'],
+              compFn => smaller_is_better(pct => 0.20) },
+            { labels => ['.*', 'biggerBetterPct'],
+              compFn => bigger_is_better(pct => 0.05) },
+            { labels => ['.*', 'smallAbsBigAbs'],
+              compFn => numeric_in_range(boundBelowAbs=>5, boundAboveAbs=>10) },
+          ],
+        },
+      ],
+    },
+  ],
+};
+# Always end with a reference to the test specification hash reference.
+$test;

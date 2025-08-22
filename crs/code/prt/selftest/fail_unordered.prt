@@ -1,0 +1,67 @@
+# Hey EMACS, this should be in -*- perl -*- mode
+# ------------------------------------------------------------
+# COPYRIGHT START
+# Copyright (c) 2014, Smart Information Flow Technologies (SIFT).
+# COPYRIGHT END
+# ------------------------------------------------------------
+
+use PRT::UnorderedComparo;
+
+$test = {
+  description => "verifies unordered rubric/result comparison functionality ; each agent should fail",
+  defaultIgnore => 1,	# run by fail-monitors.prt
+  agents => [
+      {
+        name         => "unordered1",
+  	description => "missing entry",
+        command   => [ "bash", "-c", "echo one\necho two\necho four" ],
+        comparo => new PRT::UnorderedComparo(show_comparisons   => 2),
+        #comparo => new PRT::UnorderedComparo(),
+      },
+      {
+        name         => "unordered2",
+  	description => "missing entry due to case sensitivity by default",
+        command   => [ "bash", "-c", "echo Two\necho one\necho three" ],
+        comparo => new PRT::UnorderedComparo(
+        			#show_comparisons   => 2
+		),
+      },
+      {
+        name         => "unordered3",
+  	description => "missing entry due to nonmatching key_fact_regexp",
+        command   => [ "bash", "-c", "echo FOOOOOthree\necho FOOtwo\necho FOOone" ],
+        comparo => new PRT::UnorderedComparo( key_fact_regexp  => "FOO.*",
+        			#show_comparisons   => 2
+			),
+      },
+      {
+        name         => "unordered4",
+  	description => "strict with missing entry in rubric",
+        command   => [ "bash", "-c", "echo FOOthree\necho FOOtwo\necho FOOone" ],
+        comparo => new PRT::UnorderedComparo( key_fact_regexp  => "FOO.*",
+				strict=>1,
+        			#show_comparisons   => 2
+			),
+      },
+      {
+        name         => "unordered5",
+  	description => "strict with missing entry in result",
+        command   => [ "bash", "-c", "echo FOOtwo\necho FOOone" ],
+        comparo => new PRT::UnorderedComparo( key_fact_regexp  => "FOO.*",
+				strict=>1,
+        			show_comparisons   => 2
+			),
+      },
+      {
+        name         => "unordered6",
+  	description => "strict with extra entry in result",
+        command   => [ "bash", "-c", "echo FOOone\necho FOOthree\necho FOOtwo\necho FOOone" ],
+        comparo => new PRT::UnorderedComparo( key_fact_regexp  => "FOO.*",
+				strict=>1,
+        			show_comparisons   => 2
+			),
+      },
+    ]
+  };
+
+$test;

@@ -1,0 +1,1003 @@
+openapi: 3.0.1
+info:
+  contact: {}
+  title: Example Competition API
+  version: "1.1"
+servers:
+- url: /
+paths:
+  /v1/ping/:
+    get:
+      description: Test authentication creds and network connectivity
+      operationId: v1_ping_get
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/types.PingResponse'
+          description: OK
+      security:
+      - BasicAuth: []
+      summary: Test authentication creds and network connectivity
+      tags:
+      - ping
+      x-openapi-router-controller: openapi_server.controllers.ping_controller
+  /v1/task/{task_id}/broadcast-sarif-assessment/{broadcast_sarif_id}/:
+    post:
+      description: Submit a SARIF assessment
+      operationId: v1_task_task_id_broadcast_sarif_assessment_broadcast_sarif_id_post
+      parameters:
+      - description: Task ID
+        in: path
+        name: task_id
+        required: true
+        schema:
+          format: uuid
+          type: string
+      - description: Broadcast SARIF ID
+        in: path
+        name: broadcast_sarif_id
+        required: true
+        schema:
+          format: uuid
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/types.SarifAssessmentSubmission'
+        description: Submission body
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.SarifAssessmentResponse'
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Unauthorized
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Not Found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Internal Server Error
+      security:
+      - BasicAuth: []
+      summary: Submit a SARIF Assessment
+      tags:
+      - broadcast-sarif-assessment
+      x-codegen-request-body-name: payload
+      x-openapi-router-controller: openapi_server.controllers.broadcast_sarif_assessment_controller
+  /v1/task/{task_id}/bundle/:
+    post:
+      description: submits a bundle
+      operationId: v1_task_task_id_bundle_post
+      parameters:
+      - description: Task ID
+        in: path
+        name: task_id
+        required: true
+        schema:
+          format: uuid
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/types.BundleSubmission'
+        description: Submission Body
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.BundleSubmissionResponse'
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Unauthorized
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Not Found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Internal Server Error
+      security:
+      - BasicAuth: []
+      summary: Submit Bundle
+      tags:
+      - bundle
+      x-codegen-request-body-name: payload
+      x-openapi-router-controller: openapi_server.controllers.bundle_controller
+  /v1/task/{task_id}/bundle/{bundle_id}/:
+    delete:
+      description: delete a bundle
+      operationId: v1_task_task_id_bundle_bundle_id_delete
+      parameters:
+      - description: Task ID
+        in: path
+        name: task_id
+        required: true
+        schema:
+          format: uuid
+          type: string
+      - description: Bundle ID
+        in: path
+        name: bundle_id
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        "204":
+          content:
+            application/json:
+              schema:
+                type: string
+          description: No Content
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Unauthorized
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Not Found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Internal Server Error
+      security:
+      - BasicAuth: []
+      summary: Delete Bundle
+      tags:
+      - bundle
+      x-openapi-router-controller: openapi_server.controllers.bundle_controller
+    get:
+      description: get a bundle
+      operationId: v1_task_task_id_bundle_bundle_id_get
+      parameters:
+      - description: Task ID
+        in: path
+        name: task_id
+        required: true
+        schema:
+          format: uuid
+          type: string
+      - description: Bundle ID
+        in: path
+        name: bundle_id
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.BundleSubmissionResponseVerbose'
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Unauthorized
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Not Found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Internal Server Error
+      security:
+      - BasicAuth: []
+      summary: Get Bundle
+      tags:
+      - bundle
+      x-openapi-router-controller: openapi_server.controllers.bundle_controller
+    patch:
+      description: updates a bundle
+      operationId: v1_task_task_id_bundle_bundle_id_patch
+      parameters:
+      - description: Task ID
+        in: path
+        name: task_id
+        required: true
+        schema:
+          format: uuid
+          type: string
+      - description: Bundle ID
+        in: path
+        name: bundle_id
+        required: true
+        schema:
+          format: uuid
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/types.BundleSubmission'
+        description: Submission Body
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.BundleSubmissionResponseVerbose'
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Unauthorized
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Not Found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Internal Server Error
+      security:
+      - BasicAuth: []
+      summary: Update Bundle
+      tags:
+      - bundle
+      x-codegen-request-body-name: payload
+      x-openapi-router-controller: openapi_server.controllers.bundle_controller
+  /v1/task/{task_id}/freeform/:
+    post:
+      description: submits a freeform pov
+      operationId: v1_task_task_id_freeform_post
+      parameters:
+      - description: Task ID
+        in: path
+        name: task_id
+        required: true
+        schema:
+          format: uuid
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/types.FreeformSubmission'
+        description: Submission Body
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.FreeformResponse'
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Unauthorized
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Not Found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Internal Server Error
+      security:
+      - BasicAuth: []
+      summary: Submit Freeform
+      tags:
+      - feeform
+      x-codegen-request-body-name: payload
+      x-openapi-router-controller: openapi_server.controllers.feeform_controller
+  /v1/task/{task_id}/patch/:
+    post:
+      description: submit a patch for testing
+      operationId: v1_task_task_id_patch_post
+      parameters:
+      - description: Task ID
+        in: path
+        name: task_id
+        required: true
+        schema:
+          format: uuid
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/types.PatchSubmission'
+        description: Payload
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.PatchSubmissionResponse'
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Unauthorized
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Not Found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Internal Server Error
+      security:
+      - BasicAuth: []
+      summary: Submit Patch
+      tags:
+      - patch
+      x-codegen-request-body-name: payload
+      x-openapi-router-controller: openapi_server.controllers.patch_controller
+  /v1/task/{task_id}/patch/{patch_id}/:
+    get:
+      description: yield the status of patch testing
+      operationId: v1_task_task_id_patch_patch_id_get
+      parameters:
+      - description: Task ID
+        in: path
+        name: task_id
+        required: true
+        schema:
+          format: uuid
+          type: string
+      - description: Patch ID
+        in: path
+        name: patch_id
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.PatchSubmissionResponse'
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Unauthorized
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Not Found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Internal Server Error
+      security:
+      - BasicAuth: []
+      summary: Patch Status
+      tags:
+      - patch
+      x-openapi-router-controller: openapi_server.controllers.patch_controller
+  /v1/task/{task_id}/pov/:
+    post:
+      description: submit a vulnerability for testing
+      operationId: v1_task_task_id_pov_post
+      parameters:
+      - description: Task ID
+        in: path
+        name: task_id
+        required: true
+        schema:
+          format: uuid
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/types.POVSubmission'
+        description: Submission body
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.POVSubmissionResponse'
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Unauthorized
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Not Found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Internal Server Error
+      security:
+      - BasicAuth: []
+      summary: Submit Vulnerability
+      tags:
+      - pov
+      x-codegen-request-body-name: payload
+      x-openapi-router-controller: openapi_server.controllers.pov_controller
+  /v1/task/{task_id}/pov/{pov_id}/:
+    get:
+      description: yield the status of vuln testing
+      operationId: v1_task_task_id_pov_pov_id_get
+      parameters:
+      - description: Task ID
+        in: path
+        name: task_id
+        required: true
+        schema:
+          format: uuid
+          type: string
+      - description: POV ID
+        in: path
+        name: pov_id
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.POVSubmissionResponse'
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Unauthorized
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Not Found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Internal Server Error
+      security:
+      - BasicAuth: []
+      summary: Vulnerability Status
+      tags:
+      - pov
+      x-openapi-router-controller: openapi_server.controllers.pov_controller
+  /v1/task/{task_id}/submitted-sarif/:
+    post:
+      description: Submit a CRS generated SARIF
+      operationId: v1_task_task_id_submitted_sarif_post
+      parameters:
+      - description: Task ID
+        in: path
+        name: task_id
+        required: true
+        schema:
+          format: uuid
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/types.SARIFSubmission'
+        description: Submission body
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.SARIFSubmissionResponse'
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Unauthorized
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Not Found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.Error'
+          description: Internal Server Error
+      security:
+      - BasicAuth: []
+      summary: Submit a CRS generated SARIF
+      tags:
+      - submitted-sarif
+      x-codegen-request-body-name: payload
+      x-openapi-router-controller: openapi_server.controllers.submitted_sarif_controller
+components:
+  schemas:
+    types.Architecture:
+      enum:
+      - x86_64
+      title: types.Architecture
+      type: string
+      x-enum-varnames:
+      - ArchitectureX8664
+    types.Assessment:
+      enum:
+      - correct
+      - incorrect
+      title: types.Assessment
+      type: string
+      x-enum-varnames:
+      - AssessmentCorrect
+      - AssessmentIncorrect
+    types.BundleSubmission:
+      properties:
+        broadcast_sarif_id:
+          format: uuid
+          title: broadcast_sarif_id
+          type: string
+        description:
+          description: "optional plaintext description of the components of the bundle,\
+            \ such as would be found in a pull request description or bug report"
+          title: description
+          type: string
+        freeform_id:
+          format: uuid
+          title: freeform_id
+          type: string
+        patch_id:
+          format: uuid
+          title: patch_id
+          type: string
+        pov_id:
+          format: uuid
+          title: pov_id
+          type: string
+        submitted_sarif_id:
+          format: uuid
+          title: submitted_sarif_id
+          type: string
+      title: types.BundleSubmission
+      type: object
+    types.BundleSubmissionResponse:
+      example:
+        bundle_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        status: accepted
+      properties:
+        bundle_id:
+          format: uuid
+          title: bundle_id
+          type: string
+        status:
+          $ref: '#/components/schemas/types.SubmissionStatus'
+      required:
+      - bundle_id
+      - status
+      title: types.BundleSubmissionResponse
+      type: object
+    types.BundleSubmissionResponseVerbose:
+      example:
+        pov_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        freeform_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        patch_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        bundle_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        description: description
+        submitted_sarif_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        broadcast_sarif_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        status: accepted
+      properties:
+        broadcast_sarif_id:
+          format: uuid
+          title: broadcast_sarif_id
+          type: string
+        bundle_id:
+          format: uuid
+          title: bundle_id
+          type: string
+        description:
+          title: description
+          type: string
+        freeform_id:
+          format: uuid
+          title: freeform_id
+          type: string
+        patch_id:
+          format: uuid
+          title: patch_id
+          type: string
+        pov_id:
+          format: uuid
+          title: pov_id
+          type: string
+        status:
+          $ref: '#/components/schemas/types.SubmissionStatus'
+        submitted_sarif_id:
+          format: uuid
+          title: submitted_sarif_id
+          type: string
+      required:
+      - bundle_id
+      - status
+      title: types.BundleSubmissionResponseVerbose
+      type: object
+    types.Error:
+      example:
+        fields:
+          key: fields
+        message: message
+      properties:
+        fields:
+          additionalProperties:
+            type: string
+          title: fields
+          type: object
+        message:
+          title: message
+          type: string
+      required:
+      - message
+      title: types.Error
+      type: object
+    types.FreeformResponse:
+      example:
+        freeform_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        status: accepted
+      properties:
+        freeform_id:
+          format: uuid
+          title: freeform_id
+          type: string
+        status:
+          $ref: '#/components/schemas/types.SubmissionStatus'
+      required:
+      - freeform_id
+      - status
+      title: types.FreeformResponse
+      type: object
+    types.FreeformSubmission:
+      properties:
+        submission:
+          description: |-
+            Base64 encoded arbitrary data
+
+            2MiB max size before Base64 encoding
+          title: submission
+          type: string
+      required:
+      - submission
+      title: types.FreeformSubmission
+      type: object
+    types.POVSubmission:
+      properties:
+        architecture:
+          $ref: '#/components/schemas/types.Architecture'
+        engine:
+          description: |-
+            Fuzz Tooling Engine that exercises this vuln. Allowable engine values are specified in project.yaml.
+
+            4KiB max size
+          maxLength: 4096
+          title: engine
+          type: string
+        fuzzer_name:
+          description: |-
+            Fuzz Tooling fuzzer that exercises this vuln
+
+            4KiB max size
+          maxLength: 4096
+          title: fuzzer_name
+          type: string
+        sanitizer:
+          description: |-
+            Fuzz Tooling Sanitizer that exercises this vuln
+
+            4KiB max size
+          maxLength: 4096
+          title: sanitizer
+          type: string
+        testcase:
+          description: |-
+            Base64 encoded vuln trigger
+
+            2MiB max size before Base64 encoding
+          format: base64
+          title: testcase
+          type: string
+      required:
+      - architecture
+      - engine
+      - fuzzer_name
+      - sanitizer
+      - testcase
+      title: types.POVSubmission
+      type: object
+    types.POVSubmissionResponse:
+      example:
+        pov_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        status: accepted
+      properties:
+        pov_id:
+          format: uuid
+          title: pov_id
+          type: string
+        status:
+          $ref: '#/components/schemas/types.SubmissionStatus'
+      required:
+      - pov_id
+      - status
+      title: types.POVSubmissionResponse
+      type: object
+    types.PatchSubmission:
+      properties:
+        patch:
+          description: |-
+            Base64 encoded patch in unified diff format
+
+            100KiB max size before Base64 encoding
+          format: base64
+          title: patch
+          type: string
+      required:
+      - patch
+      title: types.PatchSubmission
+      type: object
+    types.PatchSubmissionResponse:
+      example:
+        functionality_tests_passing: true
+        patch_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        status: accepted
+      properties:
+        functionality_tests_passing:
+          description: null indicates the tests have not been run
+          title: functionality_tests_passing
+          type: boolean
+        patch_id:
+          format: uuid
+          title: patch_id
+          type: string
+        status:
+          $ref: '#/components/schemas/types.SubmissionStatus'
+      required:
+      - patch_id
+      - status
+      title: types.PatchSubmissionResponse
+      type: object
+    types.PingResponse:
+      example:
+        status: status
+      properties:
+        status:
+          title: status
+          type: string
+      required:
+      - status
+      title: types.PingResponse
+      type: object
+    types.SARIFSubmission:
+      properties:
+        sarif:
+          description: SARIF object compliant with the provided schema
+          properties: {}
+          title: sarif
+          type: object
+      required:
+      - sarif
+      title: types.SARIFSubmission
+      type: object
+    types.SARIFSubmissionResponse:
+      example:
+        submitted_sarif_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        status: accepted
+      properties:
+        status:
+          $ref: '#/components/schemas/types.SubmissionStatus'
+        submitted_sarif_id:
+          format: uuid
+          title: submitted_sarif_id
+          type: string
+      required:
+      - status
+      - submitted_sarif_id
+      title: types.SARIFSubmissionResponse
+      type: object
+    types.SarifAssessmentResponse:
+      example:
+        status: accepted
+      properties:
+        status:
+          $ref: '#/components/schemas/types.SubmissionStatus'
+      required:
+      - status
+      title: types.SarifAssessmentResponse
+      type: object
+    types.SarifAssessmentSubmission:
+      properties:
+        assessment:
+          $ref: '#/components/schemas/types.Assessment'
+        description:
+          description: |-
+            Plain text reasoning for the assessment
+
+            128KiB max size
+          maxLength: 131072
+          title: description
+          type: string
+      required:
+      - assessment
+      - description
+      title: types.SarifAssessmentSubmission
+      type: object
+    types.SubmissionStatus:
+      enum:
+      - accepted
+      - passed
+      - failed
+      - deadline_exceeded
+      - errored
+      title: types.SubmissionStatus
+      type: string
+      x-enum-comments:
+        SubmissionStatusAccepted: Successfully submitted
+        SubmissionStatusDeadlineExceeded: Task deadline exceeded. All submissions
+          marked accepted before the deadline will be evaluated.
+        SubmissionStatusErrored: Server side error when testing submission
+        SubmissionStatusFailed: Submission failed testing
+        SubmissionStatusPassed: Successfully evaluated submission
+      x-enum-varnames:
+      - SubmissionStatusAccepted
+      - SubmissionStatusPassed
+      - SubmissionStatusFailed
+      - SubmissionStatusDeadlineExceeded
+      - SubmissionStatusErrored
+  securitySchemes:
+    BasicAuth:
+      scheme: basic
+      type: http
+      x-basicInfoFunc: openapi_server.controllers.security_controller.info_from_BasicAuth
+x-original-swagger-version: "2.0"

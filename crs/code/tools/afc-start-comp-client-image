@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+# Starts the competition client in charge to sending and tracking povs, patches, sarifs, bundles etc.
+# NOTE:
+#   during the ASC we had a bash script that did submission polling stuff.
+#   We will have python scripting to do polling stuff for the AFC.
+#   Python script can send to different competition submission endpoints via this client container.
+
+# This script and image are untested and may be bloated.
+
+PROGNAME=$(basename "$0")
+warn()  { echo "$PROGNAME: ${@}" 1>&2; }
+die()   { warn "${@}"; exit 1; }
+dbug()   { test -z $DEBUG || warn "${@}"; }
+
+thisdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && /bin/pwd )"
+
+export CIRCA_BASEPORT=${CIRCA_BASEPORT:-10000}
+dbug CIRCA_BASEPORT is $CIRCA_BASEPORT
+
+# Comp client api is live on 88. CRS server api is live on 80.
+COMP_API_PORT=$(( CIRCA_BASEPORT + 88 ))
+dbug COMP_API_PORT is $COMP_API_PORT
+
+# Start the compeition client
+$thisdir/start-nf-image afc-comp-client -it -p $COMP_API_PORT:8080 "$@"
+
+export CONTAINER_PREFIX=${CONTAINER_PREFIX:-$USER}
+dbug CONTAINER_PREFIX is $CONTAINER_PREFIX
+
+# Start the AFC Competition client
+# $thisdir/wait-for-container ${CONTAINER_PREFIX}-afc-comp-client
+# $thisdir/docker exec ${CONTAINER_PREFIX}-afc-comp-client python3 -m openapi_server

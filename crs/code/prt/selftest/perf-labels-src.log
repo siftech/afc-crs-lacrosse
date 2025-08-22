@@ -1,0 +1,23 @@
+This is a complex logging example
+
+FUBAR val 96 <- ID_1 air BLORT speed
+FUBAR val 109 <- ID_1 land BLARGH speed
+FUBAR val red <- ID_1 color
+
+FUBAR val 100 <- ID_2 air BLORT speed
+FUBAR val 105 <- ID_3 air BLORT speed
+FUBAR val 500 <- ID_4 air BLORT speed
+
+FUBAR val 100 <- ID_2 land BLORT speed
+FUBAR val 90 <- ID_3 land BLORT speed
+FUBAR val 1 <- ID_4 land BLORT speed
+
+FUBAR val  96 <- ID_1 bigOK X Y
+FUBAR val 100 <- ID_2 bigOK X Y
+FUBAR val 120 <- ID_3 bigOK X Y
+FUBAR val 999 <- ID_4 bigOK X Y
+ 
+FUBAR val 96 <- ID_1 capBoth X Y
+FUBAR val 98 <- ID_2 capBoth X Y
+FUBAR val 100 <- ID_3 capBoth X Y
+FUBAR val 110 <- ID_4 capBoth X Y

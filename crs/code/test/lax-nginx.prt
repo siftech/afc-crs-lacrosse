@@ -1,0 +1,40 @@
+do "./defaults.pl" || die "Can't do './defaults.pl': $@";
+
+$run_in_compose = 1;
+
+our $experiment = '
+  (push :msg *debug-list*)
+  (push :amp *debug-list*)
+  (push :target *debug-list*)
+  (setf *run-fake-bridge* t)
+  (setf *lacrosse* t)
+  (setf *fake-bridge-script*
+    \'(
+       (1 ((:type :new-challenge-project)
+           (:target (()))))
+))
+';
+
+our $numfbs = 6;
+our $allocationmethod = "balanced";
+
+our $cp_config = "../crs-sandbox-items/sift/nginx-cp-config.yaml";
+our $success_pattern = "Patch status received: accepted, CPV_UUID=";
+our $success_timeout = "200m";
+
+do "./common.pl" || die "Can't do './common.pl': $@";
+
+
+
+$test = {
+    defaultIgnore => 1,
+    keywords => [ qw / lacrosse / ],
+    cleanup => \&condor_killer,
+    agents => [
+        @clean_and_start_agents,
+    ],
+};
+
+$test;
+
+# vim: set ft=perl :

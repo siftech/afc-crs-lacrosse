@@ -1,0 +1,5 @@
+#!/bin/bash
+
+export directory=${1:-$PWD}
+
+find $directory -name id\* | xargs -L1 readlink -e | grep crashes

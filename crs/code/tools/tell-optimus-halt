@@ -1,0 +1,20 @@
+#!/bin/bash
+# note target should be under /neo-fuzz b/c OPTIMUS will be running inside container
+thisdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && /bin/pwd )"
+
+
+PROGNAME=$(basename "$0")
+warn()  { echo "$PROGNAME: ${@}" 1>&2; }
+die()   { warn "${@}"; exit 1; }
+dbug()   { test -z $DEBUG || warn "${@}"; }
+
+dbug all args are "$@"
+
+test -z "$USER" && export USER="${HOME##*/}"
+export CONTAINER_PREFIX=${CONTAINER_PREFIX:-$USER}       # Allow a diff container prefix
+dbug CONTAINER_PREFIX is $CONTAINER_PREFIX
+export CIRCA_BASEPORT=${CIRCA_BASEPORT:-10000}
+dbug CIRCA_BASEPORT is $CIRCA_BASEPORT
+
+
+$thisdir/docker exec -t $CONTAINER_PREFIX-neo-fuzz-ccl /realuser.sh /bin/bash -c "$LACROSSE_HOME/code/matchmaker/tell-amp -n OPTIMUS0-AMP-${CONTAINER_PREFIX}-ACCEPTOR -k"

@@ -1,0 +1,39 @@
+ INFO: Running with entropic power schedule (0xFF, 100).
+ INFO: Seed: 2762922462
+ INFO: Loaded 1 modules   (80 inline 8-bit counters): 80 [0x5586f9291d78, 0x5586f9291dc8), 
+ INFO: Loaded 1 PC tables (80 PCs): 80 [0x5586f9291dc8,0x5586f92922c8), 
+ /out/pov_harness: Running 1 inputs 100 time(s) each.
+ Running: /work/tmp_blob
+ AddressSanitizer:DEADLYSIGNAL
+ =================================================================
+ ==18==ERROR: AddressSanitizer: SEGV on unknown address (pc 0x5586f8f4eb3b bp 0x7ffd0cf93a30 sp 0x7ffd0cf931f0 T0)
+ ==18==The signal is caused by a READ memory access.
+ ==18==Hint: this fault was caused by a dereference of a high value address (see register values below).  Disassemble the provided pc to learn which register was used.
+     #0 0x5586f8f4eb3b in QuickCheckForUnpoisonedRegion /src/llvm-project/compiler-rt/lib/asan/asan_interceptors_memintrinsics.h:37:7
+     #1 0x5586f8f4eb3b in __asan_memcpy /src/llvm-project/compiler-rt/lib/asan/asan_interceptors_memintrinsics.cpp:63:3
+     #2 0x5586f90e0216 in ngx_http_userid_set_uid /src/harnesses/bld/src/http/modules/ngx_http_userid_filter_module.c:446:13
+     #3 0x5586f90e0216 in ngx_http_userid_filter /src/harnesses/bld/src/http/modules/ngx_http_userid_filter_module.c:248:9
+     #4 0x5586f90e1d1f in ngx_http_headers_filter /src/harnesses/bld/src/http/modules/ngx_http_headers_filter_module.c
+     #5 0x5586f90e577d in ngx_http_static_handler /src/harnesses/bld/src/http/modules/ngx_http_static_module.c:259:10
+     #6 0x5586f903e5b8 in ngx_http_core_content_phase /src/harnesses/bld/src/http/ngx_http_core_module.c:1268:10
+     #7 0x5586f903bbb9 in ngx_http_core_run_phases /src/harnesses/bld/src/http/ngx_http_core_module.c:875:14
+     #8 0x5586f903bbb9 in ngx_http_handler /src/harnesses/bld/src/http/ngx_http_core_module.c:858:5
+     #9 0x5586f904300a in ngx_http_internal_redirect /src/harnesses/bld/src/http/ngx_http_core_module.c:2547:5
+     #10 0x5586f90f1e53 in ngx_http_index_handler /src/harnesses/bld/src/http/modules/ngx_http_index_module.c
+     #11 0x5586f903e5b8 in ngx_http_core_content_phase /src/harnesses/bld/src/http/ngx_http_core_module.c:1268:10
+     #12 0x5586f903bbb9 in ngx_http_core_run_phases /src/harnesses/bld/src/http/ngx_http_core_module.c:875:14
+     #13 0x5586f903bbb9 in ngx_http_handler /src/harnesses/bld/src/http/ngx_http_core_module.c:858:5
+     #14 0x5586f905cbce in ngx_http_process_request /src/harnesses/bld/src/http/ngx_http_request.c:2133:5
+     #15 0x5586f906106b in ngx_http_process_request_headers /src/harnesses/bld/src/http/ngx_http_request.c:1529:13
+     #16 0x5586f8ff620c in ngx_event_process_posted /src/harnesses/bld/src/event/ngx_event_posted.c:34:9
+     #17 0x5586f8f90a47 in LLVMFuzzerTestOneInput /src/harnesses/bld/src/harnesses/pov_harness.cc:323:5
+     #18 0x5586f8e42780 in fuzzer::Fuzzer::ExecuteCallback(unsigned char const*, unsigned long) /src/llvm-project/compiler-rt/lib/fuzzer/FuzzerLoop.cpp:614:13
+     #19 0x5586f8e2cf14 in fuzzer::RunOneTest(fuzzer::Fuzzer*, char const*, unsigned long) /src/llvm-project/compiler-rt/lib/fuzzer/FuzzerDriver.cpp:327:6
+     #20 0x5586f8e329aa in fuzzer::FuzzerDriver(int*, char***, int (*)(unsigned char const*, unsigned long)) /src/llvm-project/compiler-rt/lib/fuzzer/FuzzerDriver.cpp:862:9
+     #21 0x5586f8e5eda2 in main /src/llvm-project/compiler-rt/lib/fuzzer/FuzzerMain.cpp:20:10
+     #22 0x7f2b5a69b082 in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x24082) (BuildId: 0702430aef5fa3dda43986563e9ffcc47efbd75e)
+     #23 0x5586f8e239ed in _start (/out/pov_harness+0xb59ed)
+ 
+ AddressSanitizer can not provide additional info.
+ SUMMARY: AddressSanitizer: SEGV /src/llvm-project/compiler-rt/lib/asan/asan_interceptors_memintrinsics.h:37:7 in QuickCheckForUnpoisonedRegion
+ ==18==ABORTING

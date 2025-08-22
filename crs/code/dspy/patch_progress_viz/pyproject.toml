@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "laxdspy"
+version = "0.1.0"
+description = "The DSPy modules for lacrosse"
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.10"
+flask = "^3.1.0"
+altair = "^5.5.0"
+pandas = "^2.2.3"
+vega-datasets = "^0.9.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

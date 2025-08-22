@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+set -e
+toolsdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && pwd )"
+pushd "$toolsdir/../../.."
+
+git update-index --assume-unchanged compose.yaml
+git update-index --assume-unchanged compose_local_overrides.yaml
+git update-index --assume-unchanged cp_config.yaml
+git update-index --assume-unchanged crs/code/experiment.lisp

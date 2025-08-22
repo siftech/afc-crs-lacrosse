@@ -1,0 +1,36 @@
+#!/bin/bash
+
+# bash-ism to get location of script.
+toolsdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && pwd )"
+
+killstuff () {
+    host=$1;
+    echo Killing batch alisp, z3, python, fuzzball jobs on $host
+    #$toolsdir/sshc $host "pkill -u $USER --signal 9 -f \'alisp -qq\'"
+    #$toolsdir/sshc $host "pkill -u $USER --signal 9 -f \'alisp -batch\'"
+	# cant kill ccl, at least not like this i think, b/c Jenks runs ccl-build test w/ 'ccl' in the shell invocation
+    #$toolsdir/sshc $host "pkill -u $USER --signal 9 -f ccl"
+    #$toolsdir/sshc $host "pkill -u $USER --signal 9 -f lx86"	# this instead for ccl
+#    $toolsdir/sshc $host "pkill -u $USER --signal 9 -f neo-fuzz"
+    $toolsdir/sshc $host "pkill -u $USER --signal 9 -f doit"
+    $toolsdir/sshc $host "pkill -u $USER --signal 9 -f controlmaster"
+    #$toolsdir/sshc $host "pkill -u $USER --signal 9 -f z3"
+    $toolsdir/sshc $host "pkill -u $USER --signal 9 -f rsync"
+    #$toolsdir/sshc $host "pkill -u $USER --signal 9 -f send-telemetry"
+    #$toolsdir/sshc $host "pkill -u $USER --signal 9 -f cfg_fuzzball"
+    #$toolsdir/sshc $host "pkill -u $USER --signal 9 -f shell"	# this can kill the jenkins shell running this tool, oops
+    #$toolsdir/sshc $host "pkill -u $USER --signal 9 -f sshd"	# this kills remote login to submit host, doh
+    echo Killing dockers-for-this-user jobs on $host with $toolsdir/sshc $host $toolsdir/kill-my-dockers
+    $toolsdir/sshc $host $toolsdir/kill-my-dockers
+    $toolsdir/sshc $host $toolsdir/kill-my-docker-bridge-network
+}
+
+for h in $($toolsdir/list-cluster-nodes); do
+   killstuff $h &
+done
+wait
+
+pkill -f doit
+$toolsdir/release-my-clusters
+
+exit 0;

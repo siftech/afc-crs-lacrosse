@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+
+# Copy the agent configuration files to the results directory for a test.
+# This is only done for the purposes of capturing data.
+# Takes one command line argument which is the results directory pathname.
+
+set -e
+toolsdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && pwd )"
+pushd "$toolsdir"
+
+resultsdir=$1
+
+echo "copying compose agent config to $resultsdir.  CWD (pushed) is $(pwd)."
+
+cp ../../../cp_config/cp_config.yaml $resultsdir/cp_config.yaml
+cp ../../../compose.yaml $resultsdir/compose.yaml
+cp ../../../compose_local_overrides.yaml $resultsdir/compose_local_overrides.yaml
+cp ../experiment.lisp $resultsdir/experiment.lisp
+if [ -e ../../../kompose_competition_overrides.yaml ]; then
+    cp ../../../kompose_competition_overrides.yaml $resultsdir/kompose_competition_overrides.yaml
+else
+    echo "No kompose_competition_overrides.yaml available to copy."
+fi
+if [ -e ../../../kompose_development_overrides.yaml ]; then
+    cp ../../../kompose_development_overrides.yaml $resultsdir/kompose_development_overrides.yaml
+else
+    echo "No kompose_development_overrides.yaml available to copy."
+fi

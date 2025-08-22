@@ -1,0 +1,15 @@
+diff --git a/src/http/ngx_http_request.c b/src/http/ngx_http_request.c
+index e6e6a34..571efba 100644
+--- a/src/http/ngx_http_request.c
++++ b/src/http/ngx_http_request.c
+@@ -4032,7 +4032,9 @@ ngx_http_process_prefer(ngx_http_request_t *r, ngx_table_elt_t *h,
+                       &h->key, &h->value, &r->headers_in.prefer->key,
+                       &r->headers_in.prefer->value);
+         ngx_free(r->headers_in.prefer);
+-        return NGX_OK;
++        r->headers_in.prefer = NULL;
++        ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
++        return NGX_ERROR;
+     }
+ 
+     p = ngx_alloc(sizeof(ngx_table_elt_t), r->connection->log);

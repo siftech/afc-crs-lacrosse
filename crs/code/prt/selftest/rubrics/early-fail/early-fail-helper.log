@@ -1,0 +1,9 @@
+Running 1 tests:
+  early-fail-helper ... 
+** Agent 'enabler' exited with code 64, but test expected 0
+Test 'early-fail-helper' rubric dir 'rubrics/early-fail-helper' does not exist.
+FAIL
+ - Agent 1 'enabler' (exit: 64): FAIL
+ - Agent 2 'dependant_1' (exit: 0): NOT COMPARED
+0 of 1 test passed.
+Failure: early-fail-helper.

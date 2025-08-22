@@ -1,0 +1,37 @@
+# Hey EMACS, this should be in -*- perl -*- mode
+# ------------------------------------------------------------
+# COPYRIGHT START
+# Copyright (c) 2014, Smart Information Flow Technologies (SIFT).
+# COPYRIGHT END
+# ------------------------------------------------------------
+#
+# PRT (PRS Regression Tester) sample test specification file
+#
+
+# Use a verbatim line comparo.
+my $comparo = new PRT::LineComparo(
+    # show_comparisons => 2,
+    );
+
+$test = {
+  description => "Checks that if a daemon is declared must_survive and it does not, test aborts and fails... TODO: really just tests that it fails, not that abort occurs correctly; could use fiddly file counting stuff from daemon.prt to improve",
+  defaultIgnore => 1,	# ignored by default but run by fail-monitors.prt
+  all_daemons_must_survive => 1,
+  agents => [
+      {
+        name         => "daemon",
+        command   => [ "bash", "-c", "echo starting;sleep 1;echo ending early; exit 0" ],
+	complete_before_continuing => 0,
+	daemon => 1,
+        comparo      => undef,
+      },
+      {
+        name         => "sleeper",
+        command   => [ "sleep","10" ],
+	complete_before_continuing => 1,
+        comparo      => undef,
+      },
+    ]
+  };
+
+$test; 	# Always end with a reference to the test specification hash reference.

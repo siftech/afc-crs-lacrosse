@@ -1,0 +1,17 @@
+#!/bin/bash
+
+echo NOTE this is deprecated for now
+
+thisdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && /bin/pwd )"
+
+if [ "$PRT_LISP" = "ccl" ]; then
+  $thisdir/start-neo-fuzz-ccl -d
+  sleep 1
+  $thisdir/wait-for-container ${USER}-neo-fuzz-ccl
+  docker exec ${USER}-neo-fuzz-ccl bash -c "cd $LACROSSE_HOME/code/lisp; ccl -b -Q -n -l load.lisp -e '(quit)'"
+else
+cd $thisdir/../lisp;
+alisp -e "(handler-bind ((serious-condition #'(lambda (c) (format t \"~&ERROR: Encountered serious-condition: ~A~%\" c) (excl:exit 1)))) (load \"load.lisp\") (musliner::dbug :top "printenv: ~s" (uiop:run-program "printenv" :output :string)))" -e "(excl:exit 0)"
+#alisp -e "(handler-bind ((condition #'(lambda (c) (format t \"~&ERROR: Encountered condition: ~A~%\" c) (excl:exit 1)))) (load \"load.lisp\"))" -e "(excl:exit 0)"
+fi
+

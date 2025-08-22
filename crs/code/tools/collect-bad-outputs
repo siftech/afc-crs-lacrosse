@@ -1,0 +1,32 @@
+#!/bin/bash
+PROGNAME=$(basename "$0")
+warn()  { echo "$PROGNAME: ${@}" 1>&2; }
+die()   { warn "${@}"; exit 1; }
+dbug()   { test -z $DEBUG || warn "${@}"; }
+
+# example usage:
+   #dbug This only prints if DEBUG is defined
+   #test -e foo || die file foo must exist
+   #test -z $FOO && die Environment variable FOO must be defined
+
+# bash-ism to get location of script.  Must use /bin/pwd to get absolute path.
+thisdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && /bin/pwd )"
+dbug thisdir is $thisdir
+
+#Assume working in the local directory unless otherwise stated
+#If an argument has been given for the path, then use that instead of local .
+dir="${1:-.}"
+cd "$dir" || { echo "Cannot access directory $dir"; exit 1; }
+
+mkdir -p stderr_files/stderr_bad
+mkdir -p stdout_files/stdout_bad
+
+#Assuming the not-always-bad files are no longer in the directory, simply run
+#  all the programs and store their stdout and stderr 
+for f in *.out; do ASAN_OPTIONS='detect_leaks=0' ./${f} > stdout_files/stdout_bad/${f}_stdout.txt 2> stderr_files/stderr_bad/${f}_stderr.txt; done
+
+# no need to rename b/c did rename-bad-executables
+#$thisdir/rename-files stderr_files/stderr_bad
+#$thisdir/rename-files stdout_files/stdout_bad
+
+exit 0

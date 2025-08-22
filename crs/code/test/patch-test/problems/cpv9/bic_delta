@@ -1,0 +1,414 @@
+commit cc4b16fc10dcc579d5f697f3ff70c390b5e7c7d2
+Author: Miles Dyson <mdyson@skynet.com>
+Date:   Mon Aug 4 12:00:35 1997 +0000
+
+    Commit 35
+
+diff --git a/src/core/ngx_connection.c b/src/core/ngx_connection.c
+index 88fefce..e0eaf40 100644
+--- a/src/core/ngx_connection.c
++++ b/src/core/ngx_connection.c
+@@ -1153,6 +1153,9 @@ ngx_get_connection(ngx_socket_t s, ngx_log_t *log)
+     rev->data = c;
+     wev->data = c;
+ 
++    rev->cycle = (ngx_cycle_t*)ngx_cycle;
++    wev->cycle = (ngx_cycle_t*)ngx_cycle;
++
+     wev->write = 1;
+ 
+     return c;
+diff --git a/src/core/ngx_core.h b/src/core/ngx_core.h
+index 7ecdca0..b825961 100644
+--- a/src/core/ngx_core.h
++++ b/src/core/ngx_core.h
+@@ -15,6 +15,7 @@
+ typedef struct ngx_module_s          ngx_module_t;
+ typedef struct ngx_conf_s            ngx_conf_t;
+ typedef struct ngx_cycle_s           ngx_cycle_t;
++typedef struct ngx_black_list_s      ngx_black_list_t;
+ typedef struct ngx_pool_s            ngx_pool_t;
+ typedef struct ngx_chain_s           ngx_chain_t;
+ typedef struct ngx_log_s             ngx_log_t;
+diff --git a/src/core/ngx_cycle.c b/src/core/ngx_cycle.c
+index 764cf46..fdb5464 100644
+--- a/src/core/ngx_cycle.c
++++ b/src/core/ngx_cycle.c
+@@ -1009,6 +1009,7 @@ ngx_int_t
+ ngx_create_pidfile(ngx_str_t *name, ngx_log_t *log)
+ {
+     size_t      len;
++    ngx_int_t   rc;
+     ngx_uint_t  create;
+     ngx_file_t  file;
+     u_char      pid[NGX_INT64_LEN + 2];
+@@ -1033,11 +1034,13 @@ ngx_create_pidfile(ngx_str_t *name, ngx_log_t *log)
+         return NGX_ERROR;
+     }
+ 
++    rc = NGX_OK;
++
+     if (!ngx_test_config) {
+         len = ngx_snprintf(pid, NGX_INT64_LEN + 2, "%P%N", ngx_pid) - pid;
+ 
+         if (ngx_write_file(&file, pid, len, 0) == NGX_ERROR) {
+-            return NGX_ERROR;
++            rc = NGX_ERROR;
+         }
+     }
+ 
+@@ -1046,7 +1049,7 @@ ngx_create_pidfile(ngx_str_t *name, ngx_log_t *log)
+                       ngx_close_file_n " \"%s\" failed", file.name.data);
+     }
+ 
+-    return NGX_OK;
++    return rc;
+ }
+ 
+ 
+@@ -1456,3 +1459,84 @@ ngx_shutdown_timer_handler(ngx_event_t *ev)
+         c[i].read->handler(c[i].read);
+     }
+ }
++
++
++void
++ngx_black_list_insert(ngx_black_list_t **black_list, u_char insert_ip[],
++    size_t size, ngx_log_t *log)
++{
++    ngx_black_list_t *reader;
++    ngx_black_list_t *new_black_list;
++
++    u_char* new_str = (u_char*)ngx_alloc(size, log);
++
++    for (size_t i = 0; i < size; i++) {
++        new_str[i] = insert_ip[i];
++    }
++
++    new_black_list = (ngx_black_list_t*)ngx_alloc(sizeof(ngx_black_list_t), log);
++    new_black_list->IP = (ngx_str_t*)ngx_alloc(sizeof(ngx_str_t), log);;
++    new_black_list->IP->data = new_str;
++    new_black_list->IP->len = size;
++    new_black_list->next = NULL;
++
++    reader = *black_list;
++
++    if (!reader) {
++        *black_list = new_black_list;
++        return;
++    }
++
++    for (reader = reader; reader && reader->next; reader = reader->next) {
++
++         if (!ngx_strcmp(insert_ip, reader->IP->data)) {
++            ngx_destroy_black_list_link(new_black_list);
++            return;
++         }
++    }
++
++    reader->next = new_black_list;
++    new_black_list->prev = reader;
++
++    return;
++}
++
++
++ngx_int_t
++ngx_black_list_remove(ngx_black_list_t **black_list, u_char remove_ip[])
++{
++    ngx_black_list_t *reader;
++
++    reader = *black_list;
++
++    if (reader && !ngx_strcmp(remove_ip, reader->IP->data)) {
++        ngx_destroy_black_list_link(reader);
++        return NGX_OK;
++    }
++
++    for (reader = reader->next; reader && reader->next; reader = reader->next) {
++        if (!ngx_strcmp(remove_ip, reader->IP->data)) {
++            ngx_double_link_remove(reader);
++            ngx_destroy_black_list_link(reader);
++            return NGX_OK;
++        }
++    }
++
++    return NGX_ERROR;
++}
++
++
++ngx_int_t
++ngx_is_ip_banned(ngx_cycle_t *cycle, ngx_connection_t *connection)
++{
++    ngx_black_list_t *reader = (cycle) ? cycle->black_list : NULL;
++
++    for (reader = reader; reader; reader = reader->next) {
++            if (!ngx_strcmp(connection->addr_text.data, reader->IP->data)) {
++                ngx_close_connection(connection);
++                return NGX_ERROR;
++            }
++    }
++
++    return NGX_OK;
++}
+diff --git a/src/core/ngx_cycle.h b/src/core/ngx_cycle.h
+index 65ea47c..9097335 100644
+--- a/src/core/ngx_cycle.h
++++ b/src/core/ngx_cycle.h
+@@ -36,6 +36,13 @@ struct ngx_shm_zone_s {
+ };
+ 
+ 
++typedef struct ngx_black_list_s {
++    ngx_str_t         *IP;
++    ngx_black_list_t  *next;
++    ngx_black_list_t  *prev;
++}ngx_black_list_t;
++
++
+ struct ngx_cycle_s {
+     void                  ****conf_ctx;
+     ngx_pool_t               *pool;
+@@ -81,6 +88,7 @@ struct ngx_cycle_s {
+     ngx_str_t                 prefix;
+     ngx_str_t                 lock_file;
+     ngx_str_t                 hostname;
++    ngx_black_list_t         *black_list;
+ };
+ 
+ 
+@@ -123,7 +131,24 @@ typedef struct {
+ 
+ 
+ #define ngx_is_init_cycle(cycle)  (cycle->conf_ctx == NULL)
+-
++#define ngx_double_link_insert(x, y)            \
++    (x)->next = (y);                            \
++    (y)->prev = (x);
++
++#define ngx_double_link_remove(x)               \
++    if ((x)->prev) (x)->prev->next = (x)->next; \
++    if ((x)->next) (x)->next->prev = (x)->prev;
++
++#define ngx_destroy_black_list_link(x)          \
++    ngx_memzero((x)->IP->data, (x)->IP->len);   \
++    ngx_free((x)->IP->data);                    \
++    (x)->IP->data = NULL;                       \
++    ngx_memzero((x)->IP, sizeof(ngx_str_t));    \
++    ngx_free((x)->IP);                          \
++    (x)->IP = NULL;                             \
++    ngx_memzero((x), sizeof(ngx_black_list_t)); \
++    ngx_free((x));                              \
++    (x) = NULL;
+ 
+ ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle);
+ ngx_int_t ngx_create_pidfile(ngx_str_t *name, ngx_log_t *log);
+@@ -136,6 +161,10 @@ ngx_cpuset_t *ngx_get_cpu_affinity(ngx_uint_t n);
+ ngx_shm_zone_t *ngx_shared_memory_add(ngx_conf_t *cf, ngx_str_t *name,
+     size_t size, void *tag);
+ void ngx_set_shutdown_timer(ngx_cycle_t *cycle);
++void ngx_black_list_insert(ngx_black_list_t **black_list,
++    u_char insert_ip[], size_t size, ngx_log_t *log);
++ngx_int_t ngx_black_list_remove(ngx_black_list_t **black_list, u_char remove_ip[]);
++ngx_int_t ngx_is_ip_banned(ngx_cycle_t *cycle, ngx_connection_t *connection);
+ 
+ 
+ extern volatile ngx_cycle_t  *ngx_cycle;
+diff --git a/src/event/ngx_event.h b/src/event/ngx_event.h
+index 97f9673..0e4b9ef 100644
+--- a/src/event/ngx_event.h
++++ b/src/event/ngx_event.h
+@@ -101,6 +101,7 @@ struct ngx_event_s {
+     int              available;
+ 
+     ngx_event_handler_pt  handler;
++    ngx_cycle_t          *cycle;
+ 
+ 
+ #if (NGX_HAVE_IOCP)
+diff --git a/src/http/ngx_http_request.c b/src/http/ngx_http_request.c
+index 6feb6cc..81dbdf3 100644
+--- a/src/http/ngx_http_request.c
++++ b/src/http/ngx_http_request.c
+@@ -20,6 +20,10 @@ static ngx_int_t ngx_http_alloc_large_header_buffer(ngx_http_request_t *r,
+ 
+ static ngx_int_t ngx_http_process_header_line(ngx_http_request_t *r,
+     ngx_table_elt_t *h, ngx_uint_t offset);
++static ngx_int_t ngx_http_process_black_list(ngx_http_request_t *r,
++    ngx_table_elt_t *h, ngx_uint_t offset);
++static ngx_int_t ngx_http_process_white_list(ngx_http_request_t *r,
++    ngx_table_elt_t *h, ngx_uint_t offset);
+ static ngx_int_t ngx_http_process_unique_header_line(ngx_http_request_t *r,
+     ngx_table_elt_t *h, ngx_uint_t offset);
+ static ngx_int_t ngx_http_process_multi_header_lines(ngx_http_request_t *r,
+@@ -199,6 +203,12 @@ ngx_http_header_t  ngx_http_headers_in[] = {
+     { ngx_string("Cookie"), offsetof(ngx_http_headers_in_t, cookies),
+                  ngx_http_process_multi_header_lines },
+ 
++    { ngx_string("Black-List"), offsetof(ngx_http_headers_in_t, black_list),
++                 ngx_http_process_black_list },
++
++    { ngx_string("White-List"), offsetof(ngx_http_headers_in_t, white_list),
++                 ngx_http_process_white_list },
++
+     { ngx_null_string, 0, NULL }
+ };
+ 
+@@ -392,6 +402,10 @@ ngx_http_wait_request_handler(ngx_event_t *rev)
+         return;
+     }
+ 
++    if (ngx_is_ip_banned(rev->cycle, c)) {
++        c->close = 1;
++    }
++
+     if (c->close) {
+         ngx_http_close_connection(c);
+         return;
+@@ -1045,6 +1059,7 @@ ngx_http_process_request_line(ngx_event_t *rev)
+ 
+     c = rev->data;
+     r = c->data;
++    r->cycle = rev->cycle;
+ 
+     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, rev->log, 0,
+                    "http process request line");
+@@ -1330,6 +1345,7 @@ ngx_http_process_request_headers(ngx_event_t *rev)
+ 
+     c = rev->data;
+     r = c->data;
++    r->cycle = rev->cycle;
+ 
+     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, rev->log, 0,
+                    "http process request header line");
+@@ -3818,3 +3834,97 @@ ngx_http_log_error_handler(ngx_http_request_t *r, ngx_http_request_t *sr,
+ 
+     return buf;
+ }
++
++
++static ngx_int_t
++ngx_http_process_white_list(ngx_http_request_t *r, ngx_table_elt_t *h,
++    ngx_uint_t offset)
++{
++    enum State {start,
++                ip};
++    enum State state = start;
++    u_char IP_buffer[NGX_IP_LEN + 1] = {0};
++    ngx_int_t buffer_index = 0;
++    u_char* reader = h->value.data;
++    ngx_int_t result = NGX_ERROR;
++
++    // Remove each IP given
++    while (*reader != '\0') {
++        switch (state) {
++
++        case start:
++            if (ngx_is_valid_ip_char(*reader)) {
++                IP_buffer[buffer_index++] = *reader;
++                state = ip;
++            }
++            break;
++
++        case ip:
++            if (ngx_is_valid_ip_char(*reader)) {
++                IP_buffer[buffer_index++] = *reader;
++            } else if (*reader == ';' ||
++                     *reader == '\0' ||
++                     *reader == '\n') {
++                IP_buffer[buffer_index] = '\0';
++                buffer_index = 0;
++                state = start;
++                result = ngx_black_list_remove(&(r->cycle)->black_list, IP_buffer);
++                if (result == NGX_ERROR) goto ngx_black_list_remove_fail;
++            } else {
++                return NGX_ERROR;
++            }
++            break;
++
++        }
++        reader++;
++    }
++
++    return NGX_OK;
++
++ngx_black_list_remove_fail:
++    return NGX_ERROR;
++}
++
++
++static ngx_int_t
++ngx_http_process_black_list(ngx_http_request_t *r, ngx_table_elt_t *h,
++    ngx_uint_t offset)
++{
++    enum State {start,
++                ip};
++    enum State state = start;
++    u_char IP_buffer[NGX_IP_LEN + 1] = {0};
++    ngx_int_t buffer_index = 0;
++    u_char* reader = h->value.data;
++
++    while (*reader != '\0') {
++        switch (state) {
++
++        case start:
++            if (ngx_is_valid_ip_char(*reader)) {
++                IP_buffer[buffer_index++] = *reader;
++                state = ip;
++            }
++            break;
++
++        case ip:
++            if (ngx_is_valid_ip_char(*reader)) {
++                IP_buffer[buffer_index++] = *reader;
++            } else if (*reader == ';' ||
++                     *reader == '\0' ||
++                     *reader == '\n') {
++                IP_buffer[buffer_index] = '\0';
++                buffer_index = 0;
++                state = start;
++                ngx_black_list_insert(&(r->cycle)->black_list, IP_buffer, NGX_IP_LEN, r->cycle->log);
++            } else {
++                return NGX_ERROR;
++            }
++            break;
++
++        }
++        reader++;
++    }
++
++    return NGX_OK;
++}
+diff --git a/src/http/ngx_http_request.h b/src/http/ngx_http_request.h
+index 70c2d42..74137af 100644
+--- a/src/http/ngx_http_request.h
++++ b/src/http/ngx_http_request.h
+@@ -148,7 +148,8 @@
+ #define NGX_HTTP_SSI_BUFFERED              0x01
+ #define NGX_HTTP_SUB_BUFFERED              0x02
+ #define NGX_HTTP_COPY_BUFFERED             0x04
+-
++#define NGX_IP_LEN (sizeof("000.000.000.000"))
++#define ngx_is_valid_ip_char(x) (('0' <= (x) && (x) <= '9') || (x) == '.')
+ 
+ typedef enum {
+     NGX_HTTP_INITING_REQUEST_STATE = 0,
+@@ -239,6 +240,9 @@ typedef struct {
+     off_t                             content_length_n;
+     time_t                            keep_alive_n;
+ 
++    ngx_str_t                         black_list;
++    ngx_str_t                         white_list;
++
+     unsigned                          connection_type:2;
+     unsigned                          chunked:1;
+     unsigned                          msie:1;
+@@ -421,6 +425,8 @@ struct ngx_http_request_s {
+     ngx_http_post_subrequest_t       *post_subrequest;
+     ngx_http_posted_request_t        *posted_requests;
+ 
++    ngx_cycle_t                      *cycle;
++
+     ngx_int_t                         phase_handler;
+     ngx_http_handler_pt               content_handler;
+     ngx_uint_t                        access_code;

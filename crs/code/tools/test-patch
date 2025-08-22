@@ -1,0 +1,207 @@
+#!/bin/bash
+
+# Ensure the script exits on any errors
+#set -e
+
+# Check if the required arguments are provided
+if [ "$#" -ne 5 ]; then
+    echo "Usage: $0 <patch_path> <blob_path> <harness> <cp_path>"
+    exit 1
+fi
+
+THIS_DIR=$(realpath ".")
+PROBLEM=$(basename $THIS_DIR)
+echo "PROBLEM=$PROBLEM"
+
+# Read the arguments
+PATCH_PATH=$1
+BLOB_PATH=$2
+HARNESS=$3
+CP_PATH=$4
+RESULTS_PATH=$5
+
+DOCKER_LACROSSE_HOME="/lacrosse"
+CP_REL_PATH="code/challenge-004-nginx-cp"
+CP_COPY_PATH="$LACROSSE_HOME/$CP_REL_PATH"
+if [ -d "$CP_COPY_PATH" ]; then
+    rm -rf "$CP_COPY_PATH"
+    echo "Deleted directory: $CP_COPY_PATH"
+else
+    echo "Directory does not exist: $CP_COPY_PATH"
+fi
+cp -r $CP_PATH $CP_COPY_PATH
+
+function myecho() {
+    local line="$1"
+    echo "test-patch: $line"
+}
+
+myecho "patch path is $PATCH_PATH"
+myecho "Blob path is $BLOB_PATH"
+myecho "Harness is $HARNESS"
+myecho "CP path is $CP_PATH"
+myecho "CP copy path is $CP_COPY_PATH"
+
+PATCH=$(basename $PATCH_PATH)
+PATCH_DIR=$(dirname $PATCH_PATH)
+myecho "PATCH_DIR is $PATCH_DIR"
+BLOB=$(basename $BLOB_PATH)
+# A hack to get it working (retrofit)
+cp $BLOB_PATH $PATCH_DIR
+
+log="${RESULTS_PATH}/test-patch.log"
+
+# echo "Running docker ps..."
+# docker ps --format "{{.Names}}"
+# Get the old container name, if it exists
+
+if docker ps --format "{{.Names}}" | grep -q .; then
+    old_container=$(docker ps --format "{{.Names}}" | grep -m 1 "neo-fuzz-ccl")
+else
+    # echo "No containers are running."
+    old_container=""
+fi
+
+if [[ -z $old_container ]]; then
+    myecho "there is no existing container. Go ahead and create one."
+else
+    myecho "there is an existing container called $old_container, killing it to get the right mounts."
+    docker stop $old_container > /dev/null
+    docker rm -f $old_container > /dev/null
+    myecho "container killed."
+fi
+
+FULL_CP_PATH=$(realpath "$CP_PATH")
+DOCKER_SCRATCH="/patch"
+#DOCKER_CP="/home/mmclure/projects/lacrosse/sift-gitlab/asc-crs-lacrosse/crs/code/challenge-004-nginx-cp"
+#DOCKER_CP="$DOCKER_LACROSSE_HOME/$CP_REL_PATH"
+DOCKER_CP=$CP_COPY_PATH
+
+myecho "Full CP path is $FULL_CP_PATH"
+myecho "THIS_DIR path is $THIS_DIR"
+myecho "DOCKER_CP path is $DOCKER_CP"
+
+myecho copy 
+
+# Needed to add CP_COPY_PATH moun because the docker daemon for mounts on the inner container
+# is w.r.t. host (as opposed to outer container).  We can't mount paths from the outer container that don't exist on the host.
+HOST_LOGDIR=$RESULTS_PATH ensure-image neo-fuzz-ccl -d --mount type=bind,source=$PATCH_DIR,target=$DOCKER_SCRATCH,bind-propagation=rprivate --mount type=bind,source=$CP_COPY_PATH,target=$CP_COPY_PATH,bind-propagation=rprivate > $log 2>&1
+
+# Get the container name
+container=$(docker ps --format "{{.Names}}" | grep -m 1 "neo-fuzz-ccl")
+myecho "new container $container is ready."
+
+# Clean up
+# myecho "make cpsrc-clean"
+docker exec $container sh -c "cd $DOCKER_CP && make cpsrc-clean" >> $log 2>&1
+# myecho "make docker-clean"
+docker exec $container sh -c "cd $DOCKER_CP && make docker-clean" >> $log 2>&1
+
+# Setup
+# myecho "make cpsrc-prepare"
+docker exec $container sh -c "cd $DOCKER_CP && make cpsrc-prepare" >> $log 2>&1
+
+# myecho "make docker-pull"
+docker exec $container sh -c "cd $DOCKER_CP && make docker-pull" >> $log 2>&1
+
+# myecho "make docker-build"
+docker exec $container sh -c "cd $DOCKER_CP && make docker-build" >> $log 2>&1
+
+# myecho "make docker-config-local"
+docker exec $container sh -c "cd $DOCKER_CP && make docker-config-local" >> $log 2>&1
+
+echo "DOCKER_CP is $DOCKER_CP" >> $log
+docker exec $container sh -c "chmod -R 777 $DOCKER_CP/work $DOCKER_CP/out $DOCKER_CP/src"
+
+# Build
+myecho "apply the patch and build..."
+# myecho "./run.sh -vx build $DOCKER_SCRATCH/$PATCH nginx"
+echo "About to build via run.sh" >> $log
+
+echo "container is $container" >> $log
+echo "DOCKER_CP is $DOCKER_CP" >> $log
+echo "DOCKER_SCRATCH is $DOCKER_SCRATCH" >> $log
+echo "PATCH is $PATCH" >> $log
+# DOCKER_HOST=10.0.2.2:$((CIRCA_BASEPORT + 50))
+
+docker exec $container sh -c "echo $USER" >> $log 2>&1 
+
+docker exec $container sh -c "cd $DOCKER_CP && ./run.sh -vx build $DOCKER_SCRATCH/$PATCH nginx" >> $log 2>&1
+
+if [ $? -ne 0 ]; then
+    if grep -F "<DEBUG> created output directory:" $log > /dev/null; then
+	myecho "*PASS* apply"
+	myecho "-FAIL- build"
+    else
+	myecho "-FAIL- apply"
+    fi
+    exit 125;
+fi
+
+echo "Built via run.sh" >> $log
+
+myecho "*PASS* apply"
+myecho "*PASS* build"
+
+myecho "run the pov..."
+# myecho "./run.sh -vx run_pov $DOCKER_SCRATCH/$BLOB $HARNESS"
+
+# DOCKER_HOST=10.0.2.2:$((CIRCA_BASEPORT + 50))
+docker exec $container sh -c "cd $DOCKER_CP && ./run.sh -vx run_pov $DOCKER_SCRATCH/$BLOB $HARNESS" >> $log 2>&1
+if [ $? -ne 0 ]; then
+    myecho "run_pov returned non-zero, abort! Note, this means an error stopped the evaluation from running."
+    myecho "-FAIL- run_pov failed run"
+    exit 125;
+fi
+
+# myecho "Check the sanitizer output..."
+
+# Cribbed from tools/build-and-test-pov.sh
+# myecho "Looking for *run_pov in docker's dir $DOCKER_CP/out/output/"
+
+# The first version was giving a broken pipe sometimes...
+# outdir=`ls -d -1 -t $DOCKER_CP/out/output/*run_pov |head -1`
+outdir=$(find "$DOCKER_CP/out/output/" -maxdepth 1 -type d -name "*run_pov" -printf "%T@ %p\n" | sort -rn | sed -n '1p' | cut -d' ' -f2-)
+
+# myecho "outdir=$outdir"
+outfile=$outdir/stdout.log
+errfile=$outdir/stderr.log
+
+yq '.sanitizers |.[]' $DOCKER_CP/project.yaml > $outdir/patterns.txt
+
+if grep -F -f $outdir/patterns.txt $outfile >> $log; then
+    myecho "found a sanitizer pattern in $outfile"
+    myecho "-FAIL- run_pov bug not fixed"
+    exit 1
+fi
+
+if grep -F -f $outdir/patterns.txt $errfile >> $log; then
+    myecho "found a sanitizer pattern in $errfile"
+    myecho "-FAIL- run_pov bug not fixed"
+    exit 1
+fi
+
+myecho "*PASS* run_pov"
+
+# docker exec $container sh -c "cd /home/mmclure/projects/lacrosse/sift-gitlab/challenge-004-nginx-cp && ./run.sh -vx build $DOCKER_SCRATCH/$PATCH_PATH nginx"
+
+# Test
+myecho "run the tests..."
+# myecho "./run.sh -vx run_tests"
+docker exec $container sh -c "cd $DOCKER_CP && ./run.sh -vx run_tests" >> $log 2>&1
+
+tests_exit_code=$?
+
+if [ $tests_exit_code -ne 0 ]; then
+    if [ $tests_exit_code -eq 1 ]; then
+	myecho "-FAIL- run_tests (internal error, tests incomplete)"
+	exit $tests_exit_code
+    fi
+    myecho "-FAIL- run_tests (tests complete but not passed)"
+    exit $tests_exit_code
+fi
+
+myecho "*PASS* run_tests"
+# myecho "testing complete."
+
+exit 0

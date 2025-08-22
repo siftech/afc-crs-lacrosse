@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+set -euxo pipefail
+
+# Go into the kernel directory.
+cd "$(dirname "${BASH_SOURCE[0]}")/linux"
+
+# Remove an existing config.
+test ! -f .config || rm .config
+
+# Revert to the tinyconfig.
+: make tinyconfig
+
+# Enable the stuff we want.
+: ./scripts/config \
+	-d CONFIG_EXPERT \
+	-e CONFIG_64BIT \
+	-e CONFIG_9P_FS \
+	-e CONFIG_BINFMT_ELF \
+	-e CONFIG_BINFMT_SCRIPT \
+	-e CONFIG_BLOCK \
+	-e CONFIG_DEBUG_KERNEL \
+	-e CONFIG_DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT \
+	-e CONFIG_DEVTMPFS \
+	-e CONFIG_DEVTMPFS_MOUNT \
+	-e CONFIG_EXT4_FS \
+	-e CONFIG_FILE_LOCKING \
+	-e CONFIG_IKCONFIG \
+	-e CONFIG_IKCONFIG_PROC \
+	-e CONFIG_KCOV \
+	-e CONFIG_KCOV_INSTRUMENT_ALL \
+	-e CONFIG_MISC_FILESYSTEMS \
+	-e CONFIG_MULTIUSER \
+	-e CONFIG_NET \
+	-e CONFIG_NETDEVICES \
+	-e CONFIG_NET_9P \
+	-e CONFIG_NET_9P_VIRTIO \
+	-e CONFIG_NETWORK_FILESYSTEMS \
+	-e CONFIG_OVERLAY_FS \
+	-e CONFIG_PACKET \
+	-e CONFIG_PCI \
+	-e CONFIG_PRINTK \
+	-e CONFIG_PROC_FS \
+	-e CONFIG_SERIAL_8250 \
+	-e CONFIG_SERIAL_8250_CONSOLE \
+	-e CONFIG_SHMEM \
+	-e CONFIG_SQUASHFS \
+	-e CONFIG_SQUASHFS_ZSTD \
+	-e CONFIG_SYSFS \
+	-e CONFIG_TMPFS \
+	-e CONFIG_TTY \
+	-e CONFIG_VIRTIO_BLK \
+	-e CONFIG_VIRTIO_MENU \
+	-e CONFIG_VIRTIO_NET \
+	-e CONFIG_VIRTIO_PCI \
+	--set-str DEFAULT_HOSTNAME afl-linux \
+	-e CONFIG_SMP \
+	"$@"
+
+make defconfig
+./scripts/config \
+	-e CONFIG_DEBUG_KERNEL \
+	-e CONFIG_DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT \
+	-e CONFIG_GDB_SCRIPTS \
+	-e CONFIG_IKCONFIG \
+	-e CONFIG_IKCONFIG_PROC \
+	-e CONFIG_KASAN \
+	-e CONFIG_KCOV \
+	-e CONFIG_KCOV_INSTRUMENT_ALL \
+	-e CONFIG_SQUASHFS \
+	-e CONFIG_SQUASHFS_ZSTD \
+	-e CONFIG_TIPC \
+	-e CONFIG_TIPC_CRYPTO \
+	-e CONFIG_TUN \
+	--set-str DEFAULT_HOSTNAME afl-linux \
+	"$@"
+
+# Normalize the config.
+make olddefconfig

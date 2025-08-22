@@ -1,0 +1,35 @@
+ INFO: Running with entropic power schedule (0xFF, 100).
+ INFO: Seed: 1870957817
+ INFO: Loaded 1 modules   (80 inline 8-bit counters): 80 [0x5650a5417d78, 0x5650a5417dc8), 
+ INFO: Loaded 1 PC tables (80 PCs): 80 [0x5650a5417dc8,0x5650a54182c8), 
+ /out/pov_harness: Running 1 inputs 100 time(s) each.
+ Running: /work/tmp_blob
+ AddressSanitizer:DEADLYSIGNAL
+ =================================================================
+ ==17==ERROR: AddressSanitizer: SEGV on unknown address 0x000000000008 (pc 0x5650a52080dd bp 0x7ffeae9178a0 sp 0x7ffeae917890 T0)
+ ==17==The signal is caused by a READ memory access.
+ ==17==Hint: address points to the zero page.
+     #0 0x5650a52080dd in ngx_http_get_last_ip_variable /src/harnesses/bld/src/http/ngx_http_variables.c:2851
+     #1 0x5650a51ffe2c in ngx_http_get_indexed_variable /src/harnesses/bld/src/http/ngx_http_variables.c:647:9
+     #2 0x5650a520d884 in ngx_http_script_copy_var_len_code /src/harnesses/bld/src/http/ngx_http_script.c:944:17
+     #3 0x5650a5208fc8 in ngx_http_complex_value /src/harnesses/bld/src/http/ngx_http_script.c:83:16
+     #4 0x5650a51c5b6c in ngx_http_send_response /src/harnesses/bld/src/http/ngx_http_core_module.c:1769:9
+     #5 0x5650a5210125 in ngx_http_script_return_code /src/harnesses/bld/src/http/ngx_http_script.c:1506:21
+     #6 0x5650a5294b3a in ngx_http_rewrite_handler /src/harnesses/bld/src/http/modules/ngx_http_rewrite_module.c:180:9
+     #7 0x5650a51c1eee in ngx_http_core_rewrite_phase /src/harnesses/bld/src/http/ngx_http_core_module.c:929:10
+     #8 0x5650a51c1bb9 in ngx_http_core_run_phases /src/harnesses/bld/src/http/ngx_http_core_module.c:875:14
+     #9 0x5650a51c1bb9 in ngx_http_handler /src/harnesses/bld/src/http/ngx_http_core_module.c:858:5
+     #10 0x5650a51e2bce in ngx_http_process_request /src/harnesses/bld/src/http/ngx_http_request.c:2133:5
+     #11 0x5650a51e706b in ngx_http_process_request_headers /src/harnesses/bld/src/http/ngx_http_request.c:1529:13
+     #12 0x5650a517c20c in ngx_event_process_posted /src/harnesses/bld/src/event/ngx_event_posted.c:34:9
+     #13 0x5650a5116a47 in LLVMFuzzerTestOneInput /src/harnesses/bld/src/harnesses/pov_harness.cc:323:5
+     #14 0x5650a4fc8780 in fuzzer::Fuzzer::ExecuteCallback(unsigned char const*, unsigned long) /src/llvm-project/compiler-rt/lib/fuzzer/FuzzerLoop.cpp:614:13
+     #15 0x5650a4fb2f14 in fuzzer::RunOneTest(fuzzer::Fuzzer*, char const*, unsigned long) /src/llvm-project/compiler-rt/lib/fuzzer/FuzzerDriver.cpp:327:6
+     #16 0x5650a4fb89aa in fuzzer::FuzzerDriver(int*, char***, int (*)(unsigned char const*, unsigned long)) /src/llvm-project/compiler-rt/lib/fuzzer/FuzzerDriver.cpp:862:9
+     #17 0x5650a4fe4da2 in main /src/llvm-project/compiler-rt/lib/fuzzer/FuzzerMain.cpp:20:10
+     #18 0x7f6ec38ed082 in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x24082) (BuildId: 0702430aef5fa3dda43986563e9ffcc47efbd75e)
+     #19 0x5650a4fa99ed in _start (/out/pov_harness+0xb59ed)
+ 
+ AddressSanitizer can not provide additional info.
+ SUMMARY: AddressSanitizer: SEGV /src/harnesses/bld/src/http/ngx_http_variables.c:2851 in ngx_http_get_last_ip_variable
+ ==17==ABORTING

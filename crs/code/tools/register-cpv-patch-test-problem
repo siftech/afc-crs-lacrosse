@@ -1,0 +1,43 @@
+#!/bin/bash
+
+# Call this from a cpv directory to register the problem in the code/test/patch-test directory
+
+# Define the base directory using an environment variable
+LAX_HOME="${LACROSSE_HOME:?Error: LACROSSE_HOME is not set}"  # Exit if MY_ENV_VAR is not set
+
+# Define the test directory as a hardcoded subdir within the base directory
+TEST_DIR="$LAX_HOME/code/test/patch-test/problems"
+
+# Ensure the script is called with a subdir name argument
+if [ "$#" -ne 1 ]; then
+    echo "Usage: $0 <SUBDIR_NAME>"
+    exit 1
+fi
+
+SUBDIR_NAME="$1"  # Set SUBDIR_NAME from input argument
+SOURCE_DIR="$(pwd)" # Use the calling directory as the source
+
+# List of subdir-subdirs to copy (hardcoded)
+SUBDIR_SUBDIRS=("bic" "bic_delta" "bic_stderr.log" "head_stderr.log" "harness_name" "harness" "vuln.blob" "patches/good_patch.diff")  # Modify this list as needed
+
+DEST_SUBDIR_NAME=$(basename $SUBDIR_NAME)
+
+# Ensure the subdir exists inside TEST_DIR
+mkdir -p "$TEST_DIR/$DEST_SUBDIR_NAME"
+
+# Copy each specified subdir-subdir if it exists in SOURCE_DIR
+for sub in "${SUBDIR_SUBDIRS[@]}"; do
+    SRC="$SOURCE_DIR/$SUBDIR_NAME/$sub"
+    DEST="$TEST_DIR/$DEST_SUBDIR_NAME/$sub"
+
+    if [ -e "$SRC" ]; then
+	DEST_DIR=$(dirname "$DEST")
+	mkdir -p "$DEST_DIR"
+        cp -r "$SRC" "$DEST"
+	echo "Copied $SRC to $DEST"
+    else
+	echo "Skipping $SRC (does not exist)"
+    fi
+done
+
+echo "Copy operation completed."

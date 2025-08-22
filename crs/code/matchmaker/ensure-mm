@@ -1,0 +1,7 @@
+#!/bin/bash
+toolsdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && pwd )"
+(cd $toolsdir; make)
+$toolsdir/mmreset
+if [ $? -ne 0 ] ; then
+$toolsdir/mm &
+fi

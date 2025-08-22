@@ -1,0 +1,15 @@
+#!/bin/bash
+
+export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic bGF4LXVzZXJuYW1lOmxheC1ob3N0bmFtZQ=="
+export OTEL_EXPORTER_OTLP_ENDPOINT="http://127.0.0.1:4317" # This will be the Team-specific telemetry server configured by the Organizers.
+export OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+export SCANTRON_GITHUB_PAT=${LACROSSE_GITHUB_PAT}
+
+# For the test server, maybe don't use real values
+# export CRS_API_KEY_ID=${CRS_API_KEY_ID:-"lax-username"}
+# export CRS_API_KEY_TOKEN=${CRS_API_KEY_TOKEN:-"lax-password"}
+
+# Comp client api is live on 88. CRS server api is live on 80.
+export CRS_API_PORT=${CRS_API_PORT:-$(( CIRCA_BASEPORT + 80 ))}
+dbug CRS_API_PORT is $CRS_API_PORT
+

@@ -1,0 +1,12 @@
+DOCKER_LABELS = --label "author=${USER}" --label "revision=`svn info .|grep ^Revision`"
+CLEANUP = docker rmi $(docker images -f "dangling=true" -q)
+COMMON_FILES = realuser.sh bashrc .dockerignore
+COMMON_FILE_PATHS = $(addprefix ../common/, ${COMMON_FILES})
+NO_CACHE = 
+SHELL=/bin/bash -o pipefail	# pipes carry failure exit codes forward
+
+# Specify a suffix if you don't want to overwrite the existing image yet
+TAG_SUFFIX =
+
+# Set default Docker tag if not defined by user
+DOCKER_TAG ?= ${USER}

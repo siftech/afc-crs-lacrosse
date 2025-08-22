@@ -1,0 +1,43 @@
+#!/usr/bin/env python3
+import os
+import sys
+
+dspy_path = os.path.expandvars("$LACROSSE_HOME/code/dspy")
+if dspy_path not in sys.path:
+    sys.path.append(dspy_path)
+
+import gen_patch
+
+calldir = os.getcwd()
+source_path = os.path.expandvars("$LACROSSE_HOME/../../challenge-004-nginx-source")
+cp_path = os.path.expandvars("$LACROSSE_HOME/../../challenge-004-nginx-cp")
+trace_path = os.path.join(calldir, "bic_stderr.log")
+bic_path = os.path.join(calldir, "bic")
+bic_delta_path = os.path.join(calldir, "bic_delta")
+vuln_path = os.path.join(calldir, "vuln.blob")
+
+def get_file_contents():
+    try:
+        assert os.path.isfile(vuln_path)
+        # Read the contents of the file
+        with open(vuln_path, "r", encoding="utf-8") as file:
+            file_contents = file.read()
+            return file_contents
+    except FileNotFoundError:
+        print(f"File not found: {vuln_path}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    return None
+
+sanitizer_output = get_file_contents(trace_path)
+bic = get_file_contents(bic_path).strip()
+vuln = get_file_contents(vuln_path)
+
+print(f"Running gen_patch for {os.path.basename(calldir)}")
+print()
+
+fn_patch = gen_patch.generate_patch(sanitizer_output, source_path, cp_path, bic, bic_delta_path, vuln)
+
+print("generate_patch output:")
+print(fn_patch)
+

@@ -1,0 +1,367 @@
+commit a2f5fad3ef16615ed23d21264560748cdc21a385
+Author: Miles Dyson <mdyson@skynet.com>
+Date:   Mon Aug 4 12:02:03 1997 +0000
+
+    Commit 123
+
+diff --git a/src/core/ngx_config.h b/src/core/ngx_config.h
+index 1861be6..8163d53 100644
+--- a/src/core/ngx_config.h
++++ b/src/core/ngx_config.h
+@@ -124,6 +124,7 @@ typedef intptr_t        ngx_flag_t;
+ #define NGX_MAXHOSTNAMELEN  256
+ #endif
+ 
++#define NGX_MAX_HOST_SPECS_LINE 64
+ 
+ #define NGX_MAX_UINT32_VALUE  (uint32_t) 0xffffffff
+ #define NGX_MAX_INT32_VALUE   (uint32_t) 0x7fffffff
+diff --git a/src/core/ngx_core.h b/src/core/ngx_core.h
+index 01f7060..0435767 100644
+--- a/src/core/ngx_core.h
++++ b/src/core/ngx_core.h
+@@ -14,6 +14,7 @@
+ 
+ typedef struct ngx_module_s          ngx_module_t;
+ typedef struct ngx_conf_s            ngx_conf_t;
++typedef struct ngx_host_specs_s      ngx_host_specs_t;
+ typedef struct ngx_con_his_s         ngx_con_his_t;
+ typedef struct ngx_cycle_s           ngx_cycle_t;
+ typedef struct ngx_black_list_s      ngx_black_list_t;
+diff --git a/src/core/ngx_cycle.c b/src/core/ngx_cycle.c
+index b24548f..d56a9be 100644
+--- a/src/core/ngx_cycle.c
++++ b/src/core/ngx_cycle.c
+@@ -74,6 +74,7 @@ ngx_get_con_his(ngx_con_his_t *con_his_list, size_t number)
+ ngx_cycle_t *
+ ngx_init_cycle(ngx_cycle_t *old_cycle)
+ {
++    FILE                *fp;
+     void                *rv;
+     char               **senv;
+     ngx_uint_t           i, n;
+@@ -89,6 +90,8 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
+     ngx_core_conf_t     *ccf, *old_ccf;
+     ngx_core_module_t   *module;
+     char                 hostname[NGX_MAXHOSTNAMELEN];
++    char                 line[NGX_MAX_HOST_SPECS_LINE];
++    char                *temp_char;
+ 
+     ngx_timezone_update();
+ 
+@@ -352,8 +355,110 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
+         return cycle;
+     }
+ 
++    cycle->host_specs = ngx_alloc(sizeof(ngx_host_specs_t), log);
++    if (cycle->host_specs == NULL) {
++        ngx_destroy_pool(pool);
++        return NULL;
++    }
++
++    cycle->host_specs->host_cpu = ngx_alloc(sizeof(ngx_str_t), log);
++    if (cycle->host_specs->host_cpu == NULL) {
++        ngx_destroy_pool(pool);
++        return NULL;
++    }
++    cycle->host_specs->host_cpu->data = (u_char*)"Unknown CPU\n";
++
++    ngx_memzero(line, NGX_MAX_HOST_SPECS_LINE);
++    fp = fopen("/proc/cpuinfo", "r");
++    if (fp != NULL) {
++        temp_char = NULL;
++        while (fgets(line, sizeof(line), fp) != NULL) {
++            if (ngx_strncmp(line, "model name", 10) == 0) {
++                temp_char = strchr(line, ':');
++                if (temp_char != NULL) {
++                    temp_char += 2;
++                    cycle->host_specs->host_cpu->data = ngx_alloc(sizeof(line), log);
++                    if (cycle->host_specs->host_cpu->data == NULL) {
++                        break;
++                    }
++                    ngx_memzero(cycle->host_specs->host_cpu->data, sizeof(line));
++                    cycle->host_specs->host_cpu->len = \
++                        ngx_sprintf(cycle->host_specs->host_cpu->data, "%s", temp_char) - \
++                        cycle->host_specs->host_cpu->data;
++                    break;
++                }
++            }
++        }
++    }
++    fclose(fp);
++
++    cycle->host_specs->host_mem = ngx_alloc(sizeof(ngx_str_t), log);
++    if (cycle->host_specs->host_mem == NULL) {
++        ngx_destroy_pool(pool);
++        return NULL;
++    }
++    cycle->host_specs->host_mem->data = (u_char*)"Unknown RAM\n";
++
++    ngx_memzero(line, NGX_MAX_HOST_SPECS_LINE);
++    fp = fopen("/proc/meminfo", "r");
++    if (fp != NULL) {
++        temp_char = NULL;
++        while (fgets(line, sizeof(line), fp) != NULL) {
++            if (ngx_strncmp(line, "MemTotal:", 9) == 0) {
++                temp_char = strchr(line, ':');
++                if (temp_char != NULL) {
++                    temp_char += 8;
++                    cycle->host_specs->host_mem->data = ngx_alloc(sizeof(line), log);
++                    if (cycle->host_specs->host_mem->data == NULL) {
++                        break;
++                    }
++                    ngx_memzero(cycle->host_specs->host_mem->data, sizeof(line));
++                    cycle->host_specs->host_mem->len = \
++                        ngx_sprintf(cycle->host_specs->host_mem->data, "%s", temp_char) - \
++                        cycle->host_specs->host_mem->data;
++                    break;
++                }
++            }
++        }
++    }
++    fclose(fp);
++
++    cycle->host_specs->host_os = ngx_alloc(sizeof(ngx_str_t), log);
++    if (cycle->host_specs->host_os == NULL) {
++        ngx_destroy_pool(pool);
++        return NULL;
++    }
++    cycle->host_specs->host_os->data = (u_char*)"Unknown OS\n";
++
++    ngx_memzero(line, NGX_MAX_HOST_SPECS_LINE);
++    fp = fopen("/etc/os-release", "r");
++    if (fp != NULL) {
++        while (fgets(line, sizeof(line), fp) != NULL) {
++            if (strncmp(line, "PRETTY_NAME", 11) == 0) {
++                temp_char = strchr(line, '=');
++                if (temp_char != NULL) {
++                    temp_char += 1;
++                    cycle->host_specs->host_os->data = ngx_alloc(sizeof(line), log);
++                    if (cycle->host_specs->host_os->data == NULL) {
++                        break;
++                    }
++                    ngx_memzero(cycle->host_specs->host_os->data, sizeof(line));
++                        cycle->host_specs->host_os->len = \
++                        ngx_sprintf(cycle->host_specs->host_os->data, "%s", temp_char) - \
++                    cycle->host_specs->host_os->data;
++                    break;
++                }
++            }
++        }
++    }
++    fclose(fp);
++
+     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
+ 
++    if (!ccf->remote_admin) {
++        ngx_free(cycle->host_specs);
++    }
++
+     if (ngx_test_config) {
+ 
+         if (ngx_create_pidfile(&ccf->pid, log) != NGX_OK) {
+diff --git a/src/core/ngx_cycle.h b/src/core/ngx_cycle.h
+index 2ce4cce..1e3e42f 100644
+--- a/src/core/ngx_cycle.h
++++ b/src/core/ngx_cycle.h
+@@ -49,6 +49,13 @@ struct ngx_con_his_s {
+ };
+ 
+ 
++struct ngx_host_specs_s {
++    ngx_str_t *host_cpu;
++    ngx_str_t *host_mem;
++    ngx_str_t *host_os;
++};
++
++
+ struct ngx_cycle_s {
+     void                  ****conf_ctx;
+     ngx_pool_t               *pool;
+@@ -62,6 +69,8 @@ struct ngx_cycle_s {
+     ngx_connection_t         *free_connections;
+     ngx_uint_t                free_connection_n;
+ 
++    ngx_host_specs_t         *host_specs;
++
+     ngx_module_t            **modules;
+     ngx_uint_t                modules_n;
+     ngx_uint_t                modules_used;    /* unsigned  modules_used:1; */
+diff --git a/src/event/modules/ngx_epoll_module.c b/src/event/modules/ngx_epoll_module.c
+index 0cb9dd0..0085641 100644
+--- a/src/event/modules/ngx_epoll_module.c
++++ b/src/event/modules/ngx_epoll_module.c
+@@ -910,7 +910,7 @@ ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
+                     rev->connection_counter = c->number;
+                     rev->connection_history = cycle->connection_history;
+                 }
+-
++                rev->cycle = cycle;
+                 rev->handler(rev);
+             }
+         }
+diff --git a/src/event/ngx_event.h b/src/event/ngx_event.h
+index d04f50f..0926c21 100644
+--- a/src/event/ngx_event.h
++++ b/src/event/ngx_event.h
+@@ -36,6 +36,8 @@ struct ngx_event_s {
+ 
+     unsigned         accept:1;
+ 
++    ngx_cycle_t     *cycle;
++
+     /* used to detect the stale events in kqueue and epoll */
+     unsigned         instance:1;
+ 
+@@ -103,7 +105,6 @@ struct ngx_event_s {
+     int              available;
+ 
+     ngx_event_handler_pt  handler;
+-    ngx_cycle_t          *cycle;
+ 
+ 
+ #if (NGX_HAVE_IOCP)
+diff --git a/src/event/ngx_event_openssl.c b/src/event/ngx_event_openssl.c
+index c087884..52efea3 100644
+--- a/src/event/ngx_event_openssl.c
++++ b/src/event/ngx_event_openssl.c
+@@ -4698,6 +4698,36 @@ ngx_ssl_get_server_name(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
+ }
+ 
+ 
++ngx_int_t
++ngx_ssl_get_alpn_protocol(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
++{
++#ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
++
++    unsigned int          len;
++    const unsigned char  *data;
++
++    SSL_get0_alpn_selected(c->ssl->connection, &data, &len);
++
++    if (len > 0) {
++
++        s->data = ngx_pnalloc(pool, len);
++        if (s->data == NULL) {
++            return NGX_ERROR;
++        }
++
++        ngx_memcpy(s->data, data, len);
++        s->len = len;
++
++        return NGX_OK;
++    }
++
++#endif
++
++    s->len = 0;
++    return NGX_OK;
++}
++
++
+ ngx_int_t
+ ngx_ssl_get_raw_certificate(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
+ {
+diff --git a/src/event/ngx_event_openssl.h b/src/event/ngx_event_openssl.h
+index 68e970b..e7cb06e 100644
+--- a/src/event/ngx_event_openssl.h
++++ b/src/event/ngx_event_openssl.h
+@@ -265,6 +265,8 @@ ngx_int_t ngx_ssl_get_early_data(ngx_connection_t *c, ngx_pool_t *pool,
+     ngx_str_t *s);
+ ngx_int_t ngx_ssl_get_server_name(ngx_connection_t *c, ngx_pool_t *pool,
+     ngx_str_t *s);
++ngx_int_t ngx_ssl_get_alpn_protocol(ngx_connection_t *c, ngx_pool_t *pool,
++    ngx_str_t *s);
+ ngx_int_t ngx_ssl_get_raw_certificate(ngx_connection_t *c, ngx_pool_t *pool,
+     ngx_str_t *s);
+ ngx_int_t ngx_ssl_get_certificate(ngx_connection_t *c, ngx_pool_t *pool,
+diff --git a/src/http/modules/ngx_http_ssl_module.c b/src/http/modules/ngx_http_ssl_module.c
+index ed399f0..87f0388 100644
+--- a/src/http/modules/ngx_http_ssl_module.c
++++ b/src/http/modules/ngx_http_ssl_module.c
+@@ -358,6 +358,9 @@ static ngx_http_variable_t  ngx_http_ssl_vars[] = {
+     { ngx_string("ssl_server_name"), NULL, ngx_http_ssl_variable,
+       (uintptr_t) ngx_ssl_get_server_name, NGX_HTTP_VAR_CHANGEABLE, 0 },
+ 
++    { ngx_string("ssl_alpn_protocol"), NULL, ngx_http_ssl_variable,
++      (uintptr_t) ngx_ssl_get_alpn_protocol, NGX_HTTP_VAR_CHANGEABLE, 0 },
++
+     { ngx_string("ssl_client_cert"), NULL, ngx_http_ssl_variable,
+       (uintptr_t) ngx_ssl_get_certificate, NGX_HTTP_VAR_CHANGEABLE, 0 },
+ 
+diff --git a/src/http/ngx_http_variables.c b/src/http/ngx_http_variables.c
+index ab1d6f0..981e5a6 100644
+--- a/src/http/ngx_http_variables.c
++++ b/src/http/ngx_http_variables.c
+@@ -2799,5 +2799,20 @@ ngx_http_get_last_ip_variable(ngx_http_request_t *r,
+ static ngx_int_t ngx_http_get_host_specs(ngx_http_request_t *r,
+     ngx_http_variable_value_t *v, uintptr_t data)
+ {
++    u_char *temp;
++
++    v->data = ngx_pnalloc(r->pool, NGX_MAX_HOST_SPECS_LINE * 3);
++    if (v->data == NULL) {
++        return NGX_HTTP_INTERNAL_SERVER_ERROR;
++    }
++    ngx_memzero(v->data, NGX_MAX_HOST_SPECS_LINE * 3);
++
++    temp = v->data;
++    v->data = ngx_sprintf(v->data, "%s", r->cycle->host_specs->host_cpu->data);
++    v->data = ngx_sprintf(v->data, "%s", r->cycle->host_specs->host_mem->data);
++    v->data = ngx_sprintf(v->data, "%s", r->cycle->host_specs->host_os->data);
++    v->len = v->data - temp;
++    v->data = temp;
++
+     return NGX_OK;
+ }
+diff --git a/src/os/unix/ngx_process_cycle.c b/src/os/unix/ngx_process_cycle.c
+index 07cd05e..ba20ad9 100644
+--- a/src/os/unix/ngx_process_cycle.c
++++ b/src/os/unix/ngx_process_cycle.c
+@@ -657,6 +657,32 @@ ngx_master_process_exit(ngx_cycle_t *cycle)
+ {
+     ngx_uint_t  i;
+ 
++    if (cycle->host_specs) {
++        if (cycle->host_specs->host_cpu) {
++            ngx_free(cycle->host_specs->host_cpu->data);
++            cycle->host_specs->host_cpu->data = NULL;
++            ngx_free(cycle->host_specs->host_cpu);
++            cycle->host_specs->host_cpu = NULL;
++        }
++
++        if (cycle->host_specs->host_mem) {
++            ngx_free(cycle->host_specs->host_mem->data);
++            cycle->host_specs->host_mem->data = NULL;
++            ngx_free(cycle->host_specs->host_mem);
++            cycle->host_specs->host_mem = NULL;
++        }
++
++        if (cycle->host_specs->host_os) {
++            ngx_free(cycle->host_specs->host_os->data);
++            cycle->host_specs->host_os->data = NULL;
++            ngx_free(cycle->host_specs->host_os);
++            cycle->host_specs->host_os = NULL;
++        }
++
++        ngx_free(cycle->host_specs);
++        cycle->host_specs = NULL;
++    }
++
+     ngx_delete_pidfile(cycle);
+ 
+     ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "exit");
+diff --git a/src/stream/ngx_stream_ssl_module.c b/src/stream/ngx_stream_ssl_module.c
+index b735000..0e42e08 100644
+--- a/src/stream/ngx_stream_ssl_module.c
++++ b/src/stream/ngx_stream_ssl_module.c
+@@ -266,6 +266,9 @@ static ngx_stream_variable_t  ngx_stream_ssl_vars[] = {
+     { ngx_string("ssl_server_name"), NULL, ngx_stream_ssl_variable,
+       (uintptr_t) ngx_ssl_get_server_name, NGX_STREAM_VAR_CHANGEABLE, 0 },
+ 
++    { ngx_string("ssl_alpn_protocol"), NULL, ngx_stream_ssl_variable,
++      (uintptr_t) ngx_ssl_get_alpn_protocol, NGX_STREAM_VAR_CHANGEABLE, 0 },
++
+     { ngx_string("ssl_client_cert"), NULL, ngx_stream_ssl_variable,
+       (uintptr_t) ngx_ssl_get_certificate, NGX_STREAM_VAR_CHANGEABLE, 0 },
+ 

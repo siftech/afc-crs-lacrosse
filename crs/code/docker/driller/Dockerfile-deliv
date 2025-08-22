@@ -1,0 +1,23 @@
+
+# looking at start-driller to see what gets mounted in the development version, here we tar those up and add them over the 
+# top in the image itself.
+#       -v $HOST_NEO_FUZZ_HOME/code/docker/driller/bashrc:/home/realuser/.bashrc \
+#       -v $HOST_NEO_FUZZ_HOME/code/docker/driller/bashrc:/home/angr/.bashrc \
+#       -v $HOST_NEO_FUZZ_HOME/code/afl-other-arch:/home/angr/.virtualenvs/angr/bin/afl-unix \
+#       $(if [ $DRILLER_CODE_DIR ]; then echo "-v $DRILLER_CODE_DIR:/home/angr/angr-dev/driller"; fi) \
+#       $(if [ $FUZZER_CODE_DIR ]; then echo "-v $FUZZER_CODE_DIR:/home/angr/angr-dev/fuzzer"; fi) \
+#       $(if [ $OUTPUT_DIR ]; then echo "-v $OUTPUT_DIR:/home/angr/driller-results"; fi) \
+#       $(if [ $TARGET_DIR ]; then echo "-v $TARGET_DIR:/home/angr/bin"; fi) \
+#       $(if [ $TRACER_CODE_DIR ]; then echo "-v $TRACER_CODE_DIR:/home/angr/angr-dev/tracer"; fi) \
+
+# also need /neo-fuzz/code/tools/run-driller
+
+FROM sift/driller
+
+ADD afl-unix.tgz /home/angr/.virtualenvs/angr/bin/
+ADD fuzzer.tgz /home/angr/angr-dev/fuzzer
+ADD driller.tgz /home/angr/angr-dev/driller
+ADD tracer.tgz /home/angr/angr-dev/
+
+RUN sudo mkdir -p /neo-fuzz/code/tools
+COPY run-driller /neo-fuzz/code/tools

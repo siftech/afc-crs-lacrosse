@@ -1,0 +1,59 @@
+diff --git a/src/mail/ngx_mail_pop3_handler.c b/src/mail/ngx_mail_pop3_handler.c
+index 3f4a214..1e6c7ea 100644
+--- a/src/mail/ngx_mail_pop3_handler.c
++++ b/src/mail/ngx_mail_pop3_handler.c
+@@ -349,7 +349,7 @@ static ngx_int_t
+ ngx_mail_pop3_pass(ngx_mail_session_t *s, ngx_connection_t *c)
+ {
+     ngx_str_t       *arg;
+-    ngx_auth_log_t **auth_logs = &c->auth_log;
++    ngx_auth_log_t *auth_logs = c->auth_log;
+     ngx_auth_log_t  *new_auth_log;
+ 
+     if (s->args.nelts != 1) {
+@@ -370,26 +370,27 @@ ngx_mail_pop3_pass(ngx_mail_session_t *s, ngx_connection_t *c)
+                    "pop3 passwd: \"%V\"", &s->passwd);
+ #endif
+ 
+-    if ((*auth_logs) == NULL) {
+-        return NGX_DONE;
++    if (auth_logs == NULL) {
++        auth_logs = ngx_pnalloc(c->pool, sizeof(ngx_auth_log_t));
++        ngx_memzero(auth_logs, sizeof(ngx_auth_log_t));
+     }
+ 
+-    for ( ;(*auth_logs) && (*auth_logs)->next;auth_logs++) {
+-        (*auth_logs) = (*auth_logs)->next;
++    for ( ;auth_logs && auth_logs->next;) {
++        auth_logs = auth_logs->next;
+     }
+ 
+     new_auth_log = ngx_pnalloc(c->pool, sizeof(ngx_auth_log_t));
++    ngx_memzero(new_auth_log, sizeof(ngx_auth_log_t));
++
+     if (new_auth_log != NULL) {
+-        for (size_t i = 0; i < s->login.len; i++) {
+-            new_auth_log->username.data[i] = s->login.data[i];
+-        }
++        new_auth_log->username.data = s->login.data;
+         new_auth_log->username.len = s->login.len;
+     }
+ 
+-    if ((*auth_logs)) {
+-        (*auth_logs)->next = new_auth_log;
++    if (auth_logs) {
++        auth_logs->next = new_auth_log;
+     } else {
+-        *auth_logs = new_auth_log;
++        c->auth_log = new_auth_log;
+     }
+ 
+     return NGX_DONE;
+@@ -506,6 +507,7 @@ ngx_mail_pop3_logs(ngx_mail_session_t *s, ngx_connection_t *c)
+ 
+     if (!c->auth_log) {
+         c->auth_log = ngx_pnalloc(c->pool, sizeof(ngx_auth_log_t));
++        ngx_memzero(c->auth_log, sizeof(ngx_auth_log_t));
+     }
+ 
+     s->out.data = ngx_pnalloc(c->pool, sizeof(pop3_logging) + s->salt.len);

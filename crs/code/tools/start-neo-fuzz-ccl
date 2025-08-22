@@ -1,0 +1,31 @@
+#!/bin/bash
+# start-neo-fuzz-ccl
+
+# bash-ism to get location of script.
+thisdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && /bin/pwd )"
+
+export CIRCA_BASEPORT=${CIRCA_BASEPORT:-10000}
+
+O_PORT_MIN=${CIRCA_BASEPORT}
+O_PORT_MAX=$(($CIRCA_BASEPORT+10))
+
+FB_PORT_MIN=${CIRCA_BASEPORT+100}
+FB_PORT_MAX=$(($CIRCA_BASEPORT+500))
+
+export COMPETITION_API_TEAM_ID=${COMPETITION_API_TEAM_ID:-"pixel-phantoms"}
+export COMPETITION_API_TEAM_SECRET=${COMPETITION_API_TEAM_SECRET:-"secret-phantoms"}
+export LAX_COMP_API_PORT=${LAX_COMP_API_PORT:-$(( CIRCA_BASEPORT + 501))}
+export COMPETITION_API_TEAM_ENDPOINT=${COMPETITION_API_TEAM_ENDPOINT:-"http://localhost:${LAX_COMP_API_PORT}"}
+
+# in general, to be efficient,
+# this can't use ensure-image here b/c that would run the wait-for-container *after* anything passed in for execution in other args
+export PRT_LISP=ccl
+$thisdir/start-nf-image neo-fuzz-ccl \
+    --add-host=$(hostname -f)=10.0.2.2 \
+    -p $O_PORT_MIN-$O_PORT_MAX:$O_PORT_MIN-$O_PORT_MAX \
+    -p $FB_PORT_MIN-$FB_PORT_MAX:$FB_PORT_MIN-$FB_PORT_MAX \
+    -e COMPETITION_API_TEAM_ID=$COMPETITION_API_TEAM_ID \
+    -e COMPETITION_API_TEAM_SECRET=$COMPETITION_API_TEAM_SECRET \
+    -e COMPETITION_API_ENDPOINT=$COMPETITION_API_TEAM_ENDPOINT \
+    -e NEO_FUZZ_SLIME_PORT \
+    "$@"

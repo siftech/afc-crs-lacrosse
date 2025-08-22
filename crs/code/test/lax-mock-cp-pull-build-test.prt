@@ -1,0 +1,48 @@
+do "./defaults.pl" || die "Can't do './defaults.pl': $@";
+
+$run_in_compose = 1;
+
+# note although the target used will *actually* be the one in rsync, inside the CCL container
+# that rsync area is mounted as /neo-fuzz, so dont add it again in the path to target.
+our $experiment = '
+  (push :msg *debug-list*)
+  (push :amp *debug-list*)
+  (push :amp-deep *debug-list*)
+  (push :target *debug-list*)
+  (setf *run-fake-bridge* t)
+  ;;(setf *use-confine* t)
+  ;;(setf *use-chisel* t)
+  ;;(setf *use-jdebloat* t)
+  (setf *lacrosse* t)
+  (setf *fake-bridge-script*
+    \'(
+       (1 ((:type :new-challenge-project)
+           (:target ((;;(:cp-address "")
+                        (:cp-address "")
+				)))))
+       (12000 ((:type :halt)))))
+';
+
+our $numfbs = 4;
+our $allocationmethod = "balanced";
+
+#our $success_pattern = "Successfully built executable for patched target";
+#   indicates a cp has been initialized
+# Denotes pulling the git repo and building the cp
+our $success_pattern = "Successfully ran test on executable for target";
+
+#do "./lacrosse.pl" || die "Can't do './lacrosse.pl': $@";
+do "./common.pl" || die "Can't do './common.pl': $@";
+
+$test = {
+    defaultIgnore => 1,
+    keywords => [ qw / lacrosse / ],
+    cleanup => \&condor_killer,
+    agents => [
+        @clean_and_start_agents,
+    ],
+};
+
+$test;
+
+# vim: set ft=perl :

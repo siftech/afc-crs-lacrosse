@@ -1,0 +1,61 @@
+commit 0dbd46415432759475e6e4bb5adfaada6fb7d506
+Author: Miles Dyson <mdyson@skynet.com>
+Date:   Mon Aug 4 12:00:12 1997 +0000
+
+    Commit 12
+
+diff --git a/docs/xml/nginx/changes.xml b/docs/xml/nginx/changes.xml
+index 359c25e..38c7271 100644
+--- a/docs/xml/nginx/changes.xml
++++ b/docs/xml/nginx/changes.xml
+@@ -27,7 +27,7 @@ was used in the configuration.
+ или директивой proxy_pass с URI.
+ </para>
+ <para lang="en">
+-a segmentation fault might occur in a worker process 
++a segmentation fault might occur in a worker process
+ if the "break" directive was used with the "alias" directive
+ or with the "proxy_pass" directive with a URI.
+ </para>
+diff --git a/src/core/nginx.h b/src/core/nginx.h
+index 63efbf2..895f747 100644
+--- a/src/core/nginx.h
++++ b/src/core/nginx.h
+@@ -9,8 +9,8 @@
+ #define _NGINX_H_INCLUDED_
+ 
+ 
+-#define nginx_version      1017007
+-#define NGINX_VERSION      "1.17.7"
++#define nginx_version      1017008
++#define NGINX_VERSION      "1.17.8"
+ #define NGINX_VER          "nginx/" NGINX_VERSION
+ 
+ #ifdef NGX_BUILD
+diff --git a/src/http/ngx_http_core_module.c b/src/http/ngx_http_core_module.c
+index a603e09..aebad2b 100644
+--- a/src/http/ngx_http_core_module.c
++++ b/src/http/ngx_http_core_module.c
+@@ -1889,7 +1889,7 @@ ngx_http_auth_basic_user(ngx_http_request_t *r)
+         return NGX_DECLINED;
+     }
+ 
+-    auth.len = ngx_base64_decoded_length(encoded.len);
++    auth.len = NGX_HTTP_AUTH_MAX;
+     auth.data = ngx_pnalloc(r->pool, auth.len + 1);
+     if (auth.data == NULL) {
+         return NGX_ERROR;
+diff --git a/src/http/ngx_http_core_module.h b/src/http/ngx_http_core_module.h
+index f5434cc..6ad52e9 100644
+--- a/src/http/ngx_http_core_module.h
++++ b/src/http/ngx_http_core_module.h
+@@ -60,6 +60,9 @@ typedef struct ngx_thread_pool_s  ngx_thread_pool_t;
+ #define NGX_HTTP_SERVER_TOKENS_BUILD    2
+ 
+ 
++#define NGX_HTTP_AUTH_MAX               16
++
++
+ typedef struct ngx_http_location_tree_node_s  ngx_http_location_tree_node_t;
+ typedef struct ngx_http_core_loc_conf_s  ngx_http_core_loc_conf_t;
+ 

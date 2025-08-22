@@ -1,0 +1,7 @@
+#!/bin/bash
+
+subdir=$1
+shift 1
+args=$@
+
+echo "Test script $subdir $args"

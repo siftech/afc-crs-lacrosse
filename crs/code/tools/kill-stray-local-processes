@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# bash-ism to get location of script.
+#toolsdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && pwd )"
+
+doit () {
+    echo Killing python, afl-fuzz, alisp, z3, fuzzball jobs on localhost
+    pkill -u $USER --signal 9 -f 'alisp -qq'
+#    pkill -u $USER --signal 9 -f neo-fuzz	# this gets a ton, b/c of pathname :-)
+    pkill -u $USER --signal 9 -f z3
+    pkill -u $USER --signal 9 -f cfg_fuzzball
+    pkill -u $USER --signal 9 -f afl-fuzz
+    pkill -u $USER --signal 9 -f python
+    pkill -u $USER --signal 9 -f python3
+    pkill -u $USER --signal 9 -f shellphuzz
+    pkill -u $USER --signal 9 -f run-driller
+    pkill -u $USER --signal 9 -f rsync-code
+    pkill -u $USER --signal 9 -f xvfb-run     # for grassmarlin
+    pkill -u $USER --signal 9 -f rsync
+}
+# NOTE: DO NOT add `perl` to the list of things being killed.
+# It will cause unintended confusion to encompass your PRT failures.
+
+doit
+exit 0;

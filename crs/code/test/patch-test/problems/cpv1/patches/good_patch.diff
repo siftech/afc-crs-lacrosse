@@ -1,0 +1,20 @@
+diff --git a/src/http/ngx_http_request.c b/src/http/ngx_http_request.c
+index e6e6a34..e71b028 100644
+--- a/src/http/ngx_http_request.c
++++ b/src/http/ngx_http_request.c
+@@ -4104,15 +4104,6 @@ ngx_http_validate_from(ngx_str_t *from, ngx_pool_t *pool, ngx_uint_t alloc)
+                 state = sw_username;
+             } else if (ch == '.') {
+                 state = sw_username_dot;
+-                u -= 2;
+-                for ( ;; ) {
+-                    if (*u == '.') {
+-                        u++;
+-                        break;
+-                    }
+-
+-                    u--;
+-                }
+             } else {
+                 return NGX_DECLINED;
+             }

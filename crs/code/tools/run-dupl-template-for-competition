@@ -1,0 +1,67 @@
+#!/bin/bash
+# This scripts exists b/c getting prt to run the right pattern of stuff is hard.
+# This is what we want, but it doesnt work via prt directly, fwr
+#command      => [ "../tools/dupl-template", "<../crs-sandbox-items/template-for-compose", ">../../../compose.yaml" ],
+set -e
+
+thisdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && pwd )"
+
+#PROGNAME=$(basename "$0")
+#warn()  { echo "$PROGNAME: ${@}" 1>&2; }
+#die()   { warn "${@}"; exit 1; }
+#dbug()   { test -z $DEBUG || warn "${@}"; }
+
+$thisdir/dupl-template-competition $1 $2 $3 <$thisdir/../crs-sandbox-items/template-for-compose-competition > $thisdir/../../../compose.yaml
+
+$thisdir/dupl-overrides-competition $1 $2 $3 <$thisdir/../crs-sandbox-items/template-for-overrides-competition > $thisdir/../../../compose_local_overrides.yaml
+
+$thisdir/dupl-competition-kompose $1 $2 $3 <$thisdir/../crs-sandbox-items/template-for-competition-kompose > $thisdir/../../../kompose_competition_overrides.yaml
+$thisdir/dupl-development-kompose $1 $2 $3 <$thisdir/../crs-sandbox-items/template-for-development-kompose > $thisdir/../../../kompose_development_overrides.yaml
+
+cp -f $thisdir/../../../compose.yaml $thisdir/../crs-sandbox-items/competition/compose.yaml
+cp -f $thisdir/../../../compose_local_overrides.yaml $thisdir/../crs-sandbox-items/competition/compose_local_overrides.yaml
+cp -f $thisdir/../../../kompose_competition_overrides.yaml $thisdir/../crs-sandbox-items/competition/kompose_competition_overrides.yaml
+cp -f $thisdir/../../../kompose_development_overrides.yaml $thisdir/../crs-sandbox-items/competition/kompose_development_overrides.yaml
+
+# args: jobdir lispcode numoptimi numfbs localhostonly usegui allocationmethod
+JOBDIR="/tmp/$USER-make-competition-yamls"
+
+# make somewhere to store the job dir
+mkdir -p "${JOBDIR}"
+
+# setup lisp code for experiment.lisp
+printf -v LISPCODE "%s\n" \
+"(push :msg *debug-list*)" \
+"(push :amp *debug-list*)" \
+"(push :comm *debug-list*)" \
+"(push :target *debug-list*)" \
+"(setf *run-fake-bridge* t)" \
+"(setf *lacrosse* t)" \
+"(setf *fake-bridge-script*" \
+"  '(" \
+"     (1 ((:type :new-challenge-project)" \
+"         (:target (()))" \
+"        ))" \
+"))"
+
+# crs is the only optimi
+NUMOPTIMI=1
+
+# sum of nodes is total numfbs
+NUMFBS=$(($1 + $2 + $3))
+
+# pick an allocation method
+ALLOCATIONMETHOD="balanced"
+
+# this should generate a new experiment.lisp
+$thisdir/neofuzz-ccl-launcher.pl "${JOBDIR}" "${LISPCODE}" "${NUMOPTIMI}" "${NUMFBS}" 0 0 "${ALLOCATIONMETHOD}" "justdontdoit"
+
+# we don't need the job dir
+rm -r "${JOBDIR}"
+
+# try to clean up whatever neofuzz-ccl-launcher might decide to do...
+$thisdir/kill-stray-condor-processes
+$thisdir/kill-stray-local-processes
+$thisdir/release-my-clusters
+
+cp -f $thisdir/../experiment.lisp $thisdir/../crs-sandbox-items/competition/experiment.lisp

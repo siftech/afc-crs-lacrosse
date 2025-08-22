@@ -1,0 +1,64 @@
+#!/bin/bash
+# higher-assurance starting of a container using flock for concurrency protection
+
+set -e
+
+thisdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && pwd )"
+test -z "$USER" && export USER="${HOME##*/}"
+
+PROGNAME=$(basename "$0")
+warn()  { echo "$PROGNAME: ${@}" 1>&2; }
+die()   { warn "${@}"; exit 1; }
+dbug()   { test -z $DEBUG || warn "${@}"; }
+
+IMAGE=$1
+dbug image arg is $IMAGE
+shift
+
+export CONTAINER_PREFIX=${CONTAINER_PREFIX:-$USER}       # Set default docker tag if not already set
+dbug CONTAINER_PREFIX is $CONTAINER_PREFIX
+
+
+CONTAINER_NAME=${CONTAINER_PREFIX}-${IMAGE} # default
+# stash the original args except image, for later use
+allargs=$@
+dbug allargs are @allargs
+# scan args to see if someone used --name to change containername away from default
+while [[ $# -gt 0 ]]
+do
+    case "$1" in
+        --name)
+            CONTAINER_NAME="$2"
+            shift
+            shift
+            ;;
+	*)
+	    shift;
+	    ;;
+    esac
+done
+(
+   flock -n 9 || (sleep 2; exit 0)	# if we don't get the lock, someone else is doing it (I hope)
+	# if we don't get the lock, someone else is doing it (I hope)
+	#flock -n 9 || (sleep 2; $thisdir/wait-for-container ${CONTAINER_NAME};)
+	#flock -n 9 || $thisdir/wait-for-container ${CONTAINER_NAME}
+
+dbug check-for-running-image
+if $thisdir/check-for-running-image $IMAGE ; then exit 0; fi
+
+
+# Unfortunately, flock holds the lock even after the image is started b/c that
+# (usually, with -d) forks a background thread.
+# That locks out other agents' ensure-image calls until the thread ends.
+# flock --close doesn't work right here b/c it just grabs then releases the lock before
+# running its argument.  So it doesn't stop the race.
+
+dbug start-nf-image
+$thisdir/start-nf-image $IMAGE ${allargs:--d}
+
+# set -e above means that if above fails, end with failure here, dont hit the logwatcher and possibly hang
+
+dbug wait-for-container
+$thisdir/wait-for-container ${CONTAINER_NAME}
+
+) 9>/tmp/start-$IMAGE-$CONTAINER_PREFIX.lock 

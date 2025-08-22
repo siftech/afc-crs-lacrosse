@@ -1,0 +1,35 @@
+# ------------------------------------------------------------
+# COPYRIGHT START
+# Copyright (c) 2014, Smart Information Flow Technologies (SIFT).
+# COPYRIGHT END
+# ------------------------------------------------------------
+$test = { 
+  description => "Make sure we don't pay attention to newlines in comparo.",
+  keywords => [ qw / prt newline / ],  
+  agents => [ 
+      {
+        name         => "windows-rubric", 
+        description  => "This has a windows newline rubric.",
+        command   => ["bash", "-c" , 'echo "This is a newline test."' ],
+        comparo      => new PRT::LineComparo(),
+      },
+      {
+        name         => "windows-to-unix", 
+        description  => "This has a unix newline rubric.",
+        command   => ["bash", "-c" , 'echo "This is a newline test."' ],
+        comparo      => new PRT::LineComparo(),
+      },
+       {
+        name         => "unix-rubric", 
+        description  => "This has a unix newline rubric.",
+        command   => ["bash", "-c" , 'echo "This is a newline test."' ],
+        comparo      => new PRT::LineComparo(),
+      },
+      
+    ]
+  };
+
+# you could put other code here, but not sure what that would serve.
+
+# Always end with a reference to the test specification hash reference.
+$test;

@@ -1,0 +1,147 @@
+#!/bin/bash
+
+# From a cpv dir, call it like:
+# setup-lax-ref-patch-data [cp_path] [cpv]
+# E.g.
+# setup-lax-ref-patch-data ~/projects/lacrosse/sift-gitlab/challenge-004-nginx-cp cpv9
+# or
+# setup-lax-ref-patch-data ~/projects/lacrosse/sift-gitlab/challenge-004-nginx-cp
+# or
+# setup-lax-ref-patch-data
+
+# Collect data from lax-refs dirs and cp_path for patch generation and testing.
+# cp_path defaults to "$LACROSSE_HOME/../../challenge-004-nginx-cp"
+# cpv defaults to $(basename "$data_dir"); must be of form "cpv{NUM}", eg "cpv8".
+
+# Ensure the script exits on any errors
+set -e
+
+data_dir=$(pwd)
+
+SUPPLIED_CP_PATH=$1
+DEFAULT_CP_PATH="$LACROSSE_HOME/../../challenge-004-nginx-cp"
+CP_PATH=${SUPPLIED_CP_PATH:-${DEFAULT_CP_PATH}}
+echo "CP_PATH=${CP_PATH}"
+
+SUPPLIED_CPV=$2
+DEFAULT_CPV="$(basename "$data_dir")"
+CPV=${SUPPLIED_CPV:-${DEFAULT_CPV}}
+echo "CPV=${CPV}"
+
+echo "Performing lax-ref data setup in $data_dir"
+
+# Define the subdirectories
+scratch_dir="${data_dir}/scratch"
+
+echo "scratch_dir=$scratch_dir"
+
+# Define the subdirectory to search
+log_dir="${data_dir}/logs"
+
+# Ensure the log directory exists
+if [ ! -d "$log_dir" ]; then
+    echo "Log directory $log_dir does not exist. Exiting."
+    exit 1
+fi
+
+# Get the HEAD sanitizer output (POV proof)
+proof_dir=$(grep -hoPR 'Captured POV proof output dir \K.*' "$log_dir" | sed 's|^/crs_scratch|scratch|' | sort -u | head -n 1)
+echo "proof dir = $proof_dir"
+cat "${proof_dir}/stderr.log" > "${data_dir}/head_stderr.log"
+
+# Note: The bic can also be found in the experimetn directory at
+# scratch/2025-01-09-0738-337107213/crs/shared/vuln-cands/000005/bic
+# Search for the hash in the logs
+grep -r "Received BIC-FOUND from" "$log_dir" | while read -r line; do
+    # Extract the hash using awk
+    hash=$(echo "$line" | awk -F 'bic = ' '{print $2}' | awk '{print $1}')
+
+    # Alternatively, use sed
+    # hash=$(echo "$line" | sed -n 's/.*bic = \([a-zA-Z0-9]*\).*/\1/p')
+
+    # If no hash is found, skip this line
+    if [[ -z "$hash" ]]; then
+	echo "No hash found in line: $line"
+	continue
+    fi
+
+    echo "Found hash: $hash"
+
+    # Find the subdirectory containing git-commits
+    subdir=$(find scratch -type d -path "*/crs/shared/git-info/nginx/git-commits" -print | head -n 1)
+
+    # If the subdirectory doesn't exist, skip
+    if [[ -z "$subdir" ]]; then
+	echo "Subdirectory containing git-commits not found. Skipping hash $hash."
+	continue
+    fi
+
+    # Define the file path for the hash in the subdirectory
+    hash_file="${subdir}/${hash}"
+
+    # Check if the file with the hash exists
+    if [[ -f "$hash_file" ]]; then
+	echo "Found file for hash $hash at $hash_file"
+
+	# Copy its contents to bic_delta in the $data_dir
+	cat "$hash_file" > "${data_dir}/bic_delta"
+	echo "$hash" > "${data_dir}/bic"
+	echo "Copied contents of $hash_file to ${data_dir}/bic_delta"
+    else
+	echo "File named $hash not found in $subdir. Skipping."
+    fi
+
+    # Iterate over all log files in the directory
+    find "$log_dir" -type f | while read -r file; do
+	# Use grep with line numbers
+	grep -n "Bisecting" "$file" | while IFS=: read -r line_number line_text; do
+	    next_line=$((line_number + 1))
+	    second_line=$(sed -n "${next_line}p" "$file")
+	    if [[ "$second_line" == *"$hash"* ]]; then
+		# Search forward from the second line for the log pattern
+		log_filepath=$(sed -n "${next_line},\$p" "$file" | grep -oP 'errfile=\K(out/output/.*--run_pov/stderr\.log)' | head -n 1)
+		# Output the result
+	        if [[ -n "$log_filepath" ]]; then
+		    # Use find with -wholename to locate the full path
+		    full_logpath=$(find "$scratch_dir" -type f -wholename "*/$log_filepath" -print -quit)
+		    echo "Found in file: $file"
+		    echo "First line: $line_number: $line_text"
+		    echo "Second line: $((line_number + 1)): $second_line"
+		    echo "Log file path: $full_logpath"
+		    if [[ -f "$full_logpath" ]]; then
+			cat "$full_logpath" > "${data_dir}/bic_stderr.log"
+		    fi
+		fi
+	    fi
+	done
+    done
+
+    # Move the PoV blob to a convenient location
+    vuln_file=$(find $scratch_dir -wholename "$scratch_dir/*/crs/shared/vuln-cands/*/vuln_*" -print | head -n 1)
+
+    # Check if the variable is empty
+    if [[ -z "$vuln_file" ]]; then
+	echo "No PoV blob found."
+    else
+	echo "Found PoV $vuln_file"
+	# Specify the destination directory
+	destination="vuln.blob"
+
+	# Copy the file to the destination
+	cp "$vuln_file" "$destination"
+    fi
+    
+done
+
+# Retrieve the harness and put it in a local file.
+# Very dirty and hardcoded.  This is basically mclure-specific at this point.
+POV_POU_FILE="${CP_PATH}/.internal_only/${CPV}/pov_pou_info"
+# Read the first line of the file
+FIRST_POU_LINE=$(head -n 1 "$POV_POU_FILE")
+harness_name=${FIRST_POU_LINE%%,*}
+echo $harness_name > "${data_dir}/harness_name"
+
+# Extract the source path using yq
+harness_source_path=$(yq ".harnesses | to_entries | map(select(.value.name == \"$harness_name\")) | .[0].value.source" "$CP_PATH/project.yaml")
+echo "Source path for harness '$harness_name': $harness_source_path"
+cp "$CP_PATH/$harness_source_path" "${data_dir}/harness"

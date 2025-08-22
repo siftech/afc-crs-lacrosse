@@ -1,0 +1,36 @@
+#!/bin/bash
+
+# Ensure the script runs in the correct directory
+dir="${1:-.}"
+cd "$dir" || { echo "Cannot access directory $dir"; exit 1; }
+
+# Output file for mapping
+map_file="filename-map.txt"
+#echo "" > "$map_file"
+#touch $map_file	# dont make map file, it will get renamed!
+
+# Get list of files sorted by ls order
+files=(*)
+count=1
+
+for file in "${files[@]}"; do
+    # Skip if it's a directory
+    [[ -d "$file" ]] && continue
+    
+    # Extract the extension and base name
+    extension="${file##*.}"
+    basename="${file%.*}"
+    
+    # Determine the new filename
+    if [[ "$file" == *.* ]]; then
+        new_name="${count}.${extension}"
+    else
+        new_name="${count}"
+    fi
+    
+    # Rename the file and log the change
+    mv -n "$file" "$new_name"
+    echo "$new_name -> $file" >> "$map_file"
+    
+    ((count++))
+done

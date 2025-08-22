@@ -1,0 +1,68 @@
+#!/bin/bash
+
+PROGNAME=$(basename "$0")
+warn()  { echo "$PROGNAME: ${@}" 1>&2; }
+die()   { warn "${@}"; exit 1; }
+dbug()   { test -z $DEBUG || warn "${@}"; }
+
+dbug hostname is `hostname`
+
+# Force the configuration of the systemd runtime dir
+export XDG_RUNTIME_DIR=/run/user/$(id -u)
+dbug XDG_RUNTIME_DIR is $XDG_RUNTIME_DIR
+
+# Setup access to user's personal docker daemon
+# including loopback on 10.0.2.2
+# For now, we're gonna start it every time this is called...too much chance someone might def the var
+# but not have it running...
+#if [ -n "${DOCKER_HOST}" ]; then        # in docker rootless, it should already be started
+  #dbug DOCKER_HOST already defined, so expecting rootless server already running
+#else
+  systemctl --user set-environment DOCKERD_ROOTLESS_ROOTLESSKIT_ALLOW_HOST_LOOPBACK=true
+  # if we are running in a container already, docker-rootless-init won't be available
+  if command -v docker-rootless-init &> /dev/null
+  then
+      eval "$(docker-rootless-init)" # this is idempotent, in case daemon is already running
+  fi
+  dbug DOCKER_HOST is $DOCKER_HOST
+#fi
+
+# On scamm cluster sudo is reqd to run docker.
+# BUT, if running inside a container, sudo is *not* reqd.
+# IN_DOCKER_EXITCODE should be set correctly by the container's bashrc.
+if [ -z "$DOCKER_NEEDS_SUDO" ]; then
+        if [[ ( (`hostname -f` == scamm*.*.net ) ) && ("$IN_DOCKER_EXITCODE" != 0) ]]; then
+        export DOCKER_NEEDS_SUDO='sudo -E'
+        export DOCKER_BIN_PATH='/usr/bin/docker'
+    fi
+fi
+
+# On aixcc azure servers we use rootless docker, so no sudo required
+if [[ (`hostname -f` == *"pixel-phantom"* ) ]]; then
+    export DOCKER_NEEDS_SUDO=''
+    export DOCKER_BIN_PATH="/home/${USER}/bin/docker"
+fi
+
+# If DOCKER_BIN_PATH is set, use it, otherwise try to
+# guess the path of the real docker executable.
+if [ -z "$DOCKER_BIN_PATH" ]; then
+    if [ -x '/usr/bin/docker' ]; then
+        export DOCKER_BIN_PATH='/usr/bin/docker'
+    elif [ -x '/usr/local/bin/docker' ]; then
+        # MacOS installer puts it here.
+        export DOCKER_BIN_PATH='/usr/local/bin/docker'
+    fi
+fi
+
+# For rootless, docker path is at /usr/bin/docker
+if [[ ( "$DOCKER_BIN_PATH" = "/home/${USER}/bin/docker" ) && ( ! -z "$IN_DOCKER") ]]; then
+    dbug IN_DOCKER is $IN_DOCKER
+    export DOCKER_NEEDS_SUDO=''
+    export DOCKER_BIN_PATH='/usr/bin/docker'
+fi
+
+dbug DOCKER_NEEDS_SUDO is $DOCKER_NEEDS_SUDO
+dbug DOCKER_BIN_PATH is $DOCKER_BIN_PATH
+dbug args is "$0"
+$DOCKER_NEEDS_SUDO $DOCKER_BIN_PATH "$@"
+

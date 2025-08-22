@@ -1,0 +1,19 @@
+#!/bin/bash
+# print some git revision info
+
+date
+
+echo Full git hash:
+git rev-parse HEAD
+
+echo Short hash, date, and last commit msg:
+git log -1 --format="%h %cd %s" --date=short
+
+echo current branch:
+git branch --show-current
+
+echo current branch and commit info:
+git describe --always --dirty
+
+echo detailed current commit info:
+git show --oneline -s HEAD

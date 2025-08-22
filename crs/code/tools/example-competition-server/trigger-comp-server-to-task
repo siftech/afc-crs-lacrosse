@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+# trigger-comp-server-to-task <path-to-task-script (relative to test dir)>
+# task_script is a sequence of curl commands (and possibly sleeps) that
+# define the tasks.
+
+PROGNAME=$(basename "$0")
+warn()  { echo "$PROGNAME: ${@}" 1>&2; }
+die()   { warn "${@}"; exit 1; }
+dbug()   { test -z $DEBUG || warn "${@}"; }
+thisdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && /bin/pwd )"
+
+task_script=$1;
+
+export CIRCA_BASEPORT=${CIRCA_BASEPORT:-10000}
+dbug CIRCA_BASEPORT is $CIRCA_BASEPORT
+
+export COMP_API_PORT=${COMP_API_PORT:-$(( CIRCA_BASEPORT + 501 ))}
+#export COMP_API_PORT=1323
+
+if [ "${task_script}" == "NA" ]; then
+  dbug "task_script is $task_script"
+  warn "Task script detected as \"NA\" issuing integration testing."
+  curl -X 'POST' -u "11111111-1111-1111-1111-111111111111:secret" "http://localhost:${COMP_API_PORT}/v1/request/delta"
+  exit 0
+fi
+
+
+LOCAL_EX_COMP_SERVER_ENDPOINT="http://localhost:${COMP_API_PORT}/webhook/trigger_task"
+
+source $thisdir/../../test/${task_script}

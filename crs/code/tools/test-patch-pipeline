@@ -1,0 +1,29 @@
+#!/bin/bash
+
+# Check if the required arguments are provided
+if [ $# -lt 2 ]; then
+    echo "Usage: $0 <pipeline_name> <model_name>"
+    exit 1
+fi
+
+pipeline_name=$1
+model_name=$2
+patch_name="${pipeline_name}_${model_name}"
+
+echo "pipeline_name=$pipeline_name"
+echo "patch_name=$patch_name"
+
+# Configurable directory for storing patch results
+RESULTS_DIR="patch_results"
+
+# Ensure the results directory exists
+mkdir -p "$RESULTS_DIR"
+
+# Run the test script while capturing and displaying output
+PATCH_PIPELINE="$1"  # First argument is the patching pipeline name
+LOG_FILE="$RESULTS_DIR/${patch_name}.log"
+
+echo "LOG_FILE=$LOG_FILE"
+
+# Capture both stdout and stderr, while printing to terminal
+make-and-test-patch-on-cpvs $pipeline_name $model_name $patch_name  | tee "$LOG_FILE"

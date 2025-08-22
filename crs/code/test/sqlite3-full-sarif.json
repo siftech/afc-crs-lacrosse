@@ -1,0 +1,92 @@
+{
+  "runs": [
+    {
+      "artifacts": [
+        {
+          "location": {
+            "index": 0,
+            "uri": "src/shell.c.in"
+          }
+        }
+      ],
+      "automationDetails": {
+        "id": "/"
+      },
+      "conversion": {
+        "tool": {
+          "driver": {
+            "name": "GitHub Code Scanning"
+          }
+        }
+      },
+      "results": [
+        {
+          "correlationGuid": "ef1d4a95-2fbb-4bd3-9482-c1f57b87a21a",
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "index": 0,
+                  "uri": "src/shell.c.in"
+                },
+                "region": {
+                  "endColumn": 1,
+                  "endLine": 3121,
+                  "startColumn": 1,
+                  "startLine": 3089
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "The problem stems from the `sqlite3_error_offset()`` routine returning a value that is out-of-range for its input. Then, the CLI code that uses ``sqlite3_error_offset()`` fails to properly deal with the out-of-range return value. This leads to crashes for certain malformed inputs that cause out of bounds reads on the heap.\n"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "061c257ab5bb53fb:6"
+          },
+          "properties": {
+            "github/alertNumber": 1,
+            "github/alertUrl": "https://api.github.com/repos/aixcc-afc/round-exhibition3-sqlite/code-scanning/alerts/1"
+          },
+          "rule": {
+            "id": "CWE-125",
+            "index": 0
+          },
+          "ruleId": "CWE-125"
+        }
+      ],
+      "tool": {
+        "driver": {
+          "name": "CodeScan++",
+          "rules": [
+            {
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "fullDescription": {
+                "text": "The product reads data past the end, or before the beginning, of the intended buffer."
+              },
+              "helpUri": "https://cwe.mitre.org/",
+              "id": "CWE-125",
+              "properties": {},
+              "shortDescription": {
+                "text": "Out-of-bounds Read"
+              }
+            }
+          ],
+          "version": "1.0.0"
+        }
+      },
+      "versionControlProvenance": [
+        {
+          "branch": "refs/heads/challenges/sq-full-01",
+          "repositoryUri": "https://github.com/aixcc-afc/round-exhibition3-sqlite",
+          "revisionId": "429fc6005e9b37604329ae7ddc10d4ecdf888688"
+        }
+      ]
+    }
+  ],
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0"
+}

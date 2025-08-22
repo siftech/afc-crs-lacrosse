@@ -1,0 +1,58 @@
+# Hey EMACS, this should be in -*- perl -*- mode
+#
+# Simple abort test specification
+$test = { 
+  # Name: single-word (no spaces) name of the test
+  # Default: basename of filename sans .prt file extension
+  # name => "abort",
+
+  # Description: arbitrary text for human consumption only
+  # Default: "<no-description>"
+  description => "Simple PRT-abort regression test",
+
+  # Keywords: arbitrary list of key words by which can be used to
+  #    filter the tests when running or showing results, etc...
+  # Default: [ ] - empty list
+  keywords => [ qw / abort prt / ],  
+
+  # DefaultIgnore: if true, will skip this test unless either:
+  #   a) the filename or test-name is explicitly listed on the command line
+  #   b) the `--all` argument is given to prt
+  # Default: undef/0/false
+  #defaultIgnore => 1,
+
+  # Test-Harness Includes: array ref of *.inc files to include in ALL
+  #    agents, presumably needed as part of the test framework.
+  # Default: [ ] - empty list
+  # includes => [ "test-harness.inc" ],  
+
+  # Inter-Agent Delay: delay (in seconds) between each agent startup
+  # Default: 0 (seconds)
+  agent_delay => 1,
+
+  # Agents: Array-ref of agents, each of which MUST specify: 
+  #  - name: PRS name of the agent, without spaces
+  #  - inc:  array ref of include files
+  agents => [ 
+      { # First abort agent.
+        name         => "sleeper", 
+        description  => "sleep 'forever'",
+        executable   => "sleep",
+        add_args   => [ "99999999" ],
+	wait_until_complete => 1,
+      },
+      { # Second agent - dies early, aborting the entire test
+        name         => "dies-early", 
+        description  => "run for a while, then die with non-zero exit code",
+        executable   => "bash",
+        add_args     => [ "-c", "sleep 5; exit 1" ],
+	abort_test_on_failure => 1,
+	wait_until_complete => 1,
+      }
+    ]
+  };
+
+# you could put other code here, but not sure what that would serve.
+
+# Always end with a reference to the test specification hash reference.
+$test;

@@ -1,0 +1,14 @@
+@hosts = (
+           'aixcc',
+         );
+%cores = (
+           'aixcc' => 48,
+         );
+%used = (
+          'aixcc' => 0,
+        );
+%cluster_hosts = (
+                 );
+%cluster_owners = (
+                );
+$nextcluster = '1';

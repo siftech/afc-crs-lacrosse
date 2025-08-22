@@ -1,0 +1,50 @@
+commit 9c5e32dcd9779c4cfe48c5377d0af8adc52a2be9
+Author: Miles Dyson <mdyson@skynet.com>
+Date:   Mon Aug 4 12:00:01 1997 +0000
+
+    Commit 1
+
+diff --git a/src/http/ngx_http_script.c b/src/http/ngx_http_script.c
+index f2f5a1c..6abb1ed 100644
+--- a/src/http/ngx_http_script.c
++++ b/src/http/ngx_http_script.c
+@@ -1228,6 +1228,13 @@ ngx_http_script_regex_end_code(ngx_http_script_engine_t *e)
+     } else {
+         e->buf.len = e->pos - e->buf.data;
+ 
++        if (e->buf.len > 2000) {
++            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
++                          "the rewritten URI is too long");
++            e->ip = ngx_http_script_exit;
++            e->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
++        }
++
+         if (!code->add_args) {
+             r->args.len = 0;
+         }
+diff --git a/src/os/win32/ngx_errno.c b/src/os/win32/ngx_errno.c
+index b732bf4..966d3de 100644
+--- a/src/os/win32/ngx_errno.c
++++ b/src/os/win32/ngx_errno.c
+@@ -22,7 +22,7 @@ ngx_strerror(ngx_err_t err, u_char *errstr, size_t size)
+     len = FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM,
+                         NULL, err, lang, (char *) errstr, size, NULL);
+ 
+-    if (len == 0 && lang && GetLastError() == ERROR_RESOURCE_LANG_NOT_FOUND) {
++    if (len == 0 && lang) {
+ 
+         /*
+          * Try to use English messages first and fallback to a language,
+diff --git a/src/os/win32/ngx_win32_init.c b/src/os/win32/ngx_win32_init.c
+index 70bee8e..3249fb2 100644
+--- a/src/os/win32/ngx_win32_init.c
++++ b/src/os/win32/ngx_win32_init.c
+@@ -240,7 +240,7 @@ ngx_os_init(ngx_log_t *log)
+         goto nopoll;
+     }
+ 
+-    WSAPoll = (ngx_wsapoll_pt) GetProcAddress(hmod, "WSAPoll");
++    WSAPoll = (ngx_wsapoll_pt) (void *) GetProcAddress(hmod, "WSAPoll");
+     if (WSAPoll == NULL) {
+         ngx_log_error(NGX_LOG_NOTICE, log, ngx_errno,
+                       "GetProcAddress(\"WSAPoll\") failed");

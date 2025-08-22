@@ -1,0 +1,267 @@
+commit d030af5eb4c64470c8fd5a87a8f6aae547580aa3
+Author: Miles Dyson <mdyson@skynet.com>
+Date:   Mon Aug 4 12:02:45 1997 +0000
+
+    Commit 165
+
+diff --git a/misc/GNUmakefile b/misc/GNUmakefile
+index dfb5b9b..d4a7ae5 100644
+--- a/misc/GNUmakefile
++++ b/misc/GNUmakefile
+@@ -6,7 +6,7 @@ TEMP =		tmp
+ 
+ CC =		cl
+ OBJS =		objs.msvc8
+-OPENSSL =	openssl-1.1.1p
++OPENSSL =	openssl-1.1.1q
+ ZLIB =		zlib-1.2.12
+ PCRE =		pcre2-10.39
+ 
+diff --git a/src/http/modules/ngx_http_range_filter_module.c b/src/http/modules/ngx_http_range_filter_module.c
+index 5edb1de..0a301b3 100644
+--- a/src/http/modules/ngx_http_range_filter_module.c
++++ b/src/http/modules/ngx_http_range_filter_module.c
+@@ -444,6 +444,10 @@ ngx_http_range_singlepart_header(ngx_http_request_t *r,
+         return NGX_ERROR;
+     }
+ 
++    if (r->headers_out.content_range) {
++        r->headers_out.content_range->hash = 0;
++    }
++
+     r->headers_out.content_range = content_range;
+ 
+     content_range->hash = 1;
+@@ -601,6 +605,11 @@ ngx_http_range_multipart_header(ngx_http_request_t *r,
+         r->headers_out.content_length = NULL;
+     }
+ 
++    if (r->headers_out.content_range) {
++        r->headers_out.content_range->hash = 0;
++        r->headers_out.content_range = NULL;
++    }
++
+     return ngx_http_next_header_filter(r);
+ }
+ 
+@@ -617,6 +626,10 @@ ngx_http_range_not_satisfiable(ngx_http_request_t *r)
+         return NGX_ERROR;
+     }
+ 
++    if (r->headers_out.content_range) {
++        r->headers_out.content_range->hash = 0;
++    }
++
+     r->headers_out.content_range = content_range;
+ 
+     content_range->hash = 1;
+diff --git a/src/http/ngx_http_request.c b/src/http/ngx_http_request.c
+index b1c1094..4d01701 100644
+--- a/src/http/ngx_http_request.c
++++ b/src/http/ngx_http_request.c
+@@ -28,6 +28,8 @@ static ngx_int_t ngx_http_process_unique_header_line(ngx_http_request_t *r,
+     ngx_table_elt_t *h, ngx_uint_t offset);
+ static ngx_int_t ngx_http_process_host(ngx_http_request_t *r,
+     ngx_table_elt_t *h, ngx_uint_t offset);
++static ngx_int_t ngx_http_process_from(ngx_http_request_t *r,
++    ngx_table_elt_t *h, ngx_uint_t offset);
+ static ngx_int_t ngx_http_process_prefer(ngx_http_request_t *r,
+     ngx_table_elt_t *h, ngx_uint_t offset);
+ static ngx_int_t ngx_http_process_connection(ngx_http_request_t *r,
+@@ -37,6 +39,8 @@ static ngx_int_t ngx_http_process_user_agent(ngx_http_request_t *r,
+ 
+ static ngx_int_t ngx_http_validate_host(ngx_str_t *host, ngx_pool_t *pool,
+     ngx_uint_t alloc);
++static ngx_int_t ngx_http_validate_from(ngx_str_t *from, ngx_pool_t *pool,
++    ngx_uint_t alloc);
+ static ngx_int_t ngx_http_set_virtual_server(ngx_http_request_t *r,
+     ngx_str_t *host);
+ static ngx_int_t ngx_http_find_virtual_server(ngx_connection_t *c,
+@@ -149,6 +153,10 @@ ngx_http_header_t  ngx_http_headers_in[] = {
+                  offsetof(ngx_http_headers_in_t, expect),
+                  ngx_http_process_unique_header_line },
+ 
++    { ngx_string("From"),
++                 offsetof(ngx_http_headers_in_t, from),
++                 ngx_http_process_from },
++
+     { ngx_string("Upgrade"),
+                  offsetof(ngx_http_headers_in_t, upgrade),
+                  ngx_http_process_header_line },
+@@ -4028,6 +4036,144 @@ ngx_http_process_prefer(ngx_http_request_t *r, ngx_table_elt_t *h,
+ }
+ 
+ 
++static ngx_int_t
++ngx_http_validate_from(ngx_str_t *from, ngx_pool_t *pool, ngx_uint_t alloc)
++{
++    u_char  *f, *u, ch;
++    size_t   i;
++
++    enum {
++        sw_begin = 0,
++        sw_username,
++        sw_username_dot,
++        sw_domain,
++        sw_tld
++    } state;
++
++    f = from->data;
++
++    state = sw_begin;
++
++    if (alloc) {
++        u = ngx_palloc(pool, from->len);
++
++        if (u == NULL) {
++            return NGX_ERROR;
++        }
++    } else {
++        u = from->data;
++    }
++
++    for (i = 0; i < from->len; i++) {
++        ch = f[i];
++
++        switch (state) {
++
++        case sw_begin:
++            if (isalnum(ch) || ch == '-' || ch == '_') {
++                state = sw_username;
++            } else if (ch == '.') {
++                state = sw_username_dot;
++            } else {
++                return NGX_DECLINED;
++            }
++            *u++ = ch;
++            break;
++
++        case sw_username_dot:
++            if (isalnum(ch) || ch == '-' || ch == '_') {
++                *u++ = ch;
++                state = sw_username;
++            } else if (ch == '.') {
++                state = sw_username_dot;
++                u -= 2;
++                for ( ;; ) {
++                    if (*u == '.') {
++                        u++;
++                        break;
++                    }
++
++                    u--;
++                }
++            } else {
++                return NGX_DECLINED;
++            }
++            break;
++
++        case sw_username:
++            if (ch == '@') {
++                state = sw_domain;
++            } else if (ch == '.') {
++                state = sw_username_dot;
++            } else if (!isalnum(ch) && ch != '-' && ch != '_' && ch != '+') {
++                return NGX_DECLINED;
++            }
++            *u++ = ch;
++            break;
++
++        case sw_domain:
++            if (ch == '.') {
++                state = sw_tld;
++            } else if (!isalnum(ch) && ch != '-') {
++                return NGX_DECLINED;
++            }
++            *u++ = ch;
++            break;
++
++        case sw_tld:
++            if (!isalpha(ch)) {
++                return NGX_DECLINED;
++            }
++            *u++ = ch;
++            break;
++
++        default:
++
++            return NGX_DECLINED;
++        }
++    }
++
++    if (state == sw_tld) {
++        *u = '\0';
++
++        if (alloc) {
++            from->data = u;
++        }
++        return NGX_OK;
++    } else {
++        return NGX_DECLINED;
++    }
++}
++
++static ngx_int_t
++ngx_http_process_from(ngx_http_request_t *r, ngx_table_elt_t *h,
++    ngx_uint_t offset)
++{
++    ngx_str_t  from;
++
++    if (r->headers_in.from) {
++        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
++                      "client sent duplicate from header: \"%V: %V\", "
++                      "previous value: \"%V: %V\"",
++                      &h->key, &h->value, &r->headers_in.from->key,
++                      &r->headers_in.from->value);
++        ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
++        return NGX_ERROR;
++    }
++
++    r->headers_in.from = h;
++
++    from = h->value;
++
++    if (ngx_http_validate_from(&from, r->pool, 1) != NGX_OK) {
++        ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
++        return NGX_ERROR;
++    }
++
++    return NGX_OK;
++}
++
++
+ static ngx_int_t
+ ngx_http_trace_handler(ngx_http_request_t *r)
+ {
+diff --git a/src/http/ngx_http_request.h b/src/http/ngx_http_request.h
+index cb69155..32a9169 100644
+--- a/src/http/ngx_http_request.h
++++ b/src/http/ngx_http_request.h
+@@ -192,6 +192,7 @@ typedef struct {
+     ngx_table_elt_t                  *user_agent;
+     ngx_table_elt_t                  *prefer;
+     ngx_table_elt_t                  *referer;
++    ngx_table_elt_t                  *from;
+     ngx_table_elt_t                  *content_length;
+     ngx_table_elt_t                  *content_range;
+     ngx_table_elt_t                  *content_type;
+diff --git a/src/os/unix/ngx_readv_chain.c b/src/os/unix/ngx_readv_chain.c
+index 370a401..48fa0a7 100644
+--- a/src/os/unix/ngx_readv_chain.c
++++ b/src/os/unix/ngx_readv_chain.c
+@@ -46,6 +46,7 @@ ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain, off_t limit)
+                 return 0;
+ 
+             } else {
++                rev->ready = 0;
+                 return NGX_AGAIN;
+             }
+         }
+@@ -63,6 +64,7 @@ ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain, off_t limit)
+                        rev->pending_eof, rev->available);
+ 
+         if (rev->available == 0 && !rev->pending_eof) {
++            rev->ready = 0;
+             return NGX_AGAIN;
+         }
+     }

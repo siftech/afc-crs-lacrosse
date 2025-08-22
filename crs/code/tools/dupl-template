@@ -1,0 +1,69 @@
+#!/usr/bin/perl
+# dupl-template		D. Musliner	$Revision: 1.2 $
+# duplicate a template, replacing @ with the duplication count, where duplication counts are bounded by
+# DUPL <howmany> and 
+# DUPLEND
+# - based on CIRCA's duplprims, which replaced #s, but this works on yaml where that's comment char.
+
+## -------------------------------------------------------------------
+
+$/="##DUPLEND\n";	# set record separator
+$dupl=1;
+$atsift=shift();
+$numfbs=shift();
+$sbcl=shift();                  # 1 if SBCL; 0 if CCL
+
+print STDERR "Starting dupl-template\n";
+
+while(<>)
+{
+  #warn "------------------------record is $_\n";
+  if ($atsift){ s/AT_SIFT=0/AT_SIFT=1/;}
+  # Unconditional -- do this even if the number of FBs is zero
+  s/XXXNUMFBSXXX/$numfbs/;
+  s/XXXIMAGENAMEXXX/neo-fuzz-ccl/g;
+
+  if ($sbcl) {
+    s/XXXRUNCOMMANDXXX/lax-run-sbcl-agent/g;
+    s/XXXLISPXXX/sbcl/;
+    } else {
+      s/XXXRUNCOMMANDXXX/lax-run-ccl-agent/g;
+      s/XXXLISPXXX/ccl/;
+  }
+  if (/^##DUPL\s*:\s*(\d+)/) {
+    print STDERR "Found FUZZBOMB block\n";
+    if ( $numfbs > 0 )
+    {
+      warn "setting dupl to $1\n";
+      $dupl = $1;
+      s/\/\*\s*DUPL:\s*\d+\s*\*\///;
+      $orig = $_;
+      
+      for ($i=0;$i<$dupl;$i++)
+      {
+        $offset=$i+12345;
+        warn "creating fb$i with port $offset\n";
+        s/XXXFBBASEPORTXXX/$offset/g;
+        s/\@/$i/g;
+        # Set up to expose slynk servers
+        {
+          my $hostport = 4005 + $i + 1;
+          warn "opening port $hostport to connect to slynk server on fb$i\n";
+          s/XXXFBSLYNKPORTXXX/$hostport/g;
+        }
+        print;
+        $_=$orig;
+
+      }
+      $dupl=1;
+    }
+    else {
+    print STDERR "Building no fuzzbombs.\n"}
+  }
+  else { print; }
+#  if (/^\}/)
+#    {
+#	$dupl=1;
+#	print;
+#    }
+}

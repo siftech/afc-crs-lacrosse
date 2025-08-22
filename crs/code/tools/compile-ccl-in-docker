@@ -1,0 +1,12 @@
+#!/bin/bash
+
+thisdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && /bin/pwd )"
+
+export CONTAINER_PREFIX=${CONTAINER_PREFIX:-$USER}       # Set default container prefix if not already set 
+#dbug CONTAINER_PREFIX is $CONTAINER_PREFIX
+
+  $thisdir/start-neo-fuzz-ccl -d
+  $thisdir/wait-for-container ${CONTAINER_PREFIX}-neo-fuzz-ccl
+  echo "cd \${DOCKER_LACROSSE_HOME}/code/lisp; ccl -b -Q -n -l load.lisp $* -e '(cl-user::quit)'"
+  $thisdir/docker exec ${CONTAINER_PREFIX}-neo-fuzz-ccl /realuser.sh /bin/bash -c "cd \${DOCKER_LACROSSE_HOME}/code/lisp; ccl -b -Q -n -l load.lisp $* -e '(musliner::dbug :top \"printenv: ~s\" (uiop:run-program \"printenv\" :output :string))' -e '(cl-user::quit)'"
+

@@ -1,0 +1,51 @@
+#!/usr/bin/env perl
+# ------------------------------------------------------------
+# COPYRIGHT START
+# Copyright (c) 2014, Smart Information Flow Technologies (SIFT).
+# COPYRIGHT END
+# ------------------------------------------------------------
+
+use strict;
+use Carp;
+
+my $directory = shift;
+my $fails=0;
+
+my @templateFiles = glob "$directory/*.tp";
+foreach my $templateFile (@templateFiles) {
+  my ($tp_dev,$tp_ino,$tp_mode,$tp_nlink,$tp_uid,$tp_gid,$tp_rdev,$tp_size,
+      $tp_atime,$tp_mtime,$tp_ctime,$tp_blksize,$tp_blocks)
+      = stat($templateFile);
+  print "Checking $templateFile (updated $tp_mtime)\n";
+
+  my $prtPattern = "$templateFile";
+  $prtPattern =~ s/\.tp$/-*.prt/;
+  my $patternClearer = "^$templateFile";
+  $patternClearer =~ s|[^/]+$||;
+  my $prtPatternPrinter = "$prtPattern";
+  $prtPatternPrinter =~ s|$patternClearer||;
+
+  print " - PRT files to match $prtPatternPrinter\n";
+  my @prtFiles = glob $prtPattern;
+
+  if ($#prtFiles < 0) {
+    ++$fails;
+    print "   NO EXPANSIONS\n";
+  }
+
+  foreach my $prtFile (@prtFiles) {
+    my ($prt_dev,$prt_ino,$prt_mode,$prt_nlink,$prt_uid,$prt_gid,
+        $prt_rdev,$prt_size,
+        $prt_atime,$prt_mtime,$prt_ctime,$prt_blksize,$prt_blocks)
+        = stat($prtFile);
+    my $printable = "$prtFile";
+    $printable =~ s|$patternClearer||;
+    print " - Comparing to $printable (updated $prt_mtime)\n";
+    if ($prt_mtime < $tp_mtime) {
+      print "   NOT FRESH\n";
+      ++$fails;
+    }
+  }
+}
+
+print "\n$fails not fresh\n";

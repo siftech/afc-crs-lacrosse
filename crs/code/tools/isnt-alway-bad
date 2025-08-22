@@ -1,0 +1,32 @@
+#!/bin/bash
+
+# Check if an executable was provided
+if [ "$#" -ne 1 ]; then
+    echo "Usage: $0 executable"
+    exit 1
+fi
+
+exe="$1"
+
+#Assume working in the local directory unless otherwise stated
+WORKING_PATH=.
+
+#If an argument has been given for the path, then use that instead of local .
+#if [ $# -gt 1 ]; then
+#    WORKING_PATH=$2
+#fi
+
+# Run the executable up to N times; if it ever succeeds, it isnt-always-bad
+for i in {1..4}; do
+    if timeout 1s ${WORKING_PATH}/${exe} >/dev/null 2>&1; then
+        echo "${exe}"
+        exit 0
+	# Special case: timeout means it is also not reliably triggering san, which is what we really want/mean
+    else if [ $? -eq 124 ]; then
+        	echo "${exe}"
+         	exit 0
+	 fi
+    fi
+       
+done
+exit 1

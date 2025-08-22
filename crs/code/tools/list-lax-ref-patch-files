@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# Hardcoded path to another directory
+DEST_DIR="$HOME/projects/lacrosse/sift-gitlab/challenge-004-nginx-source"
+
+# Find all 'patch-input.json' files in the current directory and its subdirectories
+find . -type f -name "patch-input.json" | while read -r file; do
+  # Extract the value for the "file" key in the JSON object using jq
+  file_key_value=$(jq -r '.file' "$file" 2>/dev/null)
+
+  # Check if the "file" key exists and is not null
+  if [[ "$file_key_value" != "null" && -n "$file_key_value" ]]; then
+      # Find the last occurrence of "nginx" and clip the path after it
+      clipped_path=$(echo "$file_key_value" | sed -E 's|.*nginx/||')
+      
+      # Construct the new path by appending the clipped path to the hardcoded directory
+      new_path="$DEST_DIR/$clipped_path"
+
+      # Print the clipped path and the new path
+      echo "Clipped Path: $clipped_path"
+      echo "New Path: $new_path"
+  else
+      echo "No 'file' key found in $file"
+  fi
+done
+		

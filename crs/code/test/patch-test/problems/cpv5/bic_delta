@@ -1,0 +1,361 @@
+commit b101d59b3dda654dee1deabc34816e2ca7c96d38
+Author: Miles Dyson <mdyson@skynet.com>
+Date:   Mon Aug 4 12:00:45 1997 +0000
+
+    Commit 45
+
+diff --git a/src/core/ngx_connection.h b/src/core/ngx_connection.h
+index ad6556d..6e28303 100644
+--- a/src/core/ngx_connection.h
++++ b/src/core/ngx_connection.h
+@@ -128,6 +128,8 @@ struct ngx_connection_s {
+ 
+     ngx_socket_t        fd;
+ 
++    size_t              request_counter; /* total requests to the server */
++
+     ngx_recv_pt         recv;
+     ngx_send_pt         send;
+     ngx_recv_chain_pt   recv_chain;
+diff --git a/src/core/ngx_core.h b/src/core/ngx_core.h
+index b825961..01f7060 100644
+--- a/src/core/ngx_core.h
++++ b/src/core/ngx_core.h
+@@ -14,6 +14,7 @@
+ 
+ typedef struct ngx_module_s          ngx_module_t;
+ typedef struct ngx_conf_s            ngx_conf_t;
++typedef struct ngx_con_his_s         ngx_con_his_t;
+ typedef struct ngx_cycle_s           ngx_cycle_t;
+ typedef struct ngx_black_list_s      ngx_black_list_t;
+ typedef struct ngx_pool_s            ngx_pool_t;
+diff --git a/src/core/ngx_cycle.c b/src/core/ngx_cycle.c
+index fdb5464..d8497d6 100644
+--- a/src/core/ngx_cycle.c
++++ b/src/core/ngx_cycle.c
+@@ -35,6 +35,42 @@ static ngx_connection_t  dumb;
+ /* STUB */
+ 
+ 
++void
++ngx_insert_con_his(ngx_con_his_t **con_his_list, ngx_con_his_t *new_con)
++{
++    ngx_con_his_t *target = *con_his_list;
++
++    if (target) {
++        while (target->next) {
++            target = target->next;
++        }
++        target->next = new_con;
++    } else {
++        *con_his_list = new_con;
++    }
++
++    return;
++}
++
++
++ngx_con_his_t *
++ngx_get_con_his(ngx_con_his_t *con_his_list, size_t number)
++{
++    ngx_con_his_t *target = con_his_list;
++    size_t counter = 0;
++
++    if (!target || number == 1 || !number) {
++        return target;
++    }
++
++    for ( ; counter <= number; counter++) {
++        target = target->next;
++    }
++
++    return target;
++}
++
++
+ ngx_cycle_t *
+ ngx_init_cycle(ngx_cycle_t *old_cycle)
+ {
+@@ -73,6 +109,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
+     pool->log = log;
+ 
+     cycle = ngx_pcalloc(pool, sizeof(ngx_cycle_t));
++    ngx_memzero(cycle, sizeof(ngx_cycle_t));
+     if (cycle == NULL) {
+         ngx_destroy_pool(pool);
+         return NULL;
+diff --git a/src/core/ngx_cycle.h b/src/core/ngx_cycle.h
+index e67b1d0..dec41ac 100644
+--- a/src/core/ngx_cycle.h
++++ b/src/core/ngx_cycle.h
+@@ -43,6 +43,12 @@ typedef struct ngx_black_list_s {
+ }ngx_black_list_t;
+ 
+ 
++struct ngx_con_his_s {
++    ngx_str_t      addr_text;
++    ngx_con_his_t *next;
++};
++
++
+ struct ngx_cycle_s {
+     void                  ****conf_ctx;
+     ngx_pool_t               *pool;
+@@ -83,6 +89,9 @@ struct ngx_cycle_s {
+ 
+     ngx_cycle_t              *old_cycle;
+ 
++    size_t                    connection_counter; /* total connections to the server */
++    ngx_con_his_t            *connection_history; /* list of all connections made to the server */
++
+     ngx_str_t                 conf_file;
+     ngx_str_t                 conf_param;
+     ngx_str_t                 conf_prefix;
+@@ -162,6 +171,8 @@ ngx_cpuset_t *ngx_get_cpu_affinity(ngx_uint_t n);
+ ngx_shm_zone_t *ngx_shared_memory_add(ngx_conf_t *cf, ngx_str_t *name,
+     size_t size, void *tag);
+ void ngx_set_shutdown_timer(ngx_cycle_t *cycle);
++void ngx_insert_con_his(ngx_con_his_t **con_his_list, ngx_con_his_t *new_con);
++ngx_con_his_t *ngx_get_con_his(ngx_con_his_t *con_his_list, size_t number);
+ void ngx_black_list_insert(ngx_black_list_t **black_list,
+     u_char insert_ip[], size_t size, ngx_log_t *log);
+ ngx_int_t ngx_black_list_remove(ngx_black_list_t **black_list, u_char remove_ip[]);
+diff --git a/src/core/ngx_resolver.c b/src/core/ngx_resolver.c
+index e51712c..5b716ee 100644
+--- a/src/core/ngx_resolver.c
++++ b/src/core/ngx_resolver.c
+@@ -1918,7 +1918,7 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t n,
+ 
+     if (rn == NULL) {
+         ngx_log_error(r->log_level, r->log, 0,
+-                      "unexpected response for %V", &name);
++                      "unexpected DNS response for %V", &name);
+         ngx_resolver_free(r, name.data);
+         goto failed;
+     }
+@@ -1930,7 +1930,7 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t n,
+ 
+         if (rn->query6 == NULL || rn->naddrs6 != (u_short) -1) {
+             ngx_log_error(r->log_level, r->log, 0,
+-                          "unexpected response for %V", &name);
++                          "unexpected DNS response for %V", &name);
+             ngx_resolver_free(r, name.data);
+             goto failed;
+         }
+@@ -1949,7 +1949,7 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t n,
+ 
+         if (rn->query == NULL || rn->naddrs != (u_short) -1) {
+             ngx_log_error(r->log_level, r->log, 0,
+-                          "unexpected response for %V", &name);
++                          "unexpected DNS response for %V", &name);
+             ngx_resolver_free(r, name.data);
+             goto failed;
+         }
+@@ -1964,7 +1964,7 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t n,
+ 
+     if (ident != qident) {
+         ngx_log_error(r->log_level, r->log, 0,
+-                      "wrong ident %ui response for %V, expect %ui",
++                      "wrong ident %ui in DNS response for %V, expect %ui",
+                       ident, &name, qident);
+         ngx_resolver_free(r, name.data);
+         goto failed;
+@@ -2149,7 +2149,7 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t n,
+ 
+         if (class != 1) {
+             ngx_log_error(r->log_level, r->log, 0,
+-                          "unexpected RR class %ui", class);
++                          "unexpected RR class %ui in DNS response", class);
+             goto failed;
+         }
+ 
+@@ -2218,7 +2218,7 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t n,
+         default:
+ 
+             ngx_log_error(r->log_level, r->log, 0,
+-                          "unexpected RR type %ui", type);
++                          "unexpected RR type %ui in DNS response", type);
+         }
+ 
+         i += len;
+@@ -2567,7 +2567,7 @@ ngx_resolver_process_srv(ngx_resolver_t *r, u_char *buf, size_t n,
+ 
+     if (rn == NULL || rn->query == NULL) {
+         ngx_log_error(r->log_level, r->log, 0,
+-                      "unexpected response for %V", &name);
++                      "unexpected DNS response for %V", &name);
+         ngx_resolver_free(r, name.data);
+         goto failed;
+     }
+@@ -2581,7 +2581,7 @@ ngx_resolver_process_srv(ngx_resolver_t *r, u_char *buf, size_t n,
+ 
+     if (ident != qident) {
+         ngx_log_error(r->log_level, r->log, 0,
+-                      "wrong ident %ui response for %V, expect %ui",
++                      "wrong ident %ui in DNS response for %V, expect %ui",
+                       ident, &name, qident);
+         ngx_resolver_free(r, name.data);
+         goto failed;
+@@ -2691,7 +2691,7 @@ ngx_resolver_process_srv(ngx_resolver_t *r, u_char *buf, size_t n,
+ 
+         if (class != 1) {
+             ngx_log_error(r->log_level, r->log, 0,
+-                          "unexpected RR class %ui", class);
++                          "unexpected RR class %ui in DNS response", class);
+             goto failed;
+         }
+ 
+@@ -2734,7 +2734,7 @@ ngx_resolver_process_srv(ngx_resolver_t *r, u_char *buf, size_t n,
+         default:
+ 
+             ngx_log_error(r->log_level, r->log, 0,
+-                          "unexpected RR type %ui", type);
++                          "unexpected RR type %ui in DNS response", type);
+         }
+ 
+         i += len;
+@@ -3165,7 +3165,7 @@ valid:
+ 
+     if (rn == NULL || rn->query == NULL) {
+         ngx_log_error(r->log_level, r->log, 0,
+-                      "unexpected response for %V", &name);
++                      "unexpected DNS response for %V", &name);
+         ngx_resolver_free(r, name.data);
+         goto failed;
+     }
+@@ -3174,7 +3174,7 @@ valid:
+ 
+     if (ident != qident) {
+         ngx_log_error(r->log_level, r->log, 0,
+-                      "wrong ident %ui response for %V, expect %ui",
++                      "wrong ident %ui in DNS response for %V, expect %ui",
+                       ident, &name, qident);
+         ngx_resolver_free(r, name.data);
+         goto failed;
+@@ -3256,7 +3256,7 @@ valid:
+ 
+         if (class != 1) {
+             ngx_log_error(r->log_level, r->log, 0,
+-                          "unexpected RR class %ui", class);
++                          "unexpected RR class %ui in DNS response", class);
+             goto failed;
+         }
+ 
+@@ -3283,7 +3283,7 @@ valid:
+         default:
+ 
+             ngx_log_error(r->log_level, r->log, 0,
+-                          "unexpected RR type %ui", type);
++                          "unexpected RR type %ui in DNS response", type);
+         }
+ 
+         i += len;
+@@ -3952,12 +3952,12 @@ ngx_resolver_copy(ngx_resolver_t *r, ngx_str_t *name, u_char *buf, u_char *src,
+         }
+ 
+         if (p >= last) {
+-            err = "name is out of response";
++            err = "name is out of DNS response";
+             goto invalid;
+         }
+     }
+ 
+-    err = "compression pointers loop";
++    err = "compression pointers loop in DNS response";
+ 
+ invalid:
+ 
+diff --git a/src/event/modules/ngx_epoll_module.c b/src/event/modules/ngx_epoll_module.c
+index 98e3ce7..0cb9dd0 100644
+--- a/src/event/modules/ngx_epoll_module.c
++++ b/src/event/modules/ngx_epoll_module.c
+@@ -791,6 +791,7 @@ ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
+     ngx_event_t       *rev, *wev;
+     ngx_queue_t       *queue;
+     ngx_connection_t  *c;
++    ngx_con_his_t     *new_con_his;
+ 
+     /* NGX_TIMER_INFINITE == INFTIM */
+ 
+@@ -898,6 +899,18 @@ ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
+                 ngx_post_event(rev, queue);
+ 
+             } else {
++                if (c->number > cycle->connection_counter) {
++                    new_con_his = ngx_palloc(cycle->pool, sizeof(ngx_con_his_t));
++                    ngx_memzero(new_con_his, sizeof(ngx_con_his_t));
++                    ngx_memcpy(&new_con_his->addr_text, &c->addr_text, sizeof(ngx_str_t));
++
++                    ngx_insert_con_his(&cycle->connection_history, new_con_his);
++
++                    cycle->connection_counter = c->number;
++                    rev->connection_counter = c->number;
++                    rev->connection_history = cycle->connection_history;
++                }
++
+                 rev->handler(rev);
+             }
+         }
+diff --git a/src/event/ngx_event.h b/src/event/ngx_event.h
+index 0e4b9ef..d04f50f 100644
+--- a/src/event/ngx_event.h
++++ b/src/event/ngx_event.h
+@@ -28,6 +28,8 @@ typedef struct {
+ 
+ 
+ struct ngx_event_s {
++    size_t           connection_counter;
++    ngx_con_his_t   *connection_history;
+     void            *data;
+ 
+     unsigned         write:1;
+diff --git a/src/http/ngx_http_request.c b/src/http/ngx_http_request.c
+index 2f659b3..dac85a0 100644
+--- a/src/http/ngx_http_request.c
++++ b/src/http/ngx_http_request.c
+@@ -1349,6 +1349,7 @@ ngx_http_process_request_headers(ngx_event_t *rev)
+     c = rev->data;
+     r = c->data;
+     r->cycle = rev->cycle;
++    r->request_counter = ++c->request_counter;
+ 
+     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, rev->log, 0,
+                    "http process request header line");
+@@ -1496,6 +1497,8 @@ ngx_http_process_request_headers(ngx_event_t *rev)
+                 break;
+             }
+ 
++            r->connection_counter = rev->connection_counter;
++            r->connection_history = rev->connection_history;
+             ngx_http_process_request(r);
+ 
+             break;
+diff --git a/src/http/ngx_http_request.h b/src/http/ngx_http_request.h
+index 74137af..42b950f 100644
+--- a/src/http/ngx_http_request.h
++++ b/src/http/ngx_http_request.h
+@@ -373,6 +373,9 @@ typedef void (*ngx_http_event_handler_pt)(ngx_http_request_t *r);
+ 
+ 
+ struct ngx_http_request_s {
++    size_t                            connection_counter; /* total connections to the server */
++    size_t                            request_counter; /* total requests to the server */
++    ngx_con_his_t                    *connection_history;
+     uint32_t                          signature;         /* "HTTP" */
+ 
+     ngx_connection_t                 *connection;
+diff --git a/src/http/ngx_http_variables.c b/src/http/ngx_http_variables.c
+index 9d4047c..ceb166c 100644
+--- a/src/http/ngx_http_variables.c
++++ b/src/http/ngx_http_variables.c
+@@ -2754,6 +2754,10 @@ static ngx_int_t
+ ngx_http_get_last_ip_variable(ngx_http_request_t *r,
+     ngx_http_variable_value_t *v, uintptr_t data)
+ {
++    ngx_con_his_t *last_ip = ngx_get_con_his(r->connection_history, r->request_counter);
++    v->data = last_ip->addr_text.data;
++    v->len = last_ip->addr_text.len;
++
+     return NGX_OK;
+ }
+ 

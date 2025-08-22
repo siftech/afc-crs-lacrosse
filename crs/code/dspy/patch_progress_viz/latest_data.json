@@ -1,0 +1,8 @@
+[
+    {"approach": "A", "problem": "P1", "score": 4},
+    {"approach": "A", "problem": "P2", "score": 3},
+    {"approach": "A", "problem": "P3", "score": 2},
+    {"approach": "B", "problem": "P1", "score": 3},
+    {"approach": "B", "problem": "P2", "score": 2},
+    {"approach": "B", "problem": "P3", "score": 1}
+]

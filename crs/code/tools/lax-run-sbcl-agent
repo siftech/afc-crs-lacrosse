@@ -1,0 +1,51 @@
+#!/bin/bash
+set -e
+
+# FIXME if we want multiple OPT this needs to take args like run-ccl-agent
+# FIXME and would need a start-matchmaker arg too
+
+thisdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && /bin/pwd )"
+
+make_timestamp () { date +"%Y-%m-%d %H:%M:%S.%3N"; }
+
+PROGNAME=$(basename "$0")
+warn()  { echo "$(make_timestamp) $PROGNAME: ${@}" 1>&2; }
+die()   { warn "${@}"; exit 1; }
+dbug()   { test -z $DEBUG || warn "${@}"; }
+
+
+export CIRCA_MM_HOST=$1
+export CIRCA_BASEPORT=$2
+export AGENT_NAME=$3
+export CIRCA_PORT=$CIRCA_PORT
+export CIRCA_HOST=${CIRCA_HOST}
+
+warn "CIRCA_MM_HOST is $CIRCA_MM_HOST"
+warn "CIRCA_BASEPORT is $CIRCA_BASEPORT"
+warn "AGENT_NAME is $AGENT_NAME"
+warn "CIRCA_PORT is $CIRCA_PORT"
+warn "CIRCA_HOST is $CIRCA_HOST"
+
+export DOCKER_EXTRA_ARGS="-e CP_BASE_EXTRA_CFLAGS=-g -e CP_BASE_EXTRA_CXXFLAGS=-g -e CP_HARNESS_EXTRA_CFLAGS=-g -e CP_HARNESS_EXTRA_CXXFLAGS=-g"
+
+warn "${AGENT_NAME} is waiting for OPTIMUS0 to make mmhealth"
+${thisdir}/wait-for-file ${thisdir}/../matchmaker/mmhealth 100
+
+warn "${AGENT_NAME} is waiting for mmhealth"
+$thisdir/wait-for-mmhealth
+warn "${AGENT_NAME} has found mmhealth"
+
+cd ${thisdir}/../lisp
+# this is *exactly* the same as how normal run-ccl-agent works... except redirect output to files b/c
+# stupid docker compose wont let me stash em right
+# CIRCA_MM_HOST=${CIRCA_MM_HOST} \
+#   CIRCA_BASEPORT=${CIRCA_BASEPORT} \
+  # ccl -Q -n -l load.lisp -e "(progn (setf *fb-instance* \"${AGENT_NAME}\") (load \"../experiment.lisp\") (fb::run-amp :name \"${AGENT_NAME}\") (quit))" 1>$LOGDIR/${AGENT_NAME}.log 2>&1
+
+if [ "${AT_SIFT}" -eq "0" ]; then
+  echo "${AGENT_NAME} running NOT at SIFT"
+  sbcl --end-runtime-options --no-userinit --load load.lisp --eval "(progn (setf *fb-instance* \"${AGENT_NAME}\") (load \"/lacrosse/code/experiment.lisp\") (fb::run-amp :name \"${AGENT_NAME}\") (quit))";
+else
+  echo "${AGENT_NAME} running at SIFT"
+  sbcl --end-runtime-options --no-userinit --load load.lisp --eval "(progn (setf *fb-instance* \"${AGENT_NAME}\") (load \"/lacrosse/code/experiment.lisp\") (fb::run-amp :name \"${AGENT_NAME}\") (quit))"; #1>$LOGDIR/${AGENT_NAME}.log 2>&1;
+fi

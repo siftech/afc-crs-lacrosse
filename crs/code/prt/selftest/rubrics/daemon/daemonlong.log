@@ -1,0 +1,6 @@
++ export TMP_AGENT_FILE=/tmp/prt-daemon-test-1290114355-daemonlong
++ TMP_AGENT_FILE=/tmp/prt-daemon-test-1290114355-daemonlong
++ trap 'rm /tmp/prt-daemon-test-1290114355-daemonlong' EXIT
++ touch /tmp/prt-daemon-test-1290114355-daemonlong
++ sleep 4
+++ rm /tmp/prt-daemon-test-1290114355-daemonlong

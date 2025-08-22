@@ -1,0 +1,115 @@
+ INFO: Running with entropic power schedule (0xFF, 100).
+ INFO: Seed: 719323140
+ INFO: Loaded 1 modules   (80 inline 8-bit counters): 80 [0x558d1b009878, 0x558d1b0098c8), 
+ INFO: Loaded 1 PC tables (80 PCs): 80 [0x558d1b0098c8,0x558d1b009dc8), 
+ /out/pov_harness: Running 1 inputs 100 time(s) each.
+ Running: /work/tmp_blob
+ =================================================================
+ ==17==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x50b0000018b4 at pc 0x558d1ad9feca bp 0x7fff2363ded0 sp 0x7fff2363dec8
+ WRITE of size 1 at 0x50b0000018b4 thread T0
+     #0 0x558d1ad9fec9 in ngx_sendfile_r /src/harnesses/bld/src/os/unix/ngx_linux_sendfile_chain.c:77:16
+     #1 0x558d1ada052c in ngx_linux_sendfile /src/harnesses/bld/src/os/unix/ngx_linux_sendfile_chain.c:303:13
+     #2 0x558d1ada052c in ngx_linux_sendfile_chain /src/harnesses/bld/src/os/unix/ngx_linux_sendfile_chain.c:217:17
+     #3 0x558d1ae3b6ce in ngx_http_write_filter /src/harnesses/bld/src/http/ngx_http_write_filter_module.c:294:13
+     #4 0x558d1ae3ead9 in ngx_http_chunked_body_filter /src/harnesses/bld/src/http/modules/ngx_http_chunked_filter_module.c:115:16
+     #5 0x558d1ae43d0e in ngx_http_gzip_body_filter /src/harnesses/bld/src/http/modules/ngx_http_gzip_filter_module.c:308:16
+     #6 0x558d1ae4d75a in ngx_http_ssi_body_filter /src/harnesses/bld/src/http/modules/ngx_http_ssi_filter_module.c
+     #7 0x558d1ae57571 in ngx_http_charset_body_filter /src/harnesses/bld/src/http/modules/ngx_http_charset_filter_module.c
+     #8 0x558d1ae5e6e3 in ngx_http_addition_body_filter /src/harnesses/bld/src/http/modules/ngx_http_addition_filter_module.c
+     #9 0x558d1ae5f03a in ngx_http_gunzip_body_filter /src/harnesses/bld/src/http/modules/ngx_http_gunzip_filter_module.c:185:16
+     #10 0x558d1ae64fc9 in ngx_http_trailers_filter /src/harnesses/bld/src/http/modules/ngx_http_headers_filter_module.c
+     #11 0x558d1ad30c22 in ngx_output_chain /src/harnesses/bld/src/core/ngx_output_chain.c
+     #12 0x558d1ae669db in ngx_http_copy_filter /src/harnesses/bld/src/http/ngx_http_copy_filter_module.c:152:10
+     #13 0x558d1ae41c2c in ngx_http_range_singlepart_body /src/harnesses/bld/src/http/modules/ngx_http_range_filter_module.c:830:10
+     #14 0x558d1ae41c2c in ngx_http_range_body_filter /src/harnesses/bld/src/http/modules/ngx_http_range_filter_module.c:658:16
+     #15 0x558d1adcbad5 in ngx_http_output_filter /src/harnesses/bld/src/http/ngx_http_core_module.c:1846:10
+     #16 0x558d1ae68738 in ngx_http_static_handler /src/harnesses/bld/src/http/modules/ngx_http_static_module.c:268:12
+     #17 0x558d1adc9ef8 in ngx_http_core_content_phase /src/harnesses/bld/src/http/ngx_http_core_module.c:1254:10
+     #18 0x558d1adc7b21 in ngx_http_core_run_phases /src/harnesses/bld/src/http/ngx_http_core_module.c:868:14
+     #19 0x558d1adc7b21 in ngx_http_handler /src/harnesses/bld/src/http/ngx_http_core_module.c:851:5
+     #20 0x558d1adce2ec in ngx_http_internal_redirect /src/harnesses/bld/src/http/ngx_http_core_module.c:2530:5
+     #21 0x558d1ae74753 in ngx_http_index_handler /src/harnesses/bld/src/http/modules/ngx_http_index_module.c
+     #22 0x558d1adc9ef8 in ngx_http_core_content_phase /src/harnesses/bld/src/http/ngx_http_core_module.c:1254:10
+     #23 0x558d1adc7b21 in ngx_http_core_run_phases /src/harnesses/bld/src/http/ngx_http_core_module.c:868:14
+     #24 0x558d1adc7b21 in ngx_http_handler /src/harnesses/bld/src/http/ngx_http_core_module.c:851:5
+     #25 0x558d1ade58ad in ngx_http_process_request /src/harnesses/bld/src/http/ngx_http_request.c:2125:5
+     #26 0x558d1adeb0f4 in ngx_http_process_request_headers /src/harnesses/bld/src/http/ngx_http_request.c:1527:13
+     #27 0x558d1ad8435c in ngx_event_process_posted /src/harnesses/bld/src/event/ngx_event_posted.c:34:9
+     #28 0x558d1ad209d7 in LLVMFuzzerTestOneInput /src/harnesses/bld/src/harnesses/pov_harness.cc:323:5
+     #29 0x558d1abd2720 in fuzzer::Fuzzer::ExecuteCallback(unsigned char const*, unsigned long) /src/llvm-project/compiler-rt/lib/fuzzer/FuzzerLoop.cpp:614:13
+     #30 0x558d1abbceb4 in fuzzer::RunOneTest(fuzzer::Fuzzer*, char const*, unsigned long) /src/llvm-project/compiler-rt/lib/fuzzer/FuzzerDriver.cpp:327:6
+     #31 0x558d1abc294a in fuzzer::FuzzerDriver(int*, char***, int (*)(unsigned char const*, unsigned long)) /src/llvm-project/compiler-rt/lib/fuzzer/FuzzerDriver.cpp:862:9
+     #32 0x558d1abeed42 in main /src/llvm-project/compiler-rt/lib/fuzzer/FuzzerMain.cpp:20:10
+     #33 0x7f8092eba082 in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x24082) (BuildId: 0702430aef5fa3dda43986563e9ffcc47efbd75e)
+     #34 0x558d1abb398d in _start (/out/pov_harness+0xb398d)
+ 
+ 0x50b0000018b4 is located 0 bytes after 100-byte region [0x50b000001850,0x50b0000018b4)
+ allocated by thread T0 here:
+     #0 0x558d1ace0cbe in malloc /src/llvm-project/compiler-rt/lib/asan/asan_malloc_linux.cpp:69:3
+     #1 0x558d1ad8fea4 in ngx_alloc /src/harnesses/bld/src/os/unix/ngx_alloc.c:22:9
+     #2 0x558d1ad9fd0f in ngx_sendfile_r /src/harnesses/bld/src/os/unix/ngx_linux_sendfile_chain.c:70:11
+     #3 0x558d1ada052c in ngx_linux_sendfile /src/harnesses/bld/src/os/unix/ngx_linux_sendfile_chain.c:303:13
+     #4 0x558d1ada052c in ngx_linux_sendfile_chain /src/harnesses/bld/src/os/unix/ngx_linux_sendfile_chain.c:217:17
+     #5 0x558d1ae3b6ce in ngx_http_write_filter /src/harnesses/bld/src/http/ngx_http_write_filter_module.c:294:13
+     #6 0x558d1ae3ead9 in ngx_http_chunked_body_filter /src/harnesses/bld/src/http/modules/ngx_http_chunked_filter_module.c:115:16
+     #7 0x558d1ae43d0e in ngx_http_gzip_body_filter /src/harnesses/bld/src/http/modules/ngx_http_gzip_filter_module.c:308:16
+     #8 0x558d1ae4d75a in ngx_http_ssi_body_filter /src/harnesses/bld/src/http/modules/ngx_http_ssi_filter_module.c
+     #9 0x558d1ae57571 in ngx_http_charset_body_filter /src/harnesses/bld/src/http/modules/ngx_http_charset_filter_module.c
+     #10 0x558d1ae5e6e3 in ngx_http_addition_body_filter /src/harnesses/bld/src/http/modules/ngx_http_addition_filter_module.c
+     #11 0x558d1ae5f03a in ngx_http_gunzip_body_filter /src/harnesses/bld/src/http/modules/ngx_http_gunzip_filter_module.c:185:16
+     #12 0x558d1ae64fc9 in ngx_http_trailers_filter /src/harnesses/bld/src/http/modules/ngx_http_headers_filter_module.c
+     #13 0x558d1ad30c22 in ngx_output_chain /src/harnesses/bld/src/core/ngx_output_chain.c
+     #14 0x558d1ae669db in ngx_http_copy_filter /src/harnesses/bld/src/http/ngx_http_copy_filter_module.c:152:10
+     #15 0x558d1ae41c2c in ngx_http_range_singlepart_body /src/harnesses/bld/src/http/modules/ngx_http_range_filter_module.c:830:10
+     #16 0x558d1ae41c2c in ngx_http_range_body_filter /src/harnesses/bld/src/http/modules/ngx_http_range_filter_module.c:658:16
+     #17 0x558d1adcbad5 in ngx_http_output_filter /src/harnesses/bld/src/http/ngx_http_core_module.c:1846:10
+     #18 0x558d1ae68738 in ngx_http_static_handler /src/harnesses/bld/src/http/modules/ngx_http_static_module.c:268:12
+     #19 0x558d1adc9ef8 in ngx_http_core_content_phase /src/harnesses/bld/src/http/ngx_http_core_module.c:1254:10
+     #20 0x558d1adc7b21 in ngx_http_core_run_phases /src/harnesses/bld/src/http/ngx_http_core_module.c:868:14
+     #21 0x558d1adc7b21 in ngx_http_handler /src/harnesses/bld/src/http/ngx_http_core_module.c:851:5
+     #22 0x558d1adce2ec in ngx_http_internal_redirect /src/harnesses/bld/src/http/ngx_http_core_module.c:2530:5
+     #23 0x558d1ae74753 in ngx_http_index_handler /src/harnesses/bld/src/http/modules/ngx_http_index_module.c
+     #24 0x558d1adc9ef8 in ngx_http_core_content_phase /src/harnesses/bld/src/http/ngx_http_core_module.c:1254:10
+     #25 0x558d1adc7b21 in ngx_http_core_run_phases /src/harnesses/bld/src/http/ngx_http_core_module.c:868:14
+     #26 0x558d1adc7b21 in ngx_http_handler /src/harnesses/bld/src/http/ngx_http_core_module.c:851:5
+     #27 0x558d1ade58ad in ngx_http_process_request /src/harnesses/bld/src/http/ngx_http_request.c:2125:5
+     #28 0x558d1adeb0f4 in ngx_http_process_request_headers /src/harnesses/bld/src/http/ngx_http_request.c:1527:13
+     #29 0x558d1ad8435c in ngx_event_process_posted /src/harnesses/bld/src/event/ngx_event_posted.c:34:9
+     #30 0x558d1ad209d7 in LLVMFuzzerTestOneInput /src/harnesses/bld/src/harnesses/pov_harness.cc:323:5
+     #31 0x558d1abd2720 in fuzzer::Fuzzer::ExecuteCallback(unsigned char const*, unsigned long) /src/llvm-project/compiler-rt/lib/fuzzer/FuzzerLoop.cpp:614:13
+     #32 0x558d1abbceb4 in fuzzer::RunOneTest(fuzzer::Fuzzer*, char const*, unsigned long) /src/llvm-project/compiler-rt/lib/fuzzer/FuzzerDriver.cpp:327:6
+     #33 0x558d1abc294a in fuzzer::FuzzerDriver(int*, char***, int (*)(unsigned char const*, unsigned long)) /src/llvm-project/compiler-rt/lib/fuzzer/FuzzerDriver.cpp:862:9
+ 
+ SUMMARY: AddressSanitizer: heap-buffer-overflow /src/harnesses/bld/src/os/unix/ngx_linux_sendfile_chain.c:77:16 in ngx_sendfile_r
+ Shadow bytes around the buggy address:
+   0x50b000001600: fa fa fa fa fa fa fa fa 00 00 00 00 00 00 00 00
+   0x50b000001680: 00 00 00 00 00 04 fa fa fa fa fa fa fa fa 00 00
+   0x50b000001700: 00 00 00 00 00 00 00 00 00 00 00 00 fa fa fa fa
+   0x50b000001780: fa fa fa fa 00 00 00 00 00 00 00 00 00 00 00 00
+   0x50b000001800: 00 fa fa fa fa fa fa fa fa fa 00 00 00 00 00 00
+ =>0x50b000001880: 00 00 00 00 00 00[04]fa fa fa fa fa fa fa fa fa
+   0x50b000001900: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+   0x50b000001980: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+   0x50b000001a00: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+   0x50b000001a80: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+   0x50b000001b00: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+ Shadow byte legend (one shadow byte represents 8 application bytes):
+   Addressable:           00
+   Partially addressable: 01 02 03 04 05 06 07 
+   Heap left redzone:       fa
+   Freed heap region:       fd
+   Stack left redzone:      f1
+   Stack mid redzone:       f2
+   Stack right redzone:     f3
+   Stack after return:      f5
+   Stack use after scope:   f8
+   Global redzone:          f9
+   Global init order:       f6
+   Poisoned by user:        f7
+   Container overflow:      fc
+   Array cookie:            ac
+   Intra object redzone:    bb
+   ASan internal:           fe
+   Left alloca redzone:     ca
+   Right alloca redzone:    cb
+ ==17==ABORTING

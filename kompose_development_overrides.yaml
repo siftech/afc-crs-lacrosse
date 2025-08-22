@@ -1,0 +1,2018 @@
+---
+# This file can be modified to add services which need access to /crs_scratch or read-only access to /cp_root.
+# Competitors may also use this to tune the deploy or labels section of all services as needed.
+# Competitors should ensure their CRS executes properly with `make k8s` after making changes here.
+
+services:
+  load-cp-images:
+    restart: always
+    environment:
+      - "ENABLE_HEALTH_ENDPOINT=true"
+      - "LOAD_CPS=true"
+    volumes:
+      - cp_root:/cp_root
+  crs:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    labels:
+      kompose.init.containers.command: '["sh", "-c", "until curl http://load-cp-images:8080; do echo \"Waiting for CP image load to complete\"; sleep 5; done"]'
+      kompose.init.containers.image: curlimages/curl:8.8.0
+      kompose.init.containers.name: wait-for-cp-load
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    depends_on:
+      load-cp-images:
+        condition: service_completed_successfully
+  nix-copy:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB0:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB1:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB2:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB3:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB4:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB5:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB6:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB7:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB8:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB9:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB10:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB11:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB12:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB13:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB14:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB15:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB16:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB17:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB18:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB19:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB20:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB21:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB22:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB23:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB24:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB25:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB26:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB27:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB28:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB29:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB30:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB31:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB32:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB33:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB34:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB35:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB36:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB37:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB38:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB39:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB40:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB41:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB42:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB43:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB44:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB45:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB46:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB47:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB48:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB49:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB50:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB51:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB52:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB53:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB54:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB55:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB56:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB57:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB58:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB59:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB60:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB61:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB62:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB63:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB64:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB65:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB66:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB67:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB68:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB69:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB70:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB71:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB72:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB73:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB74:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB75:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB76:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB77:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB78:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB79:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB80:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB81:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB82:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB83:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB84:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB85:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB86:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB87:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB88:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB89:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB90:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB91:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB92:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB93:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB94:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB95:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+  dind:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node3
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '8'
+    #       memory: 8GB
+    #     reservations:
+    #       cpus: '1'
+    #       memory: 256M
+    volumes:
+      - crs_scratch:/crs_scratch
+    command: ["dockerd", "-H", "tcp://0.0.0.0:2375", "--tls=false"]
+
+  iapi:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    configs:
+      - source: nginx_kube_config
+        target: /etc/nginx/templates/default.conf.template
+    environment:
+      - CAPI_UPSTREAM_HOST=http://capi:8080
+    depends_on:
+      capi:
+        condition: service_healthy
+  capi:
+    labels:
+      kompose.init.containers.command: '["sh", "-c", "until curl http://load-cp-images:8080; do echo \"Waiting for CP image load to complete\"; sleep 5; done"]'
+      kompose.init.containers.image: curlimages/curl:8.8.0
+      kompose.init.containers.name: wait-for-cp-load
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+volumes:
+  cp_root:
+  crs_scratch:

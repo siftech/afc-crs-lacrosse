@@ -1,0 +1,1930 @@
+# This file is used just for exposing host ports for local Docker Compose development
+# Competitors: You may modify this file to make local development easier.
+# However, this file will not impact services at competition, only local development.
+
+# We recommend you only bind ports to 127.0.0.1 in this file & have a GitHub action checking this.
+# If you need to bind to other interfaces, putting a comment in this file containing only "exposed-port-check: disable" will turn off that check.
+
+---
+services:
+  # sandbox/compose.yaml
+  load-cp-images:
+    restart: "no"
+    volumes:
+      - type: bind
+        source: ${PWD}/cp_root
+        target: /cp_root
+        bind:
+          propagation: rprivate
+
+  mock-crs:
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+
+  dind:
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '8'
+    #       memory: 8GB
+    #     reservations:
+    #       cpus: '1'
+    #       memory: 256M
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      - type: bind
+        source: ${PWD}/dind_cache
+        target: /var/lib/docker
+        bind:
+          propagation: rprivate
+
+  capi:
+    entrypoint:
+      - "bash"
+      - "-xc"
+      - "chmod 777 /crs_scratch && mkdir -p /home/appuser && printf '[safe]\ndirectory = *\n' > /home/appuser/.gitconfig && /code/entrypoint.sh"
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      - type: bind
+        source: ${PWD}/capi_logs
+        target: /var/log/capi
+        bind:
+          propagation: rprivate
+      - type: bind
+        source: ${PWD}/cp_root
+        target: /cp_root
+        bind:
+          propagation: rprivate
+  
+  iapi:
+    configs:
+      - source: nginx_local_config
+        target: /etc/nginx/templates/default.conf.template
+    depends_on:
+      capi:
+        condition: service_healthy
+
+  # top-level compose.yaml
+  crs:
+    depends_on:
+      load-cp-images:
+        condition: service_completed_successfully
+    networks:
+      - crs-internal
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy/build of crs code
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+
+  nix-copy:
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB0:
+    networks:
+      - crs-internal
+    ports:
+      - 21003:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB1:
+    networks:
+      - crs-internal
+    ports:
+      - 21004:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB2:
+    networks:
+      - crs-internal
+    ports:
+      - 21005:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB3:
+    networks:
+      - crs-internal
+    ports:
+      - 21006:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB4:
+    networks:
+      - crs-internal
+    ports:
+      - 21007:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB5:
+    networks:
+      - crs-internal
+    ports:
+      - 21008:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB6:
+    networks:
+      - crs-internal
+    ports:
+      - 21009:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB7:
+    networks:
+      - crs-internal
+    ports:
+      - 21010:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB8:
+    networks:
+      - crs-internal
+    ports:
+      - 21011:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB9:
+    networks:
+      - crs-internal
+    ports:
+      - 21012:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB10:
+    networks:
+      - crs-internal
+    ports:
+      - 21013:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB11:
+    networks:
+      - crs-internal
+    ports:
+      - 21014:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB12:
+    networks:
+      - crs-internal
+    ports:
+      - 21015:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB13:
+    networks:
+      - crs-internal
+    ports:
+      - 21016:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB14:
+    networks:
+      - crs-internal
+    ports:
+      - 21017:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB15:
+    networks:
+      - crs-internal
+    ports:
+      - 21018:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB16:
+    networks:
+      - crs-internal
+    ports:
+      - 21019:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB17:
+    networks:
+      - crs-internal
+    ports:
+      - 21020:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB18:
+    networks:
+      - crs-internal
+    ports:
+      - 21021:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB19:
+    networks:
+      - crs-internal
+    ports:
+      - 21022:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB20:
+    networks:
+      - crs-internal
+    ports:
+      - 21023:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB21:
+    networks:
+      - crs-internal
+    ports:
+      - 21024:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB22:
+    networks:
+      - crs-internal
+    ports:
+      - 21025:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB23:
+    networks:
+      - crs-internal
+    ports:
+      - 21026:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB24:
+    networks:
+      - crs-internal
+    ports:
+      - 21027:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB25:
+    networks:
+      - crs-internal
+    ports:
+      - 21028:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB26:
+    networks:
+      - crs-internal
+    ports:
+      - 21029:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB27:
+    networks:
+      - crs-internal
+    ports:
+      - 21030:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB28:
+    networks:
+      - crs-internal
+    ports:
+      - 21031:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB29:
+    networks:
+      - crs-internal
+    ports:
+      - 21032:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB30:
+    networks:
+      - crs-internal
+    ports:
+      - 21033:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB31:
+    networks:
+      - crs-internal
+    ports:
+      - 21034:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB32:
+    networks:
+      - crs-internal
+    ports:
+      - 21035:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB33:
+    networks:
+      - crs-internal
+    ports:
+      - 21036:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB34:
+    networks:
+      - crs-internal
+    ports:
+      - 21037:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB35:
+    networks:
+      - crs-internal
+    ports:
+      - 21038:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB36:
+    networks:
+      - crs-internal
+    ports:
+      - 21039:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB37:
+    networks:
+      - crs-internal
+    ports:
+      - 21040:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB38:
+    networks:
+      - crs-internal
+    ports:
+      - 21041:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB39:
+    networks:
+      - crs-internal
+    ports:
+      - 21042:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB40:
+    networks:
+      - crs-internal
+    ports:
+      - 21043:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB41:
+    networks:
+      - crs-internal
+    ports:
+      - 21044:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB42:
+    networks:
+      - crs-internal
+    ports:
+      - 21045:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB43:
+    networks:
+      - crs-internal
+    ports:
+      - 21046:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB44:
+    networks:
+      - crs-internal
+    ports:
+      - 21047:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB45:
+    networks:
+      - crs-internal
+    ports:
+      - 21048:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB46:
+    networks:
+      - crs-internal
+    ports:
+      - 21049:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB47:
+    networks:
+      - crs-internal
+    ports:
+      - 21050:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB48:
+    networks:
+      - crs-internal
+    ports:
+      - 21051:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB49:
+    networks:
+      - crs-internal
+    ports:
+      - 21052:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB50:
+    networks:
+      - crs-internal
+    ports:
+      - 21053:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB51:
+    networks:
+      - crs-internal
+    ports:
+      - 21054:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB52:
+    networks:
+      - crs-internal
+    ports:
+      - 21055:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB53:
+    networks:
+      - crs-internal
+    ports:
+      - 21056:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB54:
+    networks:
+      - crs-internal
+    ports:
+      - 21057:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB55:
+    networks:
+      - crs-internal
+    ports:
+      - 21058:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB56:
+    networks:
+      - crs-internal
+    ports:
+      - 21059:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB57:
+    networks:
+      - crs-internal
+    ports:
+      - 21060:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB58:
+    networks:
+      - crs-internal
+    ports:
+      - 21061:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB59:
+    networks:
+      - crs-internal
+    ports:
+      - 21062:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB60:
+    networks:
+      - crs-internal
+    ports:
+      - 21063:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB61:
+    networks:
+      - crs-internal
+    ports:
+      - 21064:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB62:
+    networks:
+      - crs-internal
+    ports:
+      - 21065:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB63:
+    networks:
+      - crs-internal
+    ports:
+      - 21066:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB64:
+    networks:
+      - crs-internal
+    ports:
+      - 21067:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB65:
+    networks:
+      - crs-internal
+    ports:
+      - 21068:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB66:
+    networks:
+      - crs-internal
+    ports:
+      - 21069:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB67:
+    networks:
+      - crs-internal
+    ports:
+      - 21070:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB68:
+    networks:
+      - crs-internal
+    ports:
+      - 21071:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB69:
+    networks:
+      - crs-internal
+    ports:
+      - 21072:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB70:
+    networks:
+      - crs-internal
+    ports:
+      - 21073:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB71:
+    networks:
+      - crs-internal
+    ports:
+      - 21074:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB72:
+    networks:
+      - crs-internal
+    ports:
+      - 21075:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB73:
+    networks:
+      - crs-internal
+    ports:
+      - 21076:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB74:
+    networks:
+      - crs-internal
+    ports:
+      - 21077:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB75:
+    networks:
+      - crs-internal
+    ports:
+      - 21078:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB76:
+    networks:
+      - crs-internal
+    ports:
+      - 21079:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB77:
+    networks:
+      - crs-internal
+    ports:
+      - 21080:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB78:
+    networks:
+      - crs-internal
+    ports:
+      - 21081:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB79:
+    networks:
+      - crs-internal
+    ports:
+      - 21082:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB80:
+    networks:
+      - crs-internal
+    ports:
+      - 21083:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB81:
+    networks:
+      - crs-internal
+    ports:
+      - 21084:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB82:
+    networks:
+      - crs-internal
+    ports:
+      - 21085:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB83:
+    networks:
+      - crs-internal
+    ports:
+      - 21086:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB84:
+    networks:
+      - crs-internal
+    ports:
+      - 21087:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB85:
+    networks:
+      - crs-internal
+    ports:
+      - 21088:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB86:
+    networks:
+      - crs-internal
+    ports:
+      - 21089:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB87:
+    networks:
+      - crs-internal
+    ports:
+      - 21090:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB88:
+    networks:
+      - crs-internal
+    ports:
+      - 21091:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB89:
+    networks:
+      - crs-internal
+    ports:
+      - 21092:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB90:
+    networks:
+      - crs-internal
+    ports:
+      - 21093:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB91:
+    networks:
+      - crs-internal
+    ports:
+      - 21094:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB92:
+    networks:
+      - crs-internal
+    ports:
+      - 21095:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB93:
+    networks:
+      - crs-internal
+    ports:
+      - 21096:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB94:
+    networks:
+      - crs-internal
+    ports:
+      - 21097:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB95:
+    networks:
+      - crs-internal
+    ports:
+      - 21098:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND

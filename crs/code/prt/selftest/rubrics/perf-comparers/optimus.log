@@ -1,0 +1,10 @@
+This a test of different comparison functions.
+
+allowable smallBetterPct  1000
+allowable biggerBetterPct 10000
+allowable smallAbsBigAbs  100000
+
+marginal smallBetterPct  2000
+marginal biggerBetterPct 20000
+marginal  smallAbsBigAbs 200
+marginal2 smallAbsBigAbs 200

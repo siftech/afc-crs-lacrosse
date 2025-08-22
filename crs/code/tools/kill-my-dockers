@@ -1,0 +1,50 @@
+#!/bin/bash
+
+thisdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && /bin/pwd )"
+
+# because Mac xargs doesnt support -r arg, we have to figure out where we are running:
+case $OSTYPE in
+ linux*)
+   xargs="xargs -r"
+   #dbug on linux!
+   ;;
+ darwin*)
+   xargs="xargs"
+   #dbug on mac!
+   ;;
+ *)
+   echo WARNING: Not running in a recognized Linux or Mac OS, this may need to be ported!
+   xargs="xargs"
+   ;;
+esac
+
+export CONTAINER_PREFIX=${CONTAINER_PREFIX:-$USER}       # Set default docker tag if not already set
+echo "CONTAINER_PREFIX is $CONTAINER_PREFIX"
+echo "USER is $USER"
+echo "DOCKER_HOST is $DOCKER_HOST"
+echo "thisdir is $thisdir"
+echo "xargs is $xargs"
+
+/bin/rm -f /tmp/start*$CONTAINER_PREFIX*.lock
+ 
+if [[ ${IN_DOCKER:-0} -eq 1 ]]; then 
+  #echo killing from within docker container
+  $thisdir/docker ps -a --filter "name=$CONTAINER_PREFIX"|tail -n +2|grep -v "neo-fuzz-ccl"|cut -d " " -f 1|${xargs} $thisdir/docker rm -f
+  $thisdir/docker ps -a --filter "name=$CONTAINER_PREFIX"|tail -n +2|grep -v "neo-fuzz-ccl"|cut -d " " -f 1|${xargs} $thisdir/docker network disconnect --force host
+  while ($thisdir/docker ps -a --filter "name=$CONTAINER_PREFIX"|tail -n +2|grep -v "neo-fuzz-ccl"| grep '.' -) ; do
+    echo Docker still thinks there are containers alive...sleeping a bit
+    sleep 1;	# then retry the kill
+    $thisdir/docker ps -a --filter "name=$CONTAINER_PREFIX"|tail -n +2|grep -v "neo-fuzz-ccl"|cut -d " " -f 1|${xargs} $thisdir/docker rm -f
+    $thisdir/docker ps -a --filter "name=$CONTAINER_PREFIX"|tail -n +2|grep -v "neo-fuzz-ccl"|cut -d " " -f 1|${xargs} $thisdir/docker network disconnect --force host
+  done
+else
+  $thisdir/docker ps -a -q --filter "name=$CONTAINER_PREFIX"| ${xargs} $thisdir/docker network disconnect --force host
+  $thisdir/docker ps -a -q --filter "name=$CONTAINER_PREFIX"| ${xargs} $thisdir/docker rm -f
+  while ($thisdir/docker ps -a -q --filter "name=$CONTAINER_PREFIX"| grep '.' -) ; do
+    echo Docker still thinks there are containers alive...sleeping a bit
+    sleep 1;
+    $thisdir/docker ps -a -q --filter "name=$CONTAINER_PREFIX"| ${xargs} $thisdir/docker network disconnect --force host
+    $thisdir/docker ps -a -q --filter "name=$CONTAINER_PREFIX"| ${xargs} $thisdir/docker rm -f      # retry the kill
+  done
+fi
+

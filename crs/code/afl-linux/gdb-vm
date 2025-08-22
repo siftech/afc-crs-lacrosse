@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euxo pipefail
+
+# Runs GDB, connecting to a VM started with ./run-vm -s
+
+# Go here.
+cd "$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
+
+# Ensure the GDB scripts have been built.
+make -C linux scripts_gdb
+
+# Launch GDB.
+gdb \
+	-ex "target remote :1234" \
+	-ex "set confirm off" \
+	-ex "add-symbol-file linux/vmlinux" \
+	-ex "set confirm on" \
+	-ex "layout src" \
+	-ex "focus cmd" \
+	-ex "hbreak panic" \
+	-ex "add-auto-load-safe-path linux"
+# -ex "p $lx_current().pid"

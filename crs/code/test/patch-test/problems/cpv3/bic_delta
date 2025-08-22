@@ -1,0 +1,1123 @@
+commit c502a1695c0e9d0345101a5f2a99ee0e3c890a4d
+Author: Miles Dyson <mdyson@skynet.com>
+Date:   Mon Aug 4 12:02:33 1997 +0000
+
+    Commit 153
+
+diff --git a/src/http/modules/ngx_http_geo_module.c b/src/http/modules/ngx_http_geo_module.c
+index 153b6aa..ef4e9b8 100644
+--- a/src/http/modules/ngx_http_geo_module.c
++++ b/src/http/modules/ngx_http_geo_module.c
+@@ -327,15 +327,15 @@ static ngx_int_t
+ ngx_http_geo_addr(ngx_http_request_t *r, ngx_http_geo_ctx_t *ctx,
+     ngx_addr_t *addr)
+ {
+-    ngx_array_t  *xfwd;
++    ngx_table_elt_t  *xfwd;
+ 
+     if (ngx_http_geo_real_addr(r, ctx, addr) != NGX_OK) {
+         return NGX_ERROR;
+     }
+ 
+-    xfwd = &r->headers_in.x_forwarded_for;
++    xfwd = r->headers_in.x_forwarded_for;
+ 
+-    if (xfwd->nelts > 0 && ctx->proxies != NULL) {
++    if (xfwd != NULL && ctx->proxies != NULL) {
+         (void) ngx_http_get_forwarded_addr(r, addr, xfwd, NULL,
+                                            ctx->proxies, ctx->proxy_recursive);
+     }
+diff --git a/src/http/modules/ngx_http_geoip_module.c b/src/http/modules/ngx_http_geoip_module.c
+index 5ea4f5f..eaf9876 100644
+--- a/src/http/modules/ngx_http_geoip_module.c
++++ b/src/http/modules/ngx_http_geoip_module.c
+@@ -240,16 +240,16 @@ static u_long
+ ngx_http_geoip_addr(ngx_http_request_t *r, ngx_http_geoip_conf_t *gcf)
+ {
+     ngx_addr_t           addr;
+-    ngx_array_t         *xfwd;
++    ngx_table_elt_t     *xfwd;
+     struct sockaddr_in  *sin;
+ 
+     addr.sockaddr = r->connection->sockaddr;
+     addr.socklen = r->connection->socklen;
+     /* addr.name = r->connection->addr_text; */
+ 
+-    xfwd = &r->headers_in.x_forwarded_for;
++    xfwd = r->headers_in.x_forwarded_for;
+ 
+-    if (xfwd->nelts > 0 && gcf->proxies != NULL) {
++    if (xfwd != NULL && gcf->proxies != NULL) {
+         (void) ngx_http_get_forwarded_addr(r, &addr, xfwd, NULL,
+                                            gcf->proxies, gcf->proxy_recursive);
+     }
+@@ -292,7 +292,7 @@ static geoipv6_t
+ ngx_http_geoip_addr_v6(ngx_http_request_t *r, ngx_http_geoip_conf_t *gcf)
+ {
+     ngx_addr_t            addr;
+-    ngx_array_t          *xfwd;
++    ngx_table_elt_t      *xfwd;
+     in_addr_t             addr4;
+     struct in6_addr       addr6;
+     struct sockaddr_in   *sin;
+@@ -302,9 +302,9 @@ ngx_http_geoip_addr_v6(ngx_http_request_t *r, ngx_http_geoip_conf_t *gcf)
+     addr.socklen = r->connection->socklen;
+     /* addr.name = r->connection->addr_text; */
+ 
+-    xfwd = &r->headers_in.x_forwarded_for;
++    xfwd = r->headers_in.x_forwarded_for;
+ 
+-    if (xfwd->nelts > 0 && gcf->proxies != NULL) {
++    if (xfwd != NULL && gcf->proxies != NULL) {
+         (void) ngx_http_get_forwarded_addr(r, &addr, xfwd, NULL,
+                                            gcf->proxies, gcf->proxy_recursive);
+     }
+diff --git a/src/http/modules/ngx_http_headers_filter_module.c b/src/http/modules/ngx_http_headers_filter_module.c
+index a4c8cc2..995beb4 100644
+--- a/src/http/modules/ngx_http_headers_filter_module.c
++++ b/src/http/modules/ngx_http_headers_filter_module.c
+@@ -329,8 +329,7 @@ ngx_http_set_expires(ngx_http_request_t *r, ngx_http_headers_conf_t *conf)
+     time_t               now, expires_time, max_age;
+     ngx_str_t            value;
+     ngx_int_t            rc;
+-    ngx_uint_t           i;
+-    ngx_table_elt_t     *e, *cc, **ccp;
++    ngx_table_elt_t     *e, *cc;
+     ngx_http_expires_t   expires;
+ 
+     expires = conf->expires;
+@@ -371,38 +370,28 @@ ngx_http_set_expires(ngx_http_request_t *r, ngx_http_headers_conf_t *conf)
+     len = sizeof("Mon, 28 Sep 1970 06:00:00 GMT");
+     e->value.len = len - 1;
+ 
+-    ccp = r->headers_out.cache_control.elts;
++    cc = r->headers_out.cache_control;
+ 
+-    if (ccp == NULL) {
+-
+-        if (ngx_array_init(&r->headers_out.cache_control, r->pool,
+-                           1, sizeof(ngx_table_elt_t *))
+-            != NGX_OK)
+-        {
+-            return NGX_ERROR;
+-        }
++    if (cc == NULL) {
+ 
+         cc = ngx_list_push(&r->headers_out.headers);
+         if (cc == NULL) {
+             return NGX_ERROR;
+         }
+ 
++        r->headers_out.cache_control = cc;
++        cc->next = NULL;
++
+         cc->hash = 1;
+         ngx_str_set(&cc->key, "Cache-Control");
+ 
+-        ccp = ngx_array_push(&r->headers_out.cache_control);
+-        if (ccp == NULL) {
+-            return NGX_ERROR;
+-        }
+-
+-        *ccp = cc;
+-
+     } else {
+-        for (i = 1; i < r->headers_out.cache_control.nelts; i++) {
+-            ccp[i]->hash = 0;
++        for (cc = cc->next; cc; cc = cc->next) {
++            cc->hash = 0;
+         }
+ 
+-        cc = ccp[0];
++        cc = r->headers_out.cache_control;
++        cc->next = NULL;
+     }
+ 
+     if (expires == NGX_HTTP_EXPIRES_EPOCH) {
+@@ -564,22 +553,12 @@ static ngx_int_t
+ ngx_http_add_multi_header_lines(ngx_http_request_t *r,
+     ngx_http_header_val_t *hv, ngx_str_t *value)
+ {
+-    ngx_array_t      *pa;
+     ngx_table_elt_t  *h, **ph;
+ 
+     if (value->len == 0) {
+         return NGX_OK;
+     }
+ 
+-    pa = (ngx_array_t *) ((char *) &r->headers_out + hv->offset);
+-
+-    if (pa->elts == NULL) {
+-        if (ngx_array_init(pa, r->pool, 1, sizeof(ngx_table_elt_t *)) != NGX_OK)
+-        {
+-            return NGX_ERROR;
+-        }
+-    }
+-
+     h = ngx_list_push(&r->headers_out.headers);
+     if (h == NULL) {
+         return NGX_ERROR;
+@@ -589,12 +568,12 @@ ngx_http_add_multi_header_lines(ngx_http_request_t *r,
+     h->key = hv->key;
+     h->value = *value;
+ 
+-    ph = ngx_array_push(pa);
+-    if (ph == NULL) {
+-        return NGX_ERROR;
+-    }
++    ph = (ngx_table_elt_t **) ((char *) &r->headers_out + hv->offset);
++
++    while (*ph) { ph = &(*ph)->next; }
+ 
+     *ph = h;
++    h->next = NULL;
+ 
+     return NGX_OK;
+ }
+diff --git a/src/http/modules/ngx_http_proxy_module.c b/src/http/modules/ngx_http_proxy_module.c
+index 7c4061c..644dacd 100644
+--- a/src/http/modules/ngx_http_proxy_module.c
++++ b/src/http/modules/ngx_http_proxy_module.c
+@@ -2559,22 +2559,20 @@ static ngx_int_t
+ ngx_http_proxy_add_x_forwarded_for_variable(ngx_http_request_t *r,
+     ngx_http_variable_value_t *v, uintptr_t data)
+ {
+-    size_t             len;
+-    u_char            *p;
+-    ngx_uint_t         i, n;
+-    ngx_table_elt_t  **h;
++    size_t            len;
++    u_char           *p;
++    ngx_table_elt_t  *h, *xfwd;
+ 
+     v->valid = 1;
+     v->no_cacheable = 0;
+     v->not_found = 0;
+ 
+-    n = r->headers_in.x_forwarded_for.nelts;
+-    h = r->headers_in.x_forwarded_for.elts;
++    xfwd = r->headers_in.x_forwarded_for;
+ 
+     len = 0;
+ 
+-    for (i = 0; i < n; i++) {
+-        len += h[i]->value.len + sizeof(", ") - 1;
++    for (h = xfwd; h; h = h->next) {
++        len += h->value.len + sizeof(", ") - 1;
+     }
+ 
+     if (len == 0) {
+@@ -2593,8 +2591,8 @@ ngx_http_proxy_add_x_forwarded_for_variable(ngx_http_request_t *r,
+     v->len = len;
+     v->data = p;
+ 
+-    for (i = 0; i < n; i++) {
+-        p = ngx_copy(p, h[i]->value.data, h[i]->value.len);
++    for (h = xfwd; h; h = h->next) {
++        p = ngx_copy(p, h->value.data, h->value.len);
+         *p++ = ','; *p++ = ' ';
+     }
+ 
+diff --git a/src/http/modules/ngx_http_realip_module.c b/src/http/modules/ngx_http_realip_module.c
+index 9586ebe..f6731e7 100644
+--- a/src/http/modules/ngx_http_realip_module.c
++++ b/src/http/modules/ngx_http_realip_module.c
+@@ -134,9 +134,8 @@ ngx_http_realip_handler(ngx_http_request_t *r)
+     ngx_str_t                   *value;
+     ngx_uint_t                   i, hash;
+     ngx_addr_t                   addr;
+-    ngx_array_t                 *xfwd;
+     ngx_list_part_t             *part;
+-    ngx_table_elt_t             *header;
++    ngx_table_elt_t             *header, *xfwd;
+     ngx_connection_t            *c;
+     ngx_http_realip_ctx_t       *ctx;
+     ngx_http_realip_loc_conf_t  *rlcf;
+@@ -168,9 +167,9 @@ ngx_http_realip_handler(ngx_http_request_t *r)
+ 
+     case NGX_HTTP_REALIP_XFWD:
+ 
+-        xfwd = &r->headers_in.x_forwarded_for;
++        xfwd = r->headers_in.x_forwarded_for;
+ 
+-        if (xfwd->elts == NULL) {
++        if (xfwd == NULL) {
+             return NGX_DECLINED;
+         }
+ 
+diff --git a/src/http/modules/ngx_http_userid_filter_module.c b/src/http/modules/ngx_http_userid_filter_module.c
+index 4bf5800..07163a0 100644
+--- a/src/http/modules/ngx_http_userid_filter_module.c
++++ b/src/http/modules/ngx_http_userid_filter_module.c
+@@ -319,10 +319,9 @@ ngx_http_userid_set_variable(ngx_http_request_t *r,
+ static ngx_http_userid_ctx_t *
+ ngx_http_userid_get_uid(ngx_http_request_t *r, ngx_http_userid_conf_t *conf)
+ {
+-    ngx_int_t                n;
+-    ngx_str_t                src, dst;
+-    ngx_table_elt_t        **cookies;
+-    ngx_http_userid_ctx_t   *ctx;
++    ngx_str_t               src, dst;
++    ngx_table_elt_t        *cookie;
++    ngx_http_userid_ctx_t  *ctx;
+ 
+     ctx = ngx_http_get_module_ctx(r, ngx_http_userid_filter_module);
+ 
+@@ -339,9 +338,9 @@ ngx_http_userid_get_uid(ngx_http_request_t *r, ngx_http_userid_conf_t *conf)
+         ngx_http_set_ctx(r, ctx, ngx_http_userid_filter_module);
+     }
+ 
+-    n = ngx_http_parse_multi_header_lines(&r->headers_in.cookies, &conf->name,
+-                                          &ctx->cookie);
+-    if (n == NGX_DECLINED) {
++    cookie = ngx_http_parse_multi_header_lines(r, r->headers_in.cookie,
++                                               &conf->name, &ctx->cookie);
++    if (cookie == NULL) {
+         return ctx;
+     }
+ 
+@@ -349,10 +348,9 @@ ngx_http_userid_get_uid(ngx_http_request_t *r, ngx_http_userid_conf_t *conf)
+                    "uid cookie: \"%V\"", &ctx->cookie);
+ 
+     if (ctx->cookie.len < 22) {
+-        cookies = r->headers_in.cookies.elts;
+         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                       "client sent too short userid cookie \"%V\"",
+-                      &cookies[n]->value);
++                      &cookie->value);
+         return ctx;
+     }
+ 
+@@ -361,10 +359,9 @@ ngx_http_userid_get_uid(ngx_http_request_t *r, ngx_http_userid_conf_t *conf)
+     dst.data = (u_char *) ctx->uid_got;
+ 
+     if (ngx_decode_base64(&dst, &src) == NGX_ERROR) {
+-        cookies = r->headers_in.cookies.elts;
+         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                       "client sent invalid userid cookie \"%V\"",
+-                      &cookies[n]->value);
++                      &cookie->value);
+         return ctx;
+     }
+ 
+diff --git a/src/http/modules/perl/nginx.xs b/src/http/modules/perl/nginx.xs
+index caf7c08..e2180e6 100644
+--- a/src/http/modules/perl/nginx.xs
++++ b/src/http/modules/perl/nginx.xs
+@@ -302,7 +302,7 @@ header_in(r, key)
+ 
+     if (hh) {
+ 
+-        if (hh->offset == offsetof(ngx_http_headers_in_t, cookies)) {
++        if (hh->offset == offsetof(ngx_http_headers_in_t, cookie)) {
+             sep = ';';
+             goto multi;
+         }
+@@ -327,17 +327,13 @@ header_in(r, key)
+ 
+         /* Cookie, X-Forwarded-For */
+ 
+-        a = (ngx_array_t *) ((char *) &r->headers_in + hh->offset);
+-
+-        n = a->nelts;
++        ph = (ngx_table_elt_t **) ((char *) &r->headers_in + hh->offset);
+ 
+-        if (n == 0) {
++        if (*ph == NULL) {
+             XSRETURN_UNDEF;
+         }
+ 
+-        ph = a->elts;
+-
+-        if (n == 1) {
++        if ((*ph)->next == NULL) {
+             ngx_http_perl_set_targ((*ph)->value.data, (*ph)->value.len);
+ 
+             goto done;
+@@ -345,8 +341,8 @@ header_in(r, key)
+ 
+         size = - (ssize_t) (sizeof("; ") - 1);
+ 
+-        for (i = 0; i < n; i++) {
+-            size += ph[i]->value.len + sizeof("; ") - 1;
++        for (h = *ph; h; h = h->next) {
++            size += h->value.len + sizeof("; ") - 1;
+         }
+ 
+         value = ngx_pnalloc(r->pool, size);
+@@ -357,10 +353,10 @@ header_in(r, key)
+ 
+         p = value;
+ 
+-        for (i = 0; /* void */ ; i++) {
+-            p = ngx_copy(p, ph[i]->value.data, ph[i]->value.len);
++        for (h = *ph; h; h = h->next) {
++            p = ngx_copy(p, h->value.data, h->value.len);
+ 
+-            if (i == n - 1) {
++            if (h->next == NULL) {
+                 break;
+             }
+ 
+diff --git a/src/http/ngx_http.h b/src/http/ngx_http.h
+index be8b7cd..a7f312f 100644
+--- a/src/http/ngx_http.h
++++ b/src/http/ngx_http.h
+@@ -103,10 +103,10 @@ ngx_int_t ngx_http_parse_unsafe_uri(ngx_http_request_t *r, ngx_str_t *uri,
+     ngx_str_t *args, ngx_uint_t *flags);
+ ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
+     ngx_uint_t allow_underscores);
+-ngx_int_t ngx_http_parse_multi_header_lines(ngx_array_t *headers,
+-    ngx_str_t *name, ngx_str_t *value);
+-ngx_int_t ngx_http_parse_set_cookie_lines(ngx_array_t *headers,
+-    ngx_str_t *name, ngx_str_t *value);
++ngx_table_elt_t *ngx_http_parse_multi_header_lines(ngx_http_request_t *r,
++    ngx_table_elt_t *headers, ngx_str_t *name, ngx_str_t *value);
++ngx_table_elt_t *ngx_http_parse_set_cookie_lines(ngx_http_request_t *r,
++    ngx_table_elt_t *headers, ngx_str_t *name, ngx_str_t *value);
+ ngx_int_t ngx_http_arg(ngx_http_request_t *r, u_char *name, size_t len,
+     ngx_str_t *value);
+ void ngx_http_split_args(ngx_http_request_t *r, ngx_str_t *uri,
+diff --git a/src/http/ngx_http_core_module.c b/src/http/ngx_http_core_module.c
+index 8572c0c..e6302a1 100644
+--- a/src/http/ngx_http_core_module.c
++++ b/src/http/ngx_http_core_module.c
+@@ -2024,8 +2024,7 @@ ngx_http_gzip_ok(ngx_http_request_t *r)
+ {
+     time_t                     date, expires;
+     ngx_uint_t                 p;
+-    ngx_array_t               *cc;
+-    ngx_table_elt_t           *e, *d, *ae;
++    ngx_table_elt_t           *e, *d, *ae, *cc;
+     ngx_http_core_loc_conf_t  *clcf;
+ 
+     r->gzip_tested = 1;
+@@ -2118,30 +2117,30 @@ ngx_http_gzip_ok(ngx_http_request_t *r)
+         return NGX_DECLINED;
+     }
+ 
+-    cc = &r->headers_out.cache_control;
++    cc = r->headers_out.cache_control;
+ 
+-    if (cc->elts) {
++    if (cc) {
+ 
+         if ((p & NGX_HTTP_GZIP_PROXIED_NO_CACHE)
+-            && ngx_http_parse_multi_header_lines(cc, &ngx_http_gzip_no_cache,
++            && ngx_http_parse_multi_header_lines(r, cc, &ngx_http_gzip_no_cache,
+                                                  NULL)
+-               >= 0)
++               != NULL)
+         {
+             goto ok;
+         }
+ 
+         if ((p & NGX_HTTP_GZIP_PROXIED_NO_STORE)
+-            && ngx_http_parse_multi_header_lines(cc, &ngx_http_gzip_no_store,
++            && ngx_http_parse_multi_header_lines(r, cc, &ngx_http_gzip_no_store,
+                                                  NULL)
+-               >= 0)
++               != NULL)
+         {
+             goto ok;
+         }
+ 
+         if ((p & NGX_HTTP_GZIP_PROXIED_PRIVATE)
+-            && ngx_http_parse_multi_header_lines(cc, &ngx_http_gzip_private,
++            && ngx_http_parse_multi_header_lines(r, cc, &ngx_http_gzip_private,
+                                                  NULL)
+-               >= 0)
++               != NULL)
+         {
+             goto ok;
+         }
+@@ -2712,12 +2711,12 @@ ngx_http_set_disable_symlinks(ngx_http_request_t *r,
+ 
+ ngx_int_t
+ ngx_http_get_forwarded_addr(ngx_http_request_t *r, ngx_addr_t *addr,
+-    ngx_array_t *headers, ngx_str_t *value, ngx_array_t *proxies,
++    ngx_table_elt_t *headers, ngx_str_t *value, ngx_array_t *proxies,
+     int recursive)
+ {
+-    ngx_int_t          rc;
+-    ngx_uint_t         i, found;
+-    ngx_table_elt_t  **h;
++    ngx_int_t         rc;
++    ngx_uint_t        found;
++    ngx_table_elt_t  *h, *next;
+ 
+     if (headers == NULL) {
+         return ngx_http_get_forwarded_addr_internal(r, addr, value->data,
+@@ -2725,16 +2724,23 @@ ngx_http_get_forwarded_addr(ngx_http_request_t *r, ngx_addr_t *addr,
+                                                     recursive);
+     }
+ 
+-    i = headers->nelts;
+-    h = headers->elts;
++    /* revert headers order */
++
++    for (h = headers, headers = NULL; h; h = next) {
++        next = h->next;
++        h->next = headers;
++        headers = h;
++    }
++
++    /* iterate over all headers in reverse order */
+ 
+     rc = NGX_DECLINED;
+ 
+     found = 0;
+ 
+-    while (i-- > 0) {
+-        rc = ngx_http_get_forwarded_addr_internal(r, addr, h[i]->value.data,
+-                                                  h[i]->value.len, proxies,
++    for (h = headers; h; h = h->next) {
++        rc = ngx_http_get_forwarded_addr_internal(r, addr, h->value.data,
++                                                  h->value.len, proxies,
+                                                   recursive);
+ 
+         if (!recursive) {
+@@ -2753,6 +2759,14 @@ ngx_http_get_forwarded_addr(ngx_http_request_t *r, ngx_addr_t *addr,
+         found = 1;
+     }
+ 
++    /* restore headers order */
++
++    for (h = headers, headers = NULL; h; h = next) {
++        next = h->next;
++        h->next = headers;
++        headers = h;
++    }
++
+     return rc;
+ }
+ 
+diff --git a/src/http/ngx_http_core_module.h b/src/http/ngx_http_core_module.h
+index e36f71d..bc6b101 100644
+--- a/src/http/ngx_http_core_module.h
++++ b/src/http/ngx_http_core_module.h
+@@ -532,7 +532,7 @@ ngx_int_t ngx_http_set_disable_symlinks(ngx_http_request_t *r,
+     ngx_http_core_loc_conf_t *clcf, ngx_str_t *path, ngx_open_file_info_t *of);
+ 
+ ngx_int_t ngx_http_get_forwarded_addr(ngx_http_request_t *r, ngx_addr_t *addr,
+-    ngx_array_t *headers, ngx_str_t *value, ngx_array_t *proxies,
++    ngx_table_elt_t *headers, ngx_str_t *value, ngx_array_t *proxies,
+     int recursive);
+ 
+ ngx_int_t ngx_http_link_multi_headers(ngx_http_request_t *r);
+diff --git a/src/http/ngx_http_parse.c b/src/http/ngx_http_parse.c
+index 6460da2..d4f2dae 100644
+--- a/src/http/ngx_http_parse.c
++++ b/src/http/ngx_http_parse.c
+@@ -1960,27 +1960,24 @@ unsafe:
+ }
+ 
+ 
+-ngx_int_t
+-ngx_http_parse_multi_header_lines(ngx_array_t *headers, ngx_str_t *name,
+-    ngx_str_t *value)
++ngx_table_elt_t *
++ngx_http_parse_multi_header_lines(ngx_http_request_t *r,
++    ngx_table_elt_t *headers, ngx_str_t *name, ngx_str_t *value)
+ {
+-    ngx_uint_t         i;
+-    u_char            *start, *last, *end, ch;
+-    ngx_table_elt_t  **h;
+-
+-    h = headers->elts;
++    u_char           *start, *last, *end, ch;
++    ngx_table_elt_t  *h;
+ 
+-    for (i = 0; i < headers->nelts; i++) {
++    for (h = headers; h; h = h->next) {
+ 
+-        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, headers->pool->log, 0,
+-                       "parse header: \"%V: %V\"", &h[i]->key, &h[i]->value);
++        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
++                       "parse header: \"%V: %V\"", &h->key, &h->value);
+ 
+-        if (name->len > h[i]->value.len) {
++        if (name->len > h->value.len) {
+             continue;
+         }
+ 
+-        start = h[i]->value.data;
+-        end = h[i]->value.data + h[i]->value.len;
++        start = h->value.data;
++        end = h->value.data + h->value.len;
+ 
+         while (start < end) {
+ 
+@@ -1994,7 +1991,7 @@ ngx_http_parse_multi_header_lines(ngx_array_t *headers, ngx_str_t *name,
+ 
+             if (value == NULL) {
+                 if (start == end || *start == ',') {
+-                    return i;
++                    return h;
+                 }
+ 
+                 goto skip;
+@@ -2014,7 +2011,7 @@ ngx_http_parse_multi_header_lines(ngx_array_t *headers, ngx_str_t *name,
+             value->len = last - start;
+             value->data = start;
+ 
+-            return i;
++            return h;
+ 
+         skip:
+ 
+@@ -2029,31 +2026,28 @@ ngx_http_parse_multi_header_lines(ngx_array_t *headers, ngx_str_t *name,
+         }
+     }
+ 
+-    return NGX_DECLINED;
++    return NULL;
+ }
+ 
+ 
+-ngx_int_t
+-ngx_http_parse_set_cookie_lines(ngx_array_t *headers, ngx_str_t *name,
+-    ngx_str_t *value)
++ngx_table_elt_t *
++ngx_http_parse_set_cookie_lines(ngx_http_request_t *r,
++    ngx_table_elt_t *headers, ngx_str_t *name, ngx_str_t *value)
+ {
+-    ngx_uint_t         i;
+-    u_char            *start, *last, *end;
+-    ngx_table_elt_t  **h;
+-
+-    h = headers->elts;
++    u_char           *start, *last, *end;
++    ngx_table_elt_t  *h;
+ 
+-    for (i = 0; i < headers->nelts; i++) {
++    for (h = headers; h; h = h->next) {
+ 
+-        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, headers->pool->log, 0,
+-                       "parse header: \"%V: %V\"", &h[i]->key, &h[i]->value);
++        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
++                       "parse header: \"%V: %V\"", &h->key, &h->value);
+ 
+-        if (name->len >= h[i]->value.len) {
++        if (name->len >= h->value.len) {
+             continue;
+         }
+ 
+-        start = h[i]->value.data;
+-        end = h[i]->value.data + h[i]->value.len;
++        start = h->value.data;
++        end = h->value.data + h->value.len;
+ 
+         if (ngx_strncasecmp(start, name->data, name->len) != 0) {
+             continue;
+@@ -2077,10 +2071,10 @@ ngx_http_parse_set_cookie_lines(ngx_array_t *headers, ngx_str_t *name,
+         value->len = last - start;
+         value->data = start;
+ 
+-        return i;
++        return h;
+     }
+ 
+-    return NGX_DECLINED;
++    return NULL;
+ }
+ 
+ 
+diff --git a/src/http/ngx_http_request.c b/src/http/ngx_http_request.c
+index 7a1c59e..f07cad9 100644
+--- a/src/http/ngx_http_request.c
++++ b/src/http/ngx_http_request.c
+@@ -46,6 +46,7 @@ static ngx_int_t ngx_http_find_virtual_server(ngx_connection_t *c,
+     ngx_http_request_t *r, ngx_http_core_srv_conf_t **cscfp);
+ 
+ static void ngx_http_request_handler(ngx_event_t *ev);
++static ngx_int_t ngx_http_trace_handler(ngx_http_request_t *r);
+ static void ngx_http_terminate_request(ngx_http_request_t *r, ngx_int_t rc);
+ static void ngx_http_terminate_handler(ngx_http_request_t *r);
+ static void ngx_http_finalize_connection(ngx_http_request_t *r);
+@@ -205,7 +206,7 @@ ngx_http_header_t  ngx_http_headers_in[] = {
+                  ngx_http_process_header_line },
+ #endif
+ 
+-    { ngx_string("Cookie"), offsetof(ngx_http_headers_in_t, cookies),
++    { ngx_string("Cookie"), offsetof(ngx_http_headers_in_t, cookie),
+                  ngx_http_process_multi_header_lines },
+ 
+     { ngx_string("Black-List"), offsetof(ngx_http_headers_in_t, black_list),
+@@ -1768,6 +1769,7 @@ ngx_http_process_header_line(ngx_http_request_t *r, ngx_table_elt_t *h,
+ 
+     if (*ph == NULL) {
+         *ph = h;
++        h->next = NULL;
+     }
+ 
+     return NGX_OK;
+@@ -1784,6 +1786,7 @@ ngx_http_process_unique_header_line(ngx_http_request_t *r, ngx_table_elt_t *h,
+ 
+     if (*ph == NULL) {
+         *ph = h;
++        h->next = NULL;
+         return NGX_OK;
+     }
+ 
+@@ -1816,6 +1819,7 @@ ngx_http_process_host(ngx_http_request_t *r, ngx_table_elt_t *h,
+     }
+ 
+     r->headers_in.host = h;
++    h->next = NULL;
+ 
+     host = h->value;
+ 
+@@ -1877,6 +1881,7 @@ ngx_http_process_user_agent(ngx_http_request_t *r, ngx_table_elt_t *h,
+     }
+ 
+     r->headers_in.user_agent = h;
++    h->next = NULL;
+ 
+     /* check some widespread browsers while the header is in CPU cache */
+ 
+@@ -1943,27 +1948,15 @@ static ngx_int_t
+ ngx_http_process_multi_header_lines(ngx_http_request_t *r, ngx_table_elt_t *h,
+     ngx_uint_t offset)
+ {
+-    ngx_array_t       *headers;
+     ngx_table_elt_t  **ph;
+ 
+-    headers = (ngx_array_t *) ((char *) &r->headers_in + offset);
+-
+-    if (headers->elts == NULL) {
+-        if (ngx_array_init(headers, r->pool, 1, sizeof(ngx_table_elt_t *))
+-            != NGX_OK)
+-        {
+-            ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+-            return NGX_ERROR;
+-        }
+-    }
++    ph = (ngx_table_elt_t **) ((char *) &r->headers_in + offset);
+ 
+-    ph = ngx_array_push(headers);
+-    if (ph == NULL) {
+-        ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+-        return NGX_ERROR;
+-    }
++    while (*ph) { ph = &(*ph)->next; }
+ 
+     *ph = h;
++    h->next = NULL;
++
+     return NGX_OK;
+ }
+ 
+@@ -1971,6 +1964,8 @@ ngx_http_process_multi_header_lines(ngx_http_request_t *r, ngx_table_elt_t *h,
+ ngx_int_t
+ ngx_http_process_request_header(ngx_http_request_t *r)
+ {
++    ngx_core_conf_t *ccf = (ngx_core_conf_t *) ngx_get_conf(r->cycle->conf_ctx, ngx_core_module);
++
+     if (r->headers_in.server.len == 0
+         && ngx_http_set_virtual_server(r, &r->headers_in.server)
+            == NGX_ERROR)
+@@ -2049,8 +2044,12 @@ ngx_http_process_request_header(ngx_http_request_t *r)
+     if (r->method == NGX_HTTP_TRACE) {
+         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                       "client sent TRACE method");
+-        ngx_http_finalize_request(r, NGX_HTTP_NOT_ALLOWED);
+-        return NGX_ERROR;
++          if (ccf->trace_enable != -1) {
++               return ngx_http_trace_handler(r);
++          } else {
++               ngx_http_finalize_request(r, NGX_HTTP_NOT_ALLOWED);
++               return NGX_ERROR;
++          }
+     }
+ 
+     return NGX_OK;
+@@ -4049,3 +4048,65 @@ ngx_http_process_prefer(ngx_http_request_t *r, ngx_table_elt_t *h,
+ 
+     return NGX_OK;
+ }
++
++
++static ngx_int_t
++ngx_http_trace_handler(ngx_http_request_t *r)
++{
++    ngx_list_part_t *part;
++    ngx_table_elt_t *header;
++    ngx_buf_t *b;
++    ngx_chain_t out;
++    ngx_int_t rc, content_len;
++
++    b = ngx_create_temp_buf(r->pool, 200);
++    if (b == NULL) {
++        return NGX_HTTP_INTERNAL_SERVER_ERROR;
++    }
++
++    b->last = ngx_copy(b->last, r->request_line.data, r->request_line.len);
++    *b->last++ = '\n';
++
++    content_len = r->request_line.len + 1;
++
++    part = &r->headers_in.headers.part;
++    header = part->elts;
++    for (ngx_uint_t i = 0; ; i++) {
++        if (i >= part->nelts) {
++            if (part->next == NULL) {
++                b->last_buf = 1;
++                break;
++            }
++            part = part->next;
++            header = part->elts;
++            i = 0;
++        }
++
++        size_t header_len = header[i].key.len + header[i].value.len + 3;
++        content_len += header_len;
++
++        b->last = ngx_copy(b->last, header[i].key.data, header[i].key.len);
++        *b->last++ = ':';
++        *b->last++ = ' ';
++        b->last = ngx_copy(b->last, header[i].value.data, header[i].value.len);
++        *b->last++ = '\n';
++    }
++
++    ngx_str_t ct = ngx_string("message/http");
++    r->headers_out.status = NGX_HTTP_OK;
++    r->headers_out.content_type = ct;
++    r->headers_out.content_length_n = content_len;
++    rc = ngx_http_send_header(r);
++
++    if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
++        return rc;
++    }
++
++    out.buf = b;
++    out.next = NULL;
++
++    rc = ngx_http_output_filter(r, &out);
++    ngx_http_close_request(r, rc);
++
++    return NGX_DONE;
++}
+diff --git a/src/http/ngx_http_request.h b/src/http/ngx_http_request.h
+index 4cebad9..cb69155 100644
+--- a/src/http/ngx_http_request.h
++++ b/src/http/ngx_http_request.h
+@@ -214,7 +214,7 @@ typedef struct {
+     ngx_table_elt_t                  *keep_alive;
+ 
+ #if (NGX_HTTP_X_FORWARDED_FOR)
+-    ngx_array_t                       x_forwarded_for;
++    ngx_table_elt_t                  *x_forwarded_for;
+ #endif
+ 
+ #if (NGX_HTTP_REALIP)
+@@ -233,11 +233,11 @@ typedef struct {
+     ngx_table_elt_t                  *date;
+ #endif
+ 
++    ngx_table_elt_t                  *cookie;
++
+     ngx_str_t                         user;
+     ngx_str_t                         passwd;
+ 
+-    ngx_array_t                       cookies;
+-
+     ngx_str_t                         server;
+     off_t                             content_length_n;
+     time_t                            keep_alive_n;
+@@ -279,6 +279,9 @@ typedef struct {
+     ngx_table_elt_t                  *expires;
+     ngx_table_elt_t                  *etag;
+ 
++    ngx_table_elt_t                  *cache_control;
++    ngx_table_elt_t                  *link;
++
+     ngx_str_t                        *override_charset;
+ 
+     size_t                            content_type_len;
+@@ -287,9 +290,6 @@ typedef struct {
+     u_char                           *content_type_lowcase;
+     ngx_uint_t                        content_type_hash;
+ 
+-    ngx_array_t                       cache_control;
+-    ngx_array_t                       link;
+-
+     off_t                             content_length_n;
+     off_t                             content_offset;
+     time_t                            date_time;
+diff --git a/src/http/ngx_http_upstream.c b/src/http/ngx_http_upstream.c
+index 46fde83..99d72be 100644
+--- a/src/http/ngx_http_upstream.c
++++ b/src/http/ngx_http_upstream.c
+@@ -246,7 +246,7 @@ static ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
+ 
+     { ngx_string("Set-Cookie"),
+                  ngx_http_upstream_process_set_cookie,
+-                 offsetof(ngx_http_upstream_headers_in_t, cookies),
++                 offsetof(ngx_http_upstream_headers_in_t, set_cookie),
+                  ngx_http_upstream_rewrite_set_cookie, 0, 1 },
+ 
+     { ngx_string("Content-Disposition"),
+@@ -4666,26 +4666,16 @@ static ngx_int_t
+ ngx_http_upstream_process_set_cookie(ngx_http_request_t *r, ngx_table_elt_t *h,
+     ngx_uint_t offset)
+ {
+-    ngx_array_t           *pa;
+     ngx_table_elt_t      **ph;
+     ngx_http_upstream_t   *u;
+ 
+     u = r->upstream;
+-    pa = &u->headers_in.cookies;
++    ph = &u->headers_in.set_cookie;
+ 
+-    if (pa->elts == NULL) {
+-        if (ngx_array_init(pa, r->pool, 1, sizeof(ngx_table_elt_t *)) != NGX_OK)
+-        {
+-            return NGX_ERROR;
+-        }
+-    }
+-
+-    ph = ngx_array_push(pa);
+-    if (ph == NULL) {
+-        return NGX_ERROR;
+-    }
++    while (*ph) { ph = &(*ph)->next; }
+ 
+     *ph = h;
++    h->next = NULL;
+ 
+ #if (NGX_HTTP_CACHE)
+     if (!(u->conf->ignore_headers & NGX_HTTP_UPSTREAM_IGN_SET_COOKIE)) {
+@@ -4701,26 +4691,16 @@ static ngx_int_t
+ ngx_http_upstream_process_cache_control(ngx_http_request_t *r,
+     ngx_table_elt_t *h, ngx_uint_t offset)
+ {
+-    ngx_array_t          *pa;
+     ngx_table_elt_t     **ph;
+     ngx_http_upstream_t  *u;
+ 
+     u = r->upstream;
+-    pa = &u->headers_in.cache_control;
++    ph = &u->headers_in.cache_control;
+ 
+-    if (pa->elts == NULL) {
+-        if (ngx_array_init(pa, r->pool, 2, sizeof(ngx_table_elt_t *)) != NGX_OK)
+-        {
+-            return NGX_ERROR;
+-        }
+-    }
+-
+-    ph = ngx_array_push(pa);
+-    if (ph == NULL) {
+-        return NGX_ERROR;
+-    }
++    while (*ph) { ph = &(*ph)->next; }
+ 
+     *ph = h;
++    h->next = NULL;
+ 
+ #if (NGX_HTTP_CACHE)
+     {
+@@ -5103,18 +5083,8 @@ static ngx_int_t
+ ngx_http_upstream_copy_multi_header_lines(ngx_http_request_t *r,
+     ngx_table_elt_t *h, ngx_uint_t offset)
+ {
+-    ngx_array_t      *pa;
+     ngx_table_elt_t  *ho, **ph;
+ 
+-    pa = (ngx_array_t *) ((char *) &r->headers_out + offset);
+-
+-    if (pa->elts == NULL) {
+-        if (ngx_array_init(pa, r->pool, 2, sizeof(ngx_table_elt_t *)) != NGX_OK)
+-        {
+-            return NGX_ERROR;
+-        }
+-    }
+-
+     ho = ngx_list_push(&r->headers_out.headers);
+     if (ho == NULL) {
+         return NGX_ERROR;
+@@ -5122,12 +5092,12 @@ ngx_http_upstream_copy_multi_header_lines(ngx_http_request_t *r,
+ 
+     *ho = *h;
+ 
+-    ph = ngx_array_push(pa);
+-    if (ph == NULL) {
+-        return NGX_ERROR;
+-    }
++    ph = (ngx_table_elt_t **) ((char *) &r->headers_out + offset);
++
++    while (*ph) { ph = &(*ph)->next; }
+ 
+     *ph = ho;
++    ho->next = NULL;
+ 
+     return NGX_OK;
+ }
+@@ -5740,9 +5710,9 @@ ngx_http_upstream_cookie_variable(ngx_http_request_t *r,
+     s.len = name->len - (sizeof("upstream_cookie_") - 1);
+     s.data = name->data + sizeof("upstream_cookie_") - 1;
+ 
+-    if (ngx_http_parse_set_cookie_lines(&r->upstream->headers_in.cookies,
++    if (ngx_http_parse_set_cookie_lines(r, r->upstream->headers_in.set_cookie,
+                                         &s, &cookie)
+-        == NGX_DECLINED)
++        == NULL)
+     {
+         v->not_found = 1;
+         return NGX_OK;
+diff --git a/src/http/ngx_http_upstream.h b/src/http/ngx_http_upstream.h
+index 3db7b06..18a9c57 100644
+--- a/src/http/ngx_http_upstream.h
++++ b/src/http/ngx_http_upstream.h
+@@ -289,8 +289,8 @@ typedef struct {
+     ngx_table_elt_t                 *content_encoding;
+ #endif
+ 
+-    ngx_array_t                      cache_control;
+-    ngx_array_t                      cookies;
++    ngx_table_elt_t                 *cache_control;
++    ngx_table_elt_t                 *set_cookie;
+ 
+     off_t                            content_length_n;
+     time_t                           last_modified_time;
+diff --git a/src/http/ngx_http_variables.c b/src/http/ngx_http_variables.c
+index c8207ae..11b84ca 100644
+--- a/src/http/ngx_http_variables.c
++++ b/src/http/ngx_http_variables.c
+@@ -187,7 +187,7 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
+ #endif
+ 
+     { ngx_string("http_cookie"), NULL, ngx_http_variable_cookies,
+-      offsetof(ngx_http_request_t, headers_in.cookies), 0, 0 },
++      offsetof(ngx_http_request_t, headers_in.cookie), 0, 0 },
+ 
+     { ngx_string("content_length"), NULL, ngx_http_variable_content_length,
+       0, 0, 0 },
+@@ -856,26 +856,21 @@ static ngx_int_t
+ ngx_http_variable_headers_internal(ngx_http_request_t *r,
+     ngx_http_variable_value_t *v, uintptr_t data, u_char sep)
+ {
+-    size_t             len;
+-    u_char            *p, *end;
+-    ngx_uint_t         i, n;
+-    ngx_array_t       *a;
+-    ngx_table_elt_t  **h;
+-
+-    a = (ngx_array_t *) ((char *) r + data);
++    size_t            len;
++    u_char           *p;
++    ngx_table_elt_t  *h, *th;
+ 
+-    n = a->nelts;
+-    h = a->elts;
++    h = *(ngx_table_elt_t **) ((char *) r + data);
+ 
+     len = 0;
+ 
+-    for (i = 0; i < n; i++) {
++    for (th = h; th; th = th->next) {
+ 
+-        if (h[i]->hash == 0) {
++        if (th->hash == 0) {
+             continue;
+         }
+ 
+-        len += h[i]->value.len + 2;
++        len += th->value.len + 2;
+     }
+ 
+     if (len == 0) {
+@@ -889,9 +884,9 @@ ngx_http_variable_headers_internal(ngx_http_request_t *r,
+     v->no_cacheable = 0;
+     v->not_found = 0;
+ 
+-    if (n == 1) {
+-        v->len = (*h)->value.len;
+-        v->data = (*h)->value.data;
++    if (h->next == NULL) {
++        v->len = h->value.len;
++        v->data = h->value.data;
+ 
+         return NGX_OK;
+     }
+@@ -904,17 +899,15 @@ ngx_http_variable_headers_internal(ngx_http_request_t *r,
+     v->len = len;
+     v->data = p;
+ 
+-    end = p + len;
+-
+-    for (i = 0; /* void */ ; i++) {
++    for (th = h; th; th = th->next) {
+ 
+-        if (h[i]->hash == 0) {
++        if (th->hash == 0) {
+             continue;
+         }
+ 
+-        p = ngx_copy(p, h[i]->value.data, h[i]->value.len);
++        p = ngx_copy(p, th->value.data, th->value.len);
+ 
+-        if (p == end) {
++        if (th->next == NULL) {
+             break;
+         }
+ 
+@@ -1112,8 +1105,8 @@ ngx_http_variable_cookie(ngx_http_request_t *r, ngx_http_variable_value_t *v,
+     s.len = name->len - (sizeof("cookie_") - 1);
+     s.data = name->data + sizeof("cookie_") - 1;
+ 
+-    if (ngx_http_parse_multi_header_lines(&r->headers_in.cookies, &s, &cookie)
+-        == NGX_DECLINED)
++    if (ngx_http_parse_multi_header_lines(r, r->headers_in.cookie, &s, &cookie)
++        == NULL)
+     {
+         v->not_found = 1;
+         return NGX_OK;
+diff --git a/src/http/v2/ngx_http_v2_filter_module.c b/src/http/v2/ngx_http_v2_filter_module.c
+index 62b6a04..5f8626a 100644
+--- a/src/http/v2/ngx_http_v2_filter_module.c
++++ b/src/http/v2/ngx_http_v2_filter_module.c
+@@ -674,14 +674,14 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
+ static ngx_int_t
+ ngx_http_v2_push_resources(ngx_http_request_t *r)
+ {
+-    u_char                     *start, *end, *last;
+-    ngx_int_t                   rc;
+-    ngx_str_t                   path;
+-    ngx_uint_t                  i, push;
+-    ngx_table_elt_t           **h;
+-    ngx_http_v2_loc_conf_t     *h2lcf;
+-    ngx_http_complex_value_t   *pushes;
+-    ngx_str_t                   binary[NGX_HTTP_V2_PUSH_HEADERS];
++    u_char                    *start, *end, *last;
++    ngx_int_t                  rc;
++    ngx_str_t                  path;
++    ngx_uint_t                 i, push;
++    ngx_table_elt_t           *h;
++    ngx_http_v2_loc_conf_t    *h2lcf;
++    ngx_http_complex_value_t  *pushes;
++    ngx_str_t                  binary[NGX_HTTP_V2_PUSH_HEADERS];
+ 
+     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                    "http2 push resources");
+@@ -725,15 +725,13 @@ ngx_http_v2_push_resources(ngx_http_request_t *r)
+         return NGX_OK;
+     }
+ 
+-    h = r->headers_out.link.elts;
+-
+-    for (i = 0; i < r->headers_out.link.nelts; i++) {
++    for (h = r->headers_out.link; h; h = h->next) {
+ 
+         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+-                       "http2 parse link: \"%V\"", &h[i]->value);
++                       "http2 parse link: \"%V\"", &h->value);
+ 
+-        start = h[i]->value.data;
+-        end = h[i]->value.data + h[i]->value.len;
++        start = h->value.data;
++        end = h->value.data + h->value.len;
+ 
+     next_link:
+ 

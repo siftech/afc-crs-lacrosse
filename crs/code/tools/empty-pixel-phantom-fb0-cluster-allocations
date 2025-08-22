@@ -1,0 +1,14 @@
+@hosts = (
+    'pixel-phantom-fb0.dxrvwelpwjde1pnezrmm1xgzyf.bx.internal.cloudapp.net',
+);
+%cores = (
+    'pixel-phantom-fb0.dxrvwelpwjde1pnezrmm1xgzyf.bx.internal.cloudapp.net' => 128,
+);
+%used = (
+    'pixel-phantom-fb0.dxrvwelpwjde1pnezrmm1xgzyf.bx.internal.cloudapp.net' => 0,
+);
+%cluster_hosts = (
+);
+%cluster_owners = (
+);
+$nextcluster = '1';

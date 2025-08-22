@@ -1,0 +1,42 @@
+do "./defaults.pl" || die "Can't do './defaults.pl': $@";
+
+$run_in_compose = 1;
+our $cp_config = "../crs-sandbox-items/sift-nginx-cp-config.yaml";
+
+our $experiment = '
+  (push :msg *debug-list*)
+  (push :amp *debug-list*)
+  (push :target *debug-list*)
+  (setf *run-fake-bridge* t)
+  (setf *lacrosse* t)
+  (setf *fake-bridge-script*
+    \'(
+       (1 ((:type :new-challenge-project)
+           (:target ((;;(:cp-address "")
+                        (:cp-address "")
+				)))))
+       (12000 ((:type :halt)))))
+';
+
+our $numfbs = 1;
+our $allocationmethod = "balanced";
+
+#our $success_pattern = "Successfully built executable for patched target";
+#   indicates a cp has been initialized
+our $success_pattern = "/out/lacrosse-init";
+
+#do "./lax.pl" || die "Can't do './lax.pl': $@";
+do "./common.pl" || die "Can't do './common.pl': $@";
+
+$test = {
+    defaultIgnore => 1,
+    keywords => [ qw / lacrosse / ],
+    cleanup => \&condor_killer,
+    agents => [
+        @clean_and_start_agents,
+    ],
+};
+
+$test;
+
+# vim: set ft=perl :

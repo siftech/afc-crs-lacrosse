@@ -1,0 +1,35 @@
+# Official language image. Look for the different tagged releases at:
+# https://hub.docker.com/r/library/python/tags/
+image: python:3.11 # minimum version
+
+# Change pip's cache directory to be inside the project directory since we can
+# only cache local items.
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+stages:
+  - test
+
+# https://pip.pypa.io/en/stable/topics/caching/
+cache:
+  paths:
+    - .cache/pip
+
+before_script:
+  - pip install poetry
+  - poetry config virtualenvs.create false
+  - poetry install
+
+unit test:
+  stage: test
+  tags:
+    - docker
+  script:
+    - poetry run pytest
+
+Static Type check:
+  tags:
+    - docker
+  stage: test
+  script:
+    - poetry run mypy lacrosse_llm

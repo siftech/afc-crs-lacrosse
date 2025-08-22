@@ -1,0 +1,43 @@
+# ------------------------------------------------------------
+# COPYRIGHT START
+# Copyright (c) 2014, Smart Information Flow Technologies (SIFT).
+# COPYRIGHT END
+# ------------------------------------------------------------
+$test = {
+  # should not run on Jenkins
+ 
+  description => "Make sure we don't pay attention to newlines in comparo.",
+  defaultIgnore => 1,
+  keywords => [ qw / prt newline / ],  
+  agents => [ 
+      {
+        name         => "is-environment-set",
+        description  => "Checks environment variables",
+        command      => sub {
+           if (defined $ENV{'REMOTE_HOST'} and defined $ENV{'REMOTE_USER'}) {
+              exit 0;
+           } else {
+              print "REMOTE_HOST and REMOTE_USER environment variables have not been set!";
+              exit 1;
+           }
+        },
+        exit_code => 0,
+        complete_before_continuing => 1,
+        comparo => undef
+      },
+      {
+        name         => "remote-log", 
+        description  => "Remote log test.",
+        command   => ["bash -c 'echo \"This is a remote log test.\"'" ],
+        comparo      => new PRT::LineComparo(),
+        remote_host  => $ENV{'REMOTE_HOST'},
+        remote_user  => $ENV{'REMOTE_USER'},
+        remote_log   => 1
+      },
+    ]
+  };
+
+# you could put other code here, but not sure what that would serve.
+
+# Always end with a reference to the test specification hash reference.
+$test;

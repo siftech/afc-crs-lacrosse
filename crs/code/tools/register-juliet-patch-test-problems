@@ -1,0 +1,171 @@
+#!/bin/bash
+
+# construct patch-test problems from juliet files that Rick's scripts generated
+# Note the GLOB_GROUPS array below maps general problem categories to a space-separated
+# list of blobs within that category. Every file matching every glob in every category
+# is converted into a patch-test problem.
+
+# Enable associative arrays
+declare -A GLOB_GROUPS
+
+# Define the nested arrays (lower-level globs) for each higher-level category
+# Each list of globs (value) is space-separated.
+GLOB_GROUPS["42416"]="*.c*"
+GLOB_GROUPS["42121"]="*.c*"
+GROUP_ERR_KEYWORD["42121"]="overflow"
+GLOB_GROUPS["42122"]="*.c*"
+GROUP_ERR_KEYWORD["42122"]="overflow"
+GLOB_GROUPS["42126"]="*.c*"
+GROUP_ERR_KEYWORD["42126"]="overflow"
+GLOB_GROUPS["42415"]="*.c*"
+GROUP_ERR_KEYWORD["42415"]="double-free"
+GLOB_GROUPS["42416"]="*.c*"
+GROUP_ERR_KEYWORD["42416"]="use-after-free"
+GLOB_GROUPS["42476"]="*.c*"
+GLOB_GROUPS["42680"]="*.c*"
+GROUP_ERR_KEYWORD["42680"]="exceeds"
+
+
+JULIET_SRC_BASE_PATH="/home/mmclure/laxified-juliet-bydave"
+JULIET_BAD_CODE_PATH="${JULIET_SRC_BASE_PATH}/juliet_code_cleaned/bad_functions_only"
+JULIET_GOOD_CODE_PATH="${JULIET_SRC_BASE_PATH}/juliet_code_cleaned/good_functions_only"
+DEST_DIR="$LACROSSE_HOME/code/test/patch-test/problems"
+
+# Ensure the destination directory exists
+mkdir -p "$DEST_DIR"
+
+group_counter=0
+# Iterate over the glob patterns
+for group in "${!GLOB_GROUPS[@]}"; do
+    echo "Processing $group"
+    echo "group number ${group_counter}"
+    ((group_counter++))
+    # Convert the space-separated string into an array
+    IFS=' ' read -r -a patterns <<< "${GLOB_GROUPS[$group]}"
+    err_keyword="${GROUP_ERR_KEYWORD[$group]}"
+
+    if [[ -n $err_keyword ]]; then
+	echo "err_keyword is ${err_keyword}"
+    fi
+    
+    group_path="$JULIET_SRC_BASE_PATH/${group}"
+    bad_code_path="${group_path}/juliet_code_cleaned/bad_functions_only"
+    bad_code_map="${bad_code_path}/filename-map.txt"
+    bad_err_path="${group_path}/stderr_files/stderr_bad"
+    
+    pattern_counter=0
+    for pattern in "${patterns[@]}"; do
+	((pattern_counter++))
+	echo "pattern number ${pattern_counter}"
+	echo "  Pattern: $pattern"
+	glob="${bad_code_path}/${pattern}"
+	# echo "glob is $glob"
+	# Expand the glob pattern with the base directory
+	matches=( $glob )
+
+	echo "    Register ${#matches[@]} problems"
+
+	file_counter=0
+	# Check if any files matched
+	skip_counter=0
+	if [ -e "${matches[0]}" ]; then
+	    for badfile in "${matches[@]}"; do
+		# Extract the filename without the directory
+		filename=$(basename "$badfile")
+
+		# Extract the part before the first period
+		problem_name="${filename%%.*}"
+		# echo "problem name is $problem_name"
+		
+		bad_err="${bad_err_path}/${problem_name}.out_stderr.txt"
+		# echo "bad_err is $bad_err"
+
+		if [[ ! -e "$bad_err" ]]; then
+		    ((skip_counter++))  # Increment empty file counter
+		    # echo "Skip non-existent err: ${filename}"
+		    continue  # Skip to next iteration
+		fi
+		
+		# Copy each matched file to the destination directory
+		if [[ -f "$bad_err" && ! -s "$bad_err" ]]; then  # Check if it's a file and empty (-s checks if file has content)
+		    ((skip_counter++))  # Increment empty file counter
+		    # echo "Skip empty err: ${filename}"
+		    continue  # Skip to next iteration
+		fi
+
+		#echo "err_keyword is $err_keyword $bad_err"
+		if [[ -n "$err_keyword" ]]; then
+		    greprval=$(grep -L "$err_keyword" "$bad_err")
+		    #echo "greprval is $greprval"
+		    if [[ -n $greprval ]]; then
+			((skip_counter++))  # Increment empty file counter
+			# echo "Skip unexpected err: ${filename}"
+			continue  # Skip to next iteration
+		    fi
+		fi
+
+		
+		#echo "file number ${file_counter}"
+		((file_counter++))
+
+		#bad_lastdir_name=$(basename "$(dirname "$badfile")")
+		# echo "badfile is $badfile"
+		#echo "filename: ${filename}"
+		
+		origname=$(awk -v key="$filename" '$1 == key {print $3}' "$bad_code_map")
+		problem_origname="${origname%%.*}"
+		#echo "problem_origname: ${problem_origname}"
+		
+		problem_path="${DEST_DIR}/juliet_${problem_origname}"
+		
+		bad_dest="${problem_path}/bad_source/${filename}"
+		bad_dest="${bad_dest/.bad.c/.c}"
+		# echo "bad_dest is ${bad_dest}"
+
+		mkdir -p "$(dirname "$bad_dest")"
+		cp $badfile $bad_dest
+
+		# Replace windows line endings with unix line endings, as they seem to screw with patching
+		# ... OTOH, are unix newlines a safe assumption in the competition?
+		sed -i 's/\r//g' $bad_dest
+
+		goodfile="${badfile/.bad.c/.good.c}"
+		goodfile="${goodfile/bad_functions_only/good_functions_only}"
+		# echo "goodfile is $goodfile"
+
+		good_dest="${bad_dest/bad_source/good_source}"
+
+		#mkdir -p "$(dirname "$good_dest")"
+		#cp $goodfile $good_dest
+
+		# Replace windows line endings with unix line endings, as they seem to screw with patching
+		# ... OTOH, are unix newlines a safe assumption in the competition?
+		#sed -i 's/\r//g' $good_dest
+
+		bad_err_dest="${problem_path}/bad_err"
+		# echo "bad_err_dest is ${bad_err_dest}"
+		cp $bad_err $bad_err_dest
+		
+		good_err="${bad_err/sanitized_bad/sanitized_good}"
+		good_err="${good_err/.bad.out_err.txt/.good.out_err.txt}"
+		# echo "good_err is $good_err"
+
+		good_err_dest="${problem_path}/good_err"
+		# echo "good_err_dest is ${good_err_dest}"
+		#cp $good_err $good_err_dest
+
+		# FIXME: We don't deal with the include versions yet. Note it should deal with .c or .cpp
+		#badfileinc="$JULIET_SRC_BASE_PATH/${group}/include_c_files/${problem_name}.bad.c_includes.c"
+		#echo "badfileinc is $badfileinc"
+		#bad_inc_dest="${DEST_DIR}/juliet_${problem_name}/bad_source/${filename}"
+	    done
+	    echo "Skipped ${skip_counter} files."
+	    echo "Added ${file_counter} problems."
+	else
+	    echo "No files matched pattern: $pattern"
+	fi
+    done
+done
+
+
+

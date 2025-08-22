@@ -1,0 +1,42 @@
+#!/bin/bash
+# this is useful in prt scripts because of the challenges of passing perl arguments to commands.
+# For example:
+# command => [ "cd-then-exec", $jastro_home, "./jastro.exe", "$simulation", "-r", @ASPIRE_RELIABLE_MESSAGING_JASTRO ],
+
+# Provide usage information if not arguments were supplied
+if [[ "$#" -le 0 ]]; then
+        echo "Usage: $0 dir executable  [<argument>...]" >&2
+        echo " - changes to the first arg directory and runs executable there, with all following arguments"
+
+        exit 1
+fi
+
+# Get the executable by removing the last slash and anything before it
+X="${2}"
+
+# Get the directory by removing the executable name
+D="${1}"
+
+# Check if the directory exists
+if [[ -d "$D" ]]; then
+        # If it does, cd into it
+        cd "$D"
+else
+        if [[ "$D" ]]; then
+                # Complain if a directory was specified, but does not exist
+                echo "Directory '$D' does not exist" >&2
+
+                exit 1
+        fi
+fi
+
+# Check if the executable is, well, executable
+if [[ -x "$X" ]]; then
+        # Run the executable in its directory with the supplied arguments
+        exec "$X" "${@:3}"
+else
+        # Complain if the executable is not a valid
+        echo "Executable '$X' is not executable" >&2
+
+        exit 1
+fi

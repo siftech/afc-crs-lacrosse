@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+
+set -e
+
+LAX_DEPS_INSTALL_DIR=${LAX_DEPS_INSTALL_DIR:-"$HOME/bin"}
+if [ ! -d "$LAX_DEPS_INSTALL_DIR" ]; then
+  echo "FAIL: $LAX_DEPS_INSTALL_DIR must exist (and you will probably want it on your PATH)"
+  exit 1
+fi
+
+LAX_DEPS_WORKING_DIR=/tmp/lax-deps-$USER
+mkdir -p "${LAX_DEPS_WORKING_DIR}"
+pushd "${LAX_DEPS_WORKING_DIR}" > /dev/null
+
+KIND_VERSION=0.22.0
+HELM_VERSION=3.14.4
+KUBECTL_VERSION=1.29.2
+YQ_VERSION=4.44.1
+KOMPOSE_VERSION=1.33.0
+
+echo Downloading kind
+curl -Lo kind https://github.com/kubernetes-sigs/kind/releases/download/v${KIND_VERSION}/kind-linux-amd64
+chmod +x kind
+
+echo Downloading helm
+curl -Lo helm.tgz https://get.helm.sh/helm-v${HELM_VERSION}-linux-amd64.tar.gz
+mkdir -p helm-d
+tar -zxf helm.tgz -C helm-d --strip-components=1
+mv helm-d/helm helm
+rm -r helm-d
+rm helm.tgz
+chmod +x helm
+
+echo Downloading kubectl
+curl -LO "https://dl.k8s.io/release/v${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
+chmod +x kubectl
+
+echo Downloading yq
+curl -Lo yq https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION}/yq_linux_amd64
+chmod +x yq
+
+echo Downloading kompose
+curl -Lo kompose https://github.com/kubernetes/kompose/releases/download/v${KOMPOSE_VERSION}/kompose-linux-amd64
+chmod +x kompose
+
+echo Downloading azcopy
+curl -Lo azcopy.tgz https://aka.ms/downloadazcopy-v10-linux
+mkdir -p azcopy-d
+tar -zxf azcopy.tgz -C azcopy-d/ --strip-components=1
+mv azcopy-d/azcopy azcopy
+rm -r azcopy-d/
+rm azcopy.tgz
+chmod +x azcopy
+
+popd > /dev/null
+
+# Move to install dir
+echo "Installing lax deps to ${LAX_DEPS_INSTALL_DIR}"
+mv "${LAX_DEPS_WORKING_DIR}/kind" "${LAX_DEPS_INSTALL_DIR}/"
+mv "${LAX_DEPS_WORKING_DIR}/helm" "${LAX_DEPS_INSTALL_DIR}/"
+mv "${LAX_DEPS_WORKING_DIR}/kubectl" "${LAX_DEPS_INSTALL_DIR}/"
+mv "${LAX_DEPS_WORKING_DIR}/yq" "${LAX_DEPS_INSTALL_DIR}/"
+mv "${LAX_DEPS_WORKING_DIR}/kompose" "${LAX_DEPS_INSTALL_DIR}/"
+mv "${LAX_DEPS_WORKING_DIR}/azcopy" "${LAX_DEPS_INSTALL_DIR}/"

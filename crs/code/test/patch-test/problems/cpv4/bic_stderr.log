@@ -1,0 +1,91 @@
+ INFO: Running with entropic power schedule (0xFF, 100).
+ INFO: Seed: 4168436141
+ INFO: Loaded 1 modules   (80 inline 8-bit counters): 80 [0x5591a0cd4d78, 0x5591a0cd4dc8), 
+ INFO: Loaded 1 PC tables (80 PCs): 80 [0x5591a0cd4dc8,0x5591a0cd52c8), 
+ /out/pov_harness: Running 1 inputs 100 time(s) each.
+ Running: /work/tmp_blob
+ =================================================================
+ ==16==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x50400000253b at pc 0x5591a09e9d05 bp 0x7ffe2f857b20 sp 0x7ffe2f857b18
+ WRITE of size 1 at 0x50400000253b thread T0
+     #0 0x5591a09e9d04 in ngx_sprintf_str /src/harnesses/bld/src/core/ngx_string.c:581:24
+     #1 0x5591a09e796d in ngx_vslprintf /src/harnesses/bld/src/core/ngx_string.c
+     #2 0x5591a09e67c5 in ngx_sprintf /src/harnesses/bld/src/core/ngx_string.c:129:9
+     #3 0x5591a0a88829 in ngx_http_set_browser_cookie /src/harnesses/bld/src/http/ngx_http_core_module.c:5289:37
+     #4 0x5591a0b29684 in ngx_http_static_handler /src/harnesses/bld/src/http/modules/ngx_http_static_module.c:243:9
+     #5 0x5591a0a825d8 in ngx_http_core_content_phase /src/harnesses/bld/src/http/ngx_http_core_module.c:1268:10
+     #6 0x5591a0a7fbd9 in ngx_http_core_run_phases /src/harnesses/bld/src/http/ngx_http_core_module.c:875:14
+     #7 0x5591a0a7fbd9 in ngx_http_handler /src/harnesses/bld/src/http/ngx_http_core_module.c:858:5
+     #8 0x5591a0a8702a in ngx_http_internal_redirect /src/harnesses/bld/src/http/ngx_http_core_module.c:2547:5
+     #9 0x5591a0b35df3 in ngx_http_index_handler /src/harnesses/bld/src/http/modules/ngx_http_index_module.c
+     #10 0x5591a0a825d8 in ngx_http_core_content_phase /src/harnesses/bld/src/http/ngx_http_core_module.c:1268:10
+     #11 0x5591a0a7fbd9 in ngx_http_core_run_phases /src/harnesses/bld/src/http/ngx_http_core_module.c:875:14
+     #12 0x5591a0a7fbd9 in ngx_http_handler /src/harnesses/bld/src/http/ngx_http_core_module.c:858:5
+     #13 0x5591a0aa0bee in ngx_http_process_request /src/harnesses/bld/src/http/ngx_http_request.c:2133:5
+     #14 0x5591a0aa508b in ngx_http_process_request_headers /src/harnesses/bld/src/http/ngx_http_request.c:1529:13
+     #15 0x5591a0a3a25c in ngx_event_process_posted /src/harnesses/bld/src/event/ngx_event_posted.c:34:9
+     #16 0x5591a09d4a47 in LLVMFuzzerTestOneInput /src/harnesses/bld/src/harnesses/pov_harness.cc:323:5
+     #17 0x5591a0886780 in fuzzer::Fuzzer::ExecuteCallback(unsigned char const*, unsigned long) /src/llvm-project/compiler-rt/lib/fuzzer/FuzzerLoop.cpp:614:13
+     #18 0x5591a0870f14 in fuzzer::RunOneTest(fuzzer::Fuzzer*, char const*, unsigned long) /src/llvm-project/compiler-rt/lib/fuzzer/FuzzerDriver.cpp:327:6
+     #19 0x5591a08769aa in fuzzer::FuzzerDriver(int*, char***, int (*)(unsigned char const*, unsigned long)) /src/llvm-project/compiler-rt/lib/fuzzer/FuzzerDriver.cpp:862:9
+     #20 0x5591a08a2da2 in main /src/llvm-project/compiler-rt/lib/fuzzer/FuzzerMain.cpp:20:10
+     #21 0x7f12161d9082 in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x24082) (BuildId: 0702430aef5fa3dda43986563e9ffcc47efbd75e)
+     #22 0x5591a08679ed in _start (/out/pov_harness+0xb59ed)
+ 
+ 0x50400000253b is located 0 bytes after 43-byte region [0x504000002510,0x50400000253b)
+ allocated by thread T0 here:
+     #0 0x5591a0994d1e in malloc /src/llvm-project/compiler-rt/lib/asan/asan_malloc_linux.cpp:69:3
+     #1 0x5591a0a45e34 in ngx_alloc /src/harnesses/bld/src/os/unix/ngx_alloc.c:22:9
+     #2 0x5591a09dc81b in ngx_palloc_large /src/harnesses/bld/src/core/ngx_palloc.c:220:9
+     #3 0x5591a0a88753 in ngx_http_set_browser_cookie /src/harnesses/bld/src/http/ngx_http_core_module.c:5281:34
+     #4 0x5591a0b29684 in ngx_http_static_handler /src/harnesses/bld/src/http/modules/ngx_http_static_module.c:243:9
+     #5 0x5591a0a825d8 in ngx_http_core_content_phase /src/harnesses/bld/src/http/ngx_http_core_module.c:1268:10
+     #6 0x5591a0a7fbd9 in ngx_http_core_run_phases /src/harnesses/bld/src/http/ngx_http_core_module.c:875:14
+     #7 0x5591a0a7fbd9 in ngx_http_handler /src/harnesses/bld/src/http/ngx_http_core_module.c:858:5
+     #8 0x5591a0a8702a in ngx_http_internal_redirect /src/harnesses/bld/src/http/ngx_http_core_module.c:2547:5
+     #9 0x5591a0b35df3 in ngx_http_index_handler /src/harnesses/bld/src/http/modules/ngx_http_index_module.c
+     #10 0x5591a0a825d8 in ngx_http_core_content_phase /src/harnesses/bld/src/http/ngx_http_core_module.c:1268:10
+     #11 0x5591a0a7fbd9 in ngx_http_core_run_phases /src/harnesses/bld/src/http/ngx_http_core_module.c:875:14
+     #12 0x5591a0a7fbd9 in ngx_http_handler /src/harnesses/bld/src/http/ngx_http_core_module.c:858:5
+     #13 0x5591a0aa0bee in ngx_http_process_request /src/harnesses/bld/src/http/ngx_http_request.c:2133:5
+     #14 0x5591a0aa508b in ngx_http_process_request_headers /src/harnesses/bld/src/http/ngx_http_request.c:1529:13
+     #15 0x5591a0a3a25c in ngx_event_process_posted /src/harnesses/bld/src/event/ngx_event_posted.c:34:9
+     #16 0x5591a09d4a47 in LLVMFuzzerTestOneInput /src/harnesses/bld/src/harnesses/pov_harness.cc:323:5
+     #17 0x5591a0886780 in fuzzer::Fuzzer::ExecuteCallback(unsigned char const*, unsigned long) /src/llvm-project/compiler-rt/lib/fuzzer/FuzzerLoop.cpp:614:13
+     #18 0x5591a0870f14 in fuzzer::RunOneTest(fuzzer::Fuzzer*, char const*, unsigned long) /src/llvm-project/compiler-rt/lib/fuzzer/FuzzerDriver.cpp:327:6
+     #19 0x5591a08769aa in fuzzer::FuzzerDriver(int*, char***, int (*)(unsigned char const*, unsigned long)) /src/llvm-project/compiler-rt/lib/fuzzer/FuzzerDriver.cpp:862:9
+     #20 0x5591a08a2da2 in main /src/llvm-project/compiler-rt/lib/fuzzer/FuzzerMain.cpp:20:10
+     #21 0x7f12161d9082 in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x24082) (BuildId: 0702430aef5fa3dda43986563e9ffcc47efbd75e)
+ 
+ SUMMARY: AddressSanitizer: heap-buffer-overflow /src/harnesses/bld/src/core/ngx_string.c:581:24 in ngx_sprintf_str
+ Shadow bytes around the buggy address:
+   0x504000002280: fa fa fd fd fd fd fd fa fa fa fd fd fd fd fd fa
+   0x504000002300: fa fa fd fd fd fd fd fa fa fa fd fd fd fd fd fa
+   0x504000002380: fa fa 00 00 00 00 00 04 fa fa 00 00 00 00 00 00
+   0x504000002400: fa fa 00 00 00 00 00 00 fa fa 00 00 00 00 00 06
+   0x504000002480: fa fa 00 00 00 00 00 00 fa fa 00 00 00 00 00 03
+ =>0x504000002500: fa fa 00 00 00 00 00[03]fa fa fa fa fa fa fa fa
+   0x504000002580: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+   0x504000002600: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+   0x504000002680: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+   0x504000002700: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+   0x504000002780: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+ Shadow byte legend (one shadow byte represents 8 application bytes):
+   Addressable:           00
+   Partially addressable: 01 02 03 04 05 06 07 
+   Heap left redzone:       fa
+   Freed heap region:       fd
+   Stack left redzone:      f1
+   Stack mid redzone:       f2
+   Stack right redzone:     f3
+   Stack after return:      f5
+   Stack use after scope:   f8
+   Global redzone:          f9
+   Global init order:       f6
+   Poisoned by user:        f7
+   Container overflow:      fc
+   Array cookie:            ac
+   Intra object redzone:    bb
+   ASan internal:           fe
+   Left alloca redzone:     ca
+   Right alloca redzone:    cb
+ ==16==ABORTING

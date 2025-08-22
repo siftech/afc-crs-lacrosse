@@ -1,0 +1,13 @@
+#!/bin/bash
+# Timestamps every line output by the command given as args to this script
+# Based on this:
+# https://unix.stackexchange.com/questions/26728/prepending-a-timestamp-to-each-line-of-output-from-a-command
+# and using the perl ver b/c much more efficient than later bash answers, and our servers
+# don't have 'ts' (from moreutils) or gnomon
+
+# this ensures we dont lose exit code of the cmd being timestamped
+set -o pipefail  # fwr putting this option on shebang line fails, but this works
+#"$@" | perl -pe 'use POSIX strftime; print strftime "[%Y-%m-%d %H:%M:%S] ", localtime'
+# this one timestamps both stdout and stderr, onto stdout
+"$@" 2>&1 | perl -pe 'use POSIX strftime; $| = 1; print strftime "[%Y-%m-%d %H:%M:%S] ", localtime'
+

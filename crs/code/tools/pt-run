@@ -1,0 +1,119 @@
+#!/bin/bash
+
+verbose=1
+
+inputs=$1
+pipeline=$2
+model=$3
+
+#if [ $verbose -ne 0 ]; then
+echo "inputs=$inputs"
+echo "pipeline=$pipeline"
+echo "model=$model"
+#fi
+
+shift 3  # Remove the first two arguments
+
+# Enable nullglob to ensure no match for the glob results in an empty list
+shopt -s nullglob
+
+# Check if there are remaining arguments
+if [ $# -eq 0 ]; then
+    # If no fourth argument is provided, expand the glob manually
+    matching_subdirs=(problems/*)
+else
+    # Otherwise, use the remaining arguments as is
+    matching_subdirs=("$@")
+fi
+
+calling_dir=$(realpath ".")
+patch_name="${inputs}--${pipeline}--${model}"
+
+# echo "calling_dir=$calling_dir"
+
+# Count the number of matching directories
+dir_count=${#matching_subdirs[@]}
+
+if [ $verbose -ne 0 ]; then
+    echo "Matching directories count: $dir_count"
+    # If count is less than 100, print them space-separated
+    if [ "$dir_count" -lt 100 ]; then
+	echo "Matching directories: ${matching_subdirs[*]}"
+    fi
+fi
+
+results_dir="${calling_dir}/results"
+
+patch_path() {
+    local problem="$1"
+    local patch_name="$2"
+    results_subdir="$results_dir/$problem/$patch_name"
+    echo "$results_subdir/patch"
+}
+
+# FIXME Resolve this so that it works inside or outside a container
+# Define the project directory containing poetry.lock
+POETRY_PROJECT_DIR="$LACROSSE_HOME/code/dspy"
+# POETRY_PROJECT_DIR="/lacrosse/code/dspy"
+
+# Make the patches
+for subdir in "${matching_subdirs[@]}"; do
+    if [ $verbose -ne 0 ]; then
+	echo
+    fi
+    echo "$subdir"
+    cd ./$subdir
+    problem=$(basename $subdir)
+    results_subdir="$results_dir/$problem/$patch_name/make-patch"
+    patch_path=$(patch_path $problem $patch_name)
+    gen_log="${results_subdir}/gen.log"
+    mkdir -p $results_subdir
+    if [ $verbose -ne 0 ]; then
+	echo "Gen patch"
+	echo "patch: $(realpath --relative-to="$calling_dir" "$patch_path")"
+	echo "results: $(realpath --relative-to="$calling_dir" "$results_subdir")"
+	echo "log: $(realpath --relative-to="$calling_dir" "$gen_log")"
+    fi
+    if $(grep -q "#include <ngx_config.h>" "harness" > /dev/null 2>&1); then
+	#echo "NGINX problem!"
+	poetry -C "$POETRY_PROJECT_DIR" run gen-nginx-patch $inputs $pipeline $model $patch_path $results_subdir > $gen_log 2>&1
+    elif [[ "$problem" == *"juliet_"* ]]; then
+	#echo "JULIET problem!"
+	poetry -C "$POETRY_PROJECT_DIR" run gen-juliet-patch $inputs $pipeline $model $patch_path $results_subdir > $gen_log 2>&1
+    else
+	echo "UNKNOWN problem type"
+    fi
+    cd $calling_dir
+done
+
+# Test the patches
+for subdir in "${matching_subdirs[@]}"; do
+    if [ $verbose -ne 0 ]; then
+	echo
+    fi
+    cd ./$subdir
+    problem=$(basename $subdir)
+    results_subdir="$results_dir/$problem/$patch_name/test-patch"
+    patch_path=$(patch_path $problem $patch_name)
+    test_log="${results_subdir}/test.log"
+    mkdir -p $results_subdir
+    if [ $verbose -ne 0 ]; then
+	echo "Test patch"
+	echo "patch: $(realpath --relative-to="$calling_dir" "$patch_path")"
+	echo "results: $(realpath --relative-to="$calling_dir" "$results_subdir")"
+	echo "log: $(realpath --relative-to="$calling_dir" "$test_log")"
+    fi
+    if $(grep -q "#include <ngx_config.h>" "harness" > /dev/null 2>&1); then
+	#echo "NGINX problem!"
+	poetry -C "$POETRY_PROJECT_DIR" run test-nginx-patch $patch_path $results_subdir > $test_log 2>&1
+    elif [[ "$problem" == *"juliet_"* ]]; then
+	#echo "JULIET problem!"
+	poetry -C "$POETRY_PROJECT_DIR" run test-juliet-patch $patch_path $results_subdir > $test_log 2>&1
+    else
+	echo "UNKNOWN problem type"
+    fi
+    cd $calling_dir
+done
+
+# Disable nullglob if no longer needed
+shopt -u nullglob

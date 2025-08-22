@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# bash-ism to get location of script.
+toolsdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && pwd )"
+
+doit () {
+    host=$1;
+  	echo -n "Load for $host: "
+	$toolsdir/sshc $host uptime
+}
+
+for h in $($toolsdir/list-cluster-nodes); do
+   doit $h 
+done
+
+wait 

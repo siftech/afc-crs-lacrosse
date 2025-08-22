@@ -1,0 +1,92 @@
+{
+  "runs": [
+    {
+      "artifacts": [
+        {
+          "location": {
+            "index": 0,
+            "uri": "zookeeper-server/src/main/java/org/apache/zookeeper/server/DataTree.java"
+          }
+        }
+      ],
+      "automationDetails": {
+        "id": "/"
+      },
+      "conversion": {
+        "tool": {
+          "driver": {
+            "name": "GitHub Code Scanning"
+          }
+        }
+      },
+      "results": [
+        {
+          "correlationGuid": "ab0176f0-6f27-4c6c-9f01-c57286ff3c0f",
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "index": 0,
+                  "uri": "zookeeper-server/src/main/java/org/apache/zookeeper/server/DataTree.java"
+                },
+                "region": {
+                  "endColumn": 1,
+                  "endLine": 580,
+                  "startColumn": 5,
+                  "startLine": 537
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "A carefully crafted set of transactions can trigger unsafe object deserializattion.\n"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "cfab8f9bca91955a:7"
+          },
+          "properties": {
+            "github/alertNumber": 1,
+            "github/alertUrl": "https://api.github.com/repos/aixcc-afc/round-exhibition3-zookeeper/code-scanning/alerts/1"
+          },
+          "rule": {
+            "id": "CWE-502",
+            "index": 0
+          },
+          "ruleId": "CWE-502"
+        }
+      ],
+      "tool": {
+        "driver": {
+          "name": "CodeScan++",
+          "rules": [
+            {
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "fullDescription": {
+                "text": "The product deserializes untrusted data without sufficiently ensuring that the resulting data will be valid."
+              },
+              "helpUri": "https://cwe.mitre.org/",
+              "id": "CWE-502",
+              "properties": {},
+              "shortDescription": {
+                "text": "Deserialization of Untrusted Data"
+              }
+            }
+          ],
+          "version": "1.0.0"
+        }
+      },
+      "versionControlProvenance": [
+        {
+          "branch": "refs/heads/challenges/zk-full-01",
+          "repositoryUri": "https://github.com/aixcc-afc/round-exhibition3-zookeeper",
+          "revisionId": "b54d609b9d150e7d16e1e0decbe66e0b423fa892"
+        }
+      ]
+    }
+  ],
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0"
+}

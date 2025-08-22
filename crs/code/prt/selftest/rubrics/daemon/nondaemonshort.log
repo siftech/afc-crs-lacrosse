@@ -1,0 +1,16 @@
++ export TMP_AGENT_FILE=/tmp/prt-daemon-test-1290114355-nondaemonshort
++ TMP_AGENT_FILE=/tmp/prt-daemon-test-1290114355-nondaemonshort
++ trap 'rm /tmp/prt-daemon-test-1290114355-nondaemonshort' EXIT
++ touch /tmp/prt-daemon-test-1290114355-nondaemonshort
++ sleep 1
++ ls /tmp/prt-daemon-test-1290114355-daemonlong /tmp/prt-daemon-test-1290114355-nondaemonlong /tmp/prt-daemon-test-1290114355-nondaemonshort /tmp/prt-daemon-test-1290114355-short
+/tmp/prt-daemon-test-1290114355-daemonlong
+/tmp/prt-daemon-test-1290114355-nondaemonlong
+/tmp/prt-daemon-test-1290114355-nondaemonshort
+/tmp/prt-daemon-test-1290114355-short
+++ wc -l
+++ ls /tmp/prt-daemon-test-1290114355-daemonlong /tmp/prt-daemon-test-1290114355-nondaemonlong /tmp/prt-daemon-test-1290114355-nondaemonshort /tmp/prt-daemon-test-1290114355-short
++ export 'RESULT=       4'
++ RESULT='       4'
++ exit 4
++ rm /tmp/prt-daemon-test-1290114355-nondaemonshort

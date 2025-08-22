@@ -1,0 +1,41 @@
+#!/bin/bash
+
+# Set up the compose.yaml and compose_local_overrides.yaml files based on its arguments.
+# First argument is AT_SIFT flag (1 or 0).
+# Second argument is the number of fuzzbombs.
+# Third argument, if present, is the SBCL flag (1 or 0)
+
+# This scripts exists b/c getting prt to run the right pattern of stuff is hard.
+# This is what we want, but it doesnt work via prt directly, fwr
+#command      => [ "../tools/dupl-template", "<../crs-sandbox-items/template-for-compose", ">../../../compose.yaml" ],
+set -e
+
+thisdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && pwd )"
+
+#PROGNAME=$(basename "$0")
+#warn()  { echo "$PROGNAME: ${@}" 1>&2; }
+#die()   { warn "${@}"; exit 1; }
+#dbug()   { test -z $DEBUG || warn "${@}"; }
+
+errOut=$(mktemp /tmp/dupl-compose-template.XXXXXX)
+"$thisdir"/dupl-template "$1" "$2" "$3" <"$thisdir"/../crs-sandbox-items/template-for-compose > "$thisdir"/../../../compose.yaml 2> "${errOut}"
+retCode=$?
+if [ ${retCode} -ne 0 ]; then
+    echo "dupl-template on template-for-compose failed with error code ${retCode}."
+    echo "Error output:"
+    cat "${errOut}"
+    exit ${retCode}
+fi
+
+#dupl-ovverides doesn't care about AT_SIFT, ignoring $1
+errOut=$(mktemp /tmp/dupl-overrides-template.XXXXXX)
+"$thisdir"/dupl-overrides "$2" <"$thisdir"/../crs-sandbox-items/template-for-overrides > "$thisdir"/../../../compose_local_overrides.yaml 2> "${errOut}"
+retCode=$?
+if [ ${retCode} -ne 0 ]; then
+    echo "dupl-template on template-for-overrides failed with error code ${retCode}."
+    echo "Error output:"
+    cat "${errOut}"
+    exit ${retCode}
+fi
+
+exit 0

@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euxo pipefail
+
+# Configures the kernel directory in linux/ to build a minimal RISC-V kernel
+# with the SIFT kernel module compiled in and builds the kernel.
+
+# Go here.
+cd "$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
+
+# Configure the kernel.
+./configure-kernel
+
+# Build the kernel. The 10%-over rule comes from Ninja.
+make -C linux -j $(( $(nproc) * 11 / 10 )) -l $(nproc)

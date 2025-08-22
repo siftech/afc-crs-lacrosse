@@ -1,0 +1,17 @@
+{
+   "bufferoverrun": true,
+   "bo-debug": 4,
+    "enable-issue-type": [
+        "ARRAY_OUT_OF_BOUNDS_L1",
+        "ARRAY_OUT_OF_BOUNDS_L2",
+        "ARRAY_OUT_OF_BOUNDS_L3",
+        "BUFFER_OVERRUN_L1",
+        "BUFFER_OVERRUN_L2",
+        "BUFFER_OVERRUN_L3",
+        "BUFFER_OVERRUN_L4",
+        "BUFFER_OVERRUN_L5",
+        "BUFFER_OVERRUN_L5",
+        "BUFFER_OVERRUN_L5",
+        "BUFFER_OVERRUN_S2"
+    ]
+}

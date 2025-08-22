@@ -1,0 +1,46 @@
+do "./defaults.pl" || die "Can't do './defaults.pl': $@";
+
+$run_in_compose = 0;
+$run_with_api = 1;	# do run the CRS API, for real competition
+
+sbcl_test();
+
+# NOTE: task_id, project_name, harnesses_included will be the correct afc naming schema
+our $experiment = '
+  (push :msg *debug-list*)
+  (push :amp *debug-list*)
+  (push :target *debug-list*)
+  (setf *run-fake-bridge* t)
+  (setf *use-telemetry* t)
+  (setf *fake-fuzz* nil)
+  (setf *lacrosse* t)
+  (setf *fuzzer-timeout* "10m")
+  (setf *lax-final* t)
+  (setf *use-oss-fuzz* t)
+  (setf *fake-bridge-script*
+    \'( (1200000000000000 ((:type :halt)))))
+';
+
+our $numfbs = 330;
+our $allocationmethod = "balanced";
+
+our $success_pattern = "Nevergonnahappen";
+our $fail_pattern = "Nevergonnahappen";
+
+our $success_timeout = "1000h";
+
+do "./common.pl" || die "Can't do './common.pl': $@";
+
+$ENV{'LAX_LOAD_CP_IMAGES'} = "false";
+
+$test = {
+    defaultIgnore => 1,
+    cleanup => \&condor_killer,
+    agents => [
+        @clean_and_start_agents,
+    ],
+};
+
+$test;
+
+# vim: set ft=perl :

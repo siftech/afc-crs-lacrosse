@@ -1,0 +1,44 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+
+use FindBin qw($Bin);
+
+# now we get conditional on which cluster we are on.  This is one of the few scripts that
+# has this conditionalization, the others mostly get node names from the contents of the cluster-allocation file
+my $thishost=`hostname`;
+chomp $thishost;
+my $prefix="";
+
+my $hostnum = shift();
+if ( $thishost eq "lacrosse-0" ||
+        $thishost eq "lacrosse-1" ) {
+        $prefix="lacrosse-";
+        }
+elsif ( $thishost eq "pixel-phantom-fb0" ) {
+        $prefix="pixel-phantom-fb0";
+        }
+elsif ( $thishost eq "ubuntu" ) {
+	$prefix="ubuntu";
+	}
+else { die "Unknown cluster host $thishost; edit sshc for a new cluster\n"; }
+
+my $host = "$hostnum";
+#exec "ssh -v -v -v -A $host @ARGV";
+#system "ssh -v -v -v -A $host @ARGV";
+#exec "ssh -A -o StrictHostKeyChecking=no -o 'ControlPath /tmp/ssh-%r@%h:%p' -o 'ControlMaster auto' -o 'ControlPersist  4h' $host @ARGV";
+#system "ssh -v -v -v -A -o StrictHostKeyChecking=no -o 'ControlPath /tmp/ssh-%r@%h:%p' -o 'ControlMaster auto' -o 'ControlPersist  4h' $host @ARGV";
+my $start=time;
+system "ssh -o ServerAliveInterval=30  -o LogLevel=Error -A -o StrictHostKeyChecking=no -o 'ControlPath /tmp/ssh-%r@%h:%p' -o 'ControlMaster auto' -o 'ControlPersist  4h' $host @ARGV";
+my $retval=$?;
+	# debug only! cant print anything out b/c if you use this in rsync it messes up the protocol and asks if your shell is clean
+#if ($retval != 0) { print "ssh failure with return val $retval\n";}
+my $end=time;
+# we dont do a retry if more than a couple of seconds have elapsed, as that suggests not a controlmaster
+if ($retval == 65280 && ($end-$start <2)) {	# unusual immediate exit code from when controlmaster stuff pukes as hitting MaxSessions
+  #print "retrying once after 1s sleep\n";
+  sleep(1);
+  #system "ssh -v -v -v -A -o StrictHostKeyChecking=no -o 'ControlPath /tmp/ssh-%r@%h:%p' -o 'ControlMaster auto' -o 'ControlPersist  4h' $host @ARGV";
+  #exec "ssh -v -v -v -A $host @ARGV";	# retry without controlmaster
+  exec "ssh -o ServerAliveInterval=60 -o LogLevel=Error -A $host @ARGV";	# retry without controlmaster
+}

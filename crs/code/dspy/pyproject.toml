@@ -1,0 +1,17 @@
+
+[tool.poetry]
+name = "laxdspy"
+version = "0.1.0"
+description = "The DSPy modules for lacrosse"
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "3.10.12"
+dspy = "2.6.5" # pin it for consistency
+openlit = "^1.33.19"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

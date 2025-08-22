@@ -1,0 +1,57 @@
+###---------------------------------------------------------------------------
+### Test to see if we can successfully start up Optimus0 by itself.
+### Written to help test the Optimus startup script. Does not work
+### properly, probably because the test structure is not robust to
+### the number of fbs ($numfbs) being zero.  
+###---------------------------------------------------------------------------
+
+do "./defaults.pl" || die "Can't do './defaults.pl': $@";
+
+$run_in_compose = 1;
+$use_ccl_in_docker = 1;
+$use_ccl = 1;
+$use_sbcl = 0;
+our $numoptimi = 1;
+our $numfbs = 0;
+
+
+our $cp_config = "../crs-sandbox-items/sift/mock-cp-config.yaml";
+
+our $experiment = '
+  (push :msg *debug-list*)
+  (push :amp *debug-list*)
+  (push :target *debug-list*)
+  (setf *run-fake-bridge* t)
+  (setf *fake-fuzz* nil)
+  (setf *use-afl* nil)
+  (setf *lacrosse* t)
+  (setf *fuzzer-timeout* "1m")
+  (setf *fake-bridge-script*
+    \'(
+       (1 ((:type :new-challenge-project)
+           (:target (()))))
+;;       (12000 ((:type :halt)))
+))
+';
+
+our $allocationmethod = "balanced";
+
+#our $success_pattern = "Received BIC-FOUND";
+#our $success_pattern = "Status received: accepted, VD_UUID=";
+our $success_pattern = "Atomic batteries to power, turbines to speed... ready to move out";
+our $success_timeout = "30m";   # bump this up so can debug the containers -- but maybe this won't work -- does `make up` timeout?
+
+do "./common.pl" || die "Can't do './common.pl': $@";
+
+$test = {
+    defaultIgnore => 1,
+    keywords => [ qw / lacrosse / ],
+    cleanup => \&condor_killer,
+    agents => [
+        @clean_and_start_agents,
+    ],
+};
+
+$test;
+
+# vim: set ft=perl :

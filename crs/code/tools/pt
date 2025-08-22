@@ -1,0 +1,4 @@
+#!/bin/bash
+
+pt-run "$@"
+pt-summ "$@"

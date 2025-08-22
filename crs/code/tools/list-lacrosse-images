@@ -1,0 +1,30 @@
+#!/usr/bin/env perl
+# list of images used by lacrosse; defaults to all
+# --build lists only ones we build
+# --notbuild lists only ones we don't build
+# --sync lists only ones to sync across cluster
+
+use Getopt::Long;
+
+my $build, $notbuild, $sync;
+GetOptions("build" => \$build,
+	   "notbuild" => \$notbuild,
+	   "sync" => \$sync,
+	) or die ("Error in command line arguments\n");
+
+$images{"driller"}=[1,1];
+#$images{"chisel"}=[1,0];
+#$images{"confine"}=[1,0];
+#$images{"firmadyne"}=[1,0];
+#$images{"fuzzball"}=[1,0];	# NOTE currently not syncing fball, but someday we will probably want to
+#$images{"whatclib"}=[1,1];
+#$images{"whatclib-build"}=[0,0];	# FIXME i'm not sure what we should do w/ these.
+$images{"afc-crs-server"}=[1,0];
+$images{"afc-comp-client"}=[1,0];
+$images{"langchain"}=[1,1];
+$images{"lacrosse-utils"}=[1,1];
+for $img (keys(%images)) {
+  if ( ($build && $images{$img}[0]) || ($notbuild && !$images{$img}[0]) || ($sync && $images{$img}[1]) || (!$build && !$sync &&!$notbuild) ) {
+	print "$img\n"
+	}
+}

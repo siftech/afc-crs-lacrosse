@@ -1,0 +1,158 @@
+---
+# This file can be modified to add services which need access to /crs_scratch or read-only access to /cp_root.
+# Competitors may also use this to tune the deploy or labels section of all services as needed.
+# Competitors should ensure their CRS executes properly with `make k8s` after making changes here.
+
+services:
+  load-cp-images:
+    restart: always
+    environment:
+      - "ENABLE_HEALTH_ENDPOINT=true"
+      - "LOAD_CPS=true"
+    volumes:
+      - cp_root:/cp_root
+  crs:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    labels:
+      kompose.init.containers.command: '["sh", "-c", "until curl http://load-cp-images:8080; do echo \"Waiting for CP image load to complete\"; sleep 5; done"]'
+      kompose.init.containers.image: curlimages/curl:8.8.0
+      kompose.init.containers.name: wait-for-cp-load
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    depends_on:
+      load-cp-images:
+        condition: service_completed_successfully
+  nix-copy:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: XXXNUMFBSNODE1XXX
+  FUZZBOMB@:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: XXXNUMFBSNODE2XXX
+  FUZZBOMB@:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node2
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+##DUPL: XXXNUMFBSNODE3XXX
+  FUZZBOMB@:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node3
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+    environment:
+      # These values will be modified automatically at competition time
+      # Competitors MUST map any services which need these environment variables
+      # in the exact same way, or they will not be overridden during competition
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+##DUPLEND
+  dind:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node3
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '8'
+    #       memory: 8GB
+    #     reservations:
+    #       cpus: '1'
+    #       memory: 256M
+    volumes:
+      - crs_scratch:/crs_scratch
+    command: ["dockerd", "-H", "tcp://0.0.0.0:2375", "--tls=false"]
+
+  iapi:
+    deploy:
+      placement:
+        constraints:
+          - node.labels.node == node1
+    configs:
+      - source: nginx_kube_config
+        target: /etc/nginx/templates/default.conf.template
+    environment:
+      - CAPI_UPSTREAM_HOST=http://capi:8080
+    depends_on:
+      capi:
+        condition: service_healthy
+  capi:
+    labels:
+      kompose.init.containers.command: '["sh", "-c", "until curl http://load-cp-images:8080; do echo \"Waiting for CP image load to complete\"; sleep 5; done"]'
+      kompose.init.containers.image: curlimages/curl:8.8.0
+      kompose.init.containers.name: wait-for-cp-load
+    volumes:
+      - cp_root:/cp_root
+      - crs_scratch:/crs_scratch
+volumes:
+  cp_root:
+  crs_scratch:

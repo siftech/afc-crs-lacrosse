@@ -1,0 +1,11 @@
+#!/bin/bash
+thisdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && pwd )"
+if ! [ -x $thisdir/mm ]; then
+  $thisdir/../tools/ensure-image neo-fuzz-ccl -d
+  $thisdir/../tools/docker exec $USER-neo-fuzz-ccl /realuser.sh /bin/bash -c  '(cd $LACROSSE_HOME/code/matchmaker; make)'
+fi
+$thisdir/mmkiller	# try to be nice
+pkill -9 -u $USER mm	# then be mean
+#sleep 1 &
+#wait
+$thisdir/mm &

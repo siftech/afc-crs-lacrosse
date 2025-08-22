@@ -1,0 +1,479 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Example CRS API",
+    "contact": {},
+    "version": "1.4.0"
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "paths": {
+    "/status/": {
+      "get": {
+        "tags": [
+          "status"
+        ],
+        "summary": "CRS Status",
+        "description": "report the status of the CRS",
+        "responses": {
+          "200": {
+            "description": "Status Obect",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/types.Status"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BasicAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "status"
+        ],
+        "summary": "Reset status stats",
+        "description": "Reset all stats in the status endpoint.",
+        "responses": {
+          "200": {
+            "description": "No Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BasicAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/sarif/": {
+      "post": {
+        "tags": [
+          "sarif"
+        ],
+        "summary": "Submit Sarif Broadcast",
+        "description": "submit a sarif broadcast",
+        "requestBody": {
+          "description": "Vulnerability Broadcast",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/types.SARIFBroadcast"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "No Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BasicAuth": []
+          }
+        ],
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/v1/task/": {
+      "post": {
+        "tags": [
+          "task"
+        ],
+        "summary": "Submit Task",
+        "description": "submit a task for work",
+        "requestBody": {
+          "description": "Submission body",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/types.Task"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "No Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BasicAuth": []
+          }
+        ],
+        "x-codegen-request-body-name": "payload"
+      },
+      "delete": {
+        "tags": [
+          "task"
+        ],
+        "summary": "Cancel Tasks",
+        "description": "Cancel all previously submitted tasks. This is meant for edge case recovery in case something goes wrong.",
+        "responses": {
+          "200": {
+            "description": "No Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BasicAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/task/{task_id}/": {
+      "delete": {
+        "tags": [
+          "task"
+        ],
+        "summary": "Cancel Task",
+        "description": "Cancel a task by id. This is meant for edge case recovery in case something goes wrong.",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "description": "Task ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "No Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BasicAuth": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "types.SARIFBroadcast": {
+        "required": [
+          "broadcasts",
+          "message_id",
+          "message_time"
+        ],
+        "type": "object",
+        "properties": {
+          "broadcasts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/types.SARIFBroadcastDetail"
+            }
+          },
+          "message_id": {
+            "type": "string",
+            "description": "Unique ID for this message.  The system will retry sending messages if it does not receive a 200 response code.\nUse this to determine if you have already processed a message.",
+            "format": "uuid"
+          },
+          "message_time": {
+            "type": "integer",
+            "description": "UNIX millisecond timestamp for when the message was sent"
+          }
+        }
+      },
+      "types.SARIFBroadcastDetail": {
+        "required": [
+          "metadata",
+          "sarif",
+          "sarif_id",
+          "task_id"
+        ],
+        "type": "object",
+        "properties": {
+          "metadata": {
+            "type": "object",
+            "properties": {},
+            "description": "String to string map containing data that should be attached to outputs like log messages and OpenTelemetry trace attributes for traceability"
+          },
+          "sarif": {
+            "type": "object",
+            "properties": {},
+            "description": "SARIF Report compliant with provided schema"
+          },
+          "sarif_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "task_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "types.SourceDetail": {
+        "required": [
+          "sha256",
+          "type",
+          "url"
+        ],
+        "type": "object",
+        "properties": {
+          "sha256": {
+            "type": "string",
+            "description": "Integrity hash of the gzipped tarball"
+          },
+          "type": {
+            "$ref": "#/components/schemas/types.SourceType"
+          },
+          "url": {
+            "type": "string",
+            "description": "URL to fetch the source gzipped tarball"
+          }
+        }
+      },
+      "types.SourceType": {
+        "type": "string",
+        "enum": [
+          "repo",
+          "fuzz-tooling",
+          "diff"
+        ],
+        "x-enum-varnames": [
+          "SourceTypeRepo",
+          "SourceTypeFuzzTooling",
+          "SourceTypeDiff"
+        ]
+      },
+      "types.Status": {
+        "required": [
+          "ready",
+          "since",
+          "state",
+          "version"
+        ],
+        "type": "object",
+        "properties": {
+          "details": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "This is optional arbitrary content that may be logged in error cases, but is mainly for interactive troubleshooting."
+          },
+          "ready": {
+            "type": "boolean",
+            "description": "Boolean indicating if the CRS is prepared to work on tasks. Do not return true unless you have successfully tested connectivity to the Competition API via /v1/ping/"
+          },
+          "since": {
+            "type": "integer",
+            "description": "Last time task and submission stats were reset.  Unix timestamp at millisecond resolution."
+          },
+          "state": {
+            "type": "object",
+            "description": "State of the currently running tasks and submissions",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/types.StatusState"
+              }
+            ]
+          },
+          "version": {
+            "type": "string",
+            "description": "Version string for verification and reproducibility.\n\n- git commit\n\n- SemVer\n\n- etc"
+          }
+        }
+      },
+      "types.StatusState": {
+        "required": [
+          "tasks"
+        ],
+        "type": "object",
+        "properties": {
+          "tasks": {
+            "$ref": "#/components/schemas/types.StatusTasksState"
+          }
+        }
+      },
+      "types.StatusTasksState": {
+        "required": [
+          "canceled",
+          "errored",
+          "failed",
+          "pending",
+          "processing",
+          "succeeded",
+          "waiting"
+        ],
+        "type": "object",
+        "properties": {
+          "canceled": {
+            "type": "integer",
+            "description": "Number of tasks that competition infrastructure has cancelled"
+          },
+          "errored": {
+            "type": "integer",
+            "description": "Number of tasks that the CRS encountered an unrecoverable issue for"
+          },
+          "failed": {
+            "type": "integer",
+            "description": "Number of submissions that the competition infrastructure marked failed"
+          },
+          "pending": {
+            "type": "integer",
+            "description": "Number of tasks that the CRS has not started work on"
+          },
+          "processing": {
+            "type": "integer",
+            "description": "Number of tasks that the CRS is currently processing"
+          },
+          "succeeded": {
+            "type": "integer",
+            "description": "Number of submissions that the competition infrastructure marked passed"
+          },
+          "waiting": {
+            "type": "integer",
+            "description": "Number of submissions that the competition infrastructure is currently testing"
+          }
+        }
+      },
+      "types.Task": {
+        "required": [
+          "message_id",
+          "message_time",
+          "tasks"
+        ],
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string",
+            "description": "Unique ID for this message.  The system will retry sending messages if it does not receive a 200 response code.\nUse this to determine if you have already processed a message.",
+            "format": "uuid"
+          },
+          "message_time": {
+            "type": "integer",
+            "description": "UNIX millisecond timestamp for when the message was sent"
+          },
+          "tasks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/types.TaskDetail"
+            }
+          }
+        }
+      },
+      "types.TaskDetail": {
+        "required": [
+          "deadline",
+          "focus",
+          "harnesses_included",
+          "metadata",
+          "project_name",
+          "source",
+          "task_id",
+          "type"
+        ],
+        "type": "object",
+        "properties": {
+          "deadline": {
+            "type": "integer",
+            "description": "UNIX millisecond timestamp by which any submissions for this task must be in"
+          },
+          "focus": {
+            "type": "string",
+            "description": "The folder in the type repo source tarball containing the main project.\n\nThis is the project the CRS is meant to submit vulns, patches, and SARIF assessments against."
+          },
+          "harnesses_included": {
+            "type": "boolean"
+          },
+          "metadata": {
+            "type": "object",
+            "properties": {},
+            "description": "String to string map containing data that should be attached to outputs like log messages and OpenTelemetry trace attributes for traceability"
+          },
+          "project_name": {
+            "type": "string",
+            "description": "OSS Fuzz project name"
+          },
+          "source": {
+            "type": "array",
+            "description": "List of sources needed to evaluate a task",
+            "items": {
+              "$ref": "#/components/schemas/types.SourceDetail"
+            }
+          },
+          "task_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "$ref": "#/components/schemas/types.TaskType"
+          }
+        }
+      },
+      "types.TaskType": {
+        "type": "string",
+        "enum": [
+          "full",
+          "delta"
+        ],
+        "x-enum-varnames": [
+          "TaskTypeFull",
+          "TaskTypeDelta"
+        ]
+      }
+    },
+    "securitySchemes": {
+      "BasicAuth": {
+        "type": "http",
+        "scheme": "basic"
+      }
+    }
+  },
+  "x-original-swagger-version": "2.0"
+}

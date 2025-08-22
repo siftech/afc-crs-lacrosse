@@ -1,0 +1,21 @@
+#!/usr/bin/env perl
+# list cluster nodes/hosts from the allocation file
+use Cwd qw( abs_path );
+
+my $user = $ENV{'USER'};
+my $fh;
+my $dir = abs_path(".");
+#warn("dir: $dir\n");
+
+my $fn = "/tmp/cluster-allocation";
+if (! -e $fn) { 
+  warn "$fn doesnt exist: $!; resetting"; 
+  system("$dir/reset-cluster-allocations");
+}
+my $data = do {
+      if (open $fh, '<', $fn) {lock($fh); local $/; <$fh> }
+      else { undef }
+      };
+eval $data;	# this reloads the hashes from $fn
+
+for my $host (@hosts) {print "$host\n";}

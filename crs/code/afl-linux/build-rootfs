@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euxo pipefail
+
+# Use a Docker container to build a rootfs image.
+
+# Go here.
+cd "$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
+
+# Run the build script in an Alpine Linux Docker container.
+docker run --rm -v "$PWD/rootfs":/code -w /tmp \
+	alpine:3.19.1 /code/build.sh

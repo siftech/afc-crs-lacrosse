@@ -1,0 +1,104 @@
+# Hey EMACS, this should be in -*- perl -*- mode
+#
+# PRT (PRS Regression Tester) sample test specification file
+#
+# ------------------------------------------------------------
+# COPYRIGHT START
+# Copyright (c) 2014, Smart Information Flow Technologies (SIFT).
+# COPYRIGHT END
+# ------------------------------------------------------------
+
+my $temp_file_path_prefix = "/tmp/prt-sequential-test-" . time();
+
+# The exit command lists the existing temp files, then counts them and
+# exits with the count.
+# my $fact_cmd = "ls $temp_file_path_prefix*; export RESULT=\$(ls $temp_file_path_prefix* | wc -l); exit \$RESULT";
+my $fact_cmd = "ls $temp_file_path_prefix*";
+
+# Use line comparo which matches the results of the ls.
+my $seq_comparo = new PRT::LineComparo(
+    show_comparisons => 0,
+    key_fact_regexp   => "^/tmp/prt-sequential-test-\\d+-(.*)",
+    );
+
+# Test specification hash reference -- The name of the variable is not
+# important, EXCEPT that it must be "returned" by this file; i.e. it
+# must be the the last reference in the file
+$test = {
+  # Name: single-word (no spaces) name of the test
+  # Default: basename of filename sans .prt file extension
+  # name => "sample",
+
+  # Description: arbitrary text for human consumption only
+  # Default: "<no-description>"
+  description => "Checks the complete_before_continuing portion of the test spec",
+
+  # Keywords: arbitrary list of key words by which can be used to
+  #    filter the tests when running or showing results, etc...
+  # Default: [ ] - empty list
+  keywords => [ qw / prt test-specification / ],
+
+  # DefaultIgnore: if true, will skip this test unless either:
+  #   a) the filename or test-name is explicitly listed on the command line
+  #   b) the `--all` argument is given to prt
+  # Default: undef/0/false
+  # defaultIgnore => 1,
+
+  # Test-Harness Includes: array ref of *.inc files to include in ALL
+  #    agents, presumably needed as part of the test framework.
+  # Default: [ ] - empty list
+  # includes => [ "test-harness.inc" ],
+
+  # Inter-Agent Delay: delay (in seconds) between each agent startup
+  # Default: 0 (seconds)
+  agent_delay => 2,
+
+  # Agents: Array-ref of agents, each of which MUST specify:
+  #  - name: PRS name of the agent, without spaces
+  #  - inc:  array ref of include files
+  agents => [
+      {
+        name         => "a",
+        command   => ["bash", "-c", "echo agent a `date +%H:%M:%S`; export TMP_AGENT_FILE=\"$temp_file_path_prefix-a\"; trap \"rm \$TMP_AGENT_FILE\" EXIT; touch \$TMP_AGENT_FILE; sleep 3; $fact_cmd" ],
+        comparo      => $seq_comparo,
+      },
+      {
+        name         => "b",
+        command   => [ "bash", "-c", "echo agent b `date +%H:%M:%S`; export TMP_AGENT_FILE=\"$temp_file_path_prefix-b\"; trap \"rm \$TMP_AGENT_FILE\" EXIT; touch \$TMP_AGENT_FILE; sleep 3; $fact_cmd" ],
+        comparo      => $seq_comparo,
+      },
+      {
+        name         => "c",
+        command   => [ "bash", "-c", "echo agent c `date +%H:%M:%S`; export TMP_AGENT_FILE=\"$temp_file_path_prefix-c\"; trap \"rm \$TMP_AGENT_FILE\" EXIT; touch \$TMP_AGENT_FILE; $fact_cmd" ],
+        complete_before_continuing => 1,
+        comparo      => $seq_comparo,
+      },
+      {
+        name         => "d",
+        command   => [ "bash", "-c", "echo agent d `date +%H:%M:%S`;  export TMP_AGENT_FILE=\"$temp_file_path_prefix-d\"; trap \"rm \$TMP_AGENT_FILE\" EXIT; touch \$TMP_AGENT_FILE; sleep 9; $fact_cmd" ],
+        comparo      => $seq_comparo,
+      },
+      {
+        name         => "e",
+        command   => [ "bash", "-c", "echo agent e `date +%H:%M:%S`;  export TMP_AGENT_FILE=\"$temp_file_path_prefix-e\"; trap \"rm \$TMP_AGENT_FILE\" EXIT; touch \$TMP_AGENT_FILE; sleep 3; $fact_cmd" ],
+        complete_before_continuing => 1,
+        comparo      => $seq_comparo,
+      },
+      {
+        name         => "f",
+        command   => [ "bash", "-c", "echo agent f `date +%H:%M:%S`;  export TMP_AGENT_FILE=\"$temp_file_path_prefix-f\"; trap \"rm \$TMP_AGENT_FILE\" EXIT; touch \$TMP_AGENT_FILE; sleep 1; $fact_cmd" ],
+        complete_before_continuing => 1,
+        comparo      => $seq_comparo,
+      },
+      {
+        name         => "g",
+        command   => [ "bash", "-c", "echo agent g `date +%H:%M:%S`;  export TMP_AGENT_FILE=\"$temp_file_path_prefix-g\"; trap \"rm \$TMP_AGENT_FILE\" EXIT; touch \$TMP_AGENT_FILE; sleep 3; $fact_cmd" ],
+        comparo      => $seq_comparo,
+      },
+    ]
+  };
+
+# you could put other code here, but not sure what that would serve.
+
+# Always end with a reference to the test specification hash reference.
+$test;

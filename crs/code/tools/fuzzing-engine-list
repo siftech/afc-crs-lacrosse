@@ -1,0 +1,10 @@
+#!/bin/bash
+# pass in project.yaml, it returns lisp list of :san  choices
+
+if [ -z "$1" ] || [ ! -f "$1" ]; then
+  echo "(:address)"
+  exit 0
+fi
+
+yq '.fuzzing_engines' $1 |cut -d ' ' -f 2|awk '{ printf ":%s ", $0 }'| sed 's/^/(/' |sed 's/$/)/'
+

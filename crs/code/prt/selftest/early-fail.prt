@@ -1,0 +1,82 @@
+# Hey EMACS, this should be in -*- perl -*- mode
+# ------------------------------------------------------------
+# COPYRIGHT START
+# Copyright (c) 2014, Smart Information Flow Technologies (SIFT).
+# COPYRIGHT END
+# ------------------------------------------------------------
+#
+# PRT (PRS Regression Tester) sample test specification file
+#
+# Test specification hash reference
+#  - The name of the variable is NOT important;
+#  - It MUST be "returned" by this file;
+#    i.e. it should be the the last reference in the file
+$test = {
+  # -- Name: single-word (no spaces) name of the test
+  #    DEFAULT: basename of filename sans .prt file extension
+  # name => "sample",
+
+  # -- Description: arbitrary text for human consumption only
+  #    DEFAULT: ""  (no description)
+  description => "verifies that PRT exits when an early test (that enables other tests) fails",
+
+  # -- Keywords: arbitrary list of key words by which can be used to
+  #        filter the tests when running or showing results, etc...
+  #    DEFAULT: [ ] - empty list
+  keywords => [ qw / prt self-test / ],
+
+  # -- DefaultIgnore: if true, will skip this test unless either:
+  #      a) the filename or test-name is explicitly listed on the command line
+  #      b) the `--all` argument is given to prt
+  #    DEFAULT: undef/0/false
+  # defaultIgnore => 0,
+
+  # -- Test-Harness Includes: array ref of *.inc files to include in ALL
+  #        agents, presumably needed as part of the test framework.
+  #    DEFAULT: [ ] - empty list
+  # includes => [ "test-harness.inc" ],
+
+  # -- Inter-Agent Delay: delay (in seconds) between each agent startup
+  #    Default: 0 (seconds)
+  # agent_delay => 1,
+
+  # -- Agents: Array-ref of agents, each of which MUST specify:
+  #  + name: PRS name of the agent, without spaces
+  #  + inc:  array ref of include files
+  agents => [
+      { # Agent 1: It does the good stuff
+        name         => "early-fail-helper",
+        description  => "Runs PRT on the early-fail-helpr test. early-fail-helper test fails, but we expect that... as long as we don't time out",
+
+        # -- Executable: program to run for this agent;
+        #    DEFAULT: "oprs";
+        command   => ["../prt", "early-fail-helper.prt" ],
+
+        # -- Timeout: how long to let this agent run before killing it;
+        #    DEFAULT: 5 minutes
+        #
+        # Here we just wait a few seconds. As of 24 January 2011, the
+        # timeout doesn't work, so this is irrelevant. This test is
+        # verifying a bug that would leave PRT hanging. Once fixed, we
+        # won't time out. Before fixed, we would hang indefinitely. If
+        # we had a working timeout, we would fail instead of hanging.
+        timeout      => 5,
+
+        comparo =>undef,
+
+        # -- Exit Code: _EXPECTED_ exit code for this agent;
+        #     a) If 'undef', the exit code will not be checked
+        #     b) otherwise, agent _MUST_ exit with the specified value or the
+        #        entire test will be abored and all other agents will be
+        #        terminated early.  Note that this will be checked regardless of
+        #        agent termination; c.f. 'daemon' flag below.
+        #    DEFAULT: 0
+        exit_code    => 1,
+      },
+    ]
+  };
+
+# you could put other code here, but not sure what that would serve.
+
+# Always end with a reference to the test specification hash reference.
+$test;

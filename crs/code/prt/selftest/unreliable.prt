@@ -1,0 +1,19 @@
+# ------------------------------------------------------------
+# COPYRIGHT START
+# Copyright (c) 2020, Smart Information Flow Technologies (SIFT).
+# COPYRIGHT END
+# ------------------------------------------------------------
+$test = { 
+  keywords => [ qw / prt flaky / ],  
+  description => "Doesn't always pass, for use testing flaky script",
+  defaultIgnore => 1,	# dont run this by itself, only from within flaky.prt
+  agents => [ 
+      {
+        name         => "unreliable", 
+        command   => [ sub { if (rand() < .05) { exit 0 } else { exit 1 } } ],
+        comparo      => undef,
+      },
+    ]
+  };
+
+$test; 	# Always end with a reference to the test specification hash reference.

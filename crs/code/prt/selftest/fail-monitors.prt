@@ -1,0 +1,40 @@
+# Hey EMACS, this should be in -*- perl -*- mode
+# ------------------------------------------------------------
+# COPYRIGHT START
+# Copyright (c) 2014, Smart Information Flow Technologies (SIFT).
+# COPYRIGHT END
+# ------------------------------------------------------------
+use PRT::Perf qw(smaller_is_better);
+use FindBin;
+
+$test = {
+  description => "Runs (non-default) tests which should fail, and looks for the '0 of N tests passed line'.",
+  keywords => [ qw / perf / ],
+  agents => [
+    {
+      name         => "prt",
+      description  => "Runs PRT on a bunch of tests which should all fail",
+      command      => ["$FindBin::RealBin/prt",
+                       "$FindBin::RealBin/selftest/perffail0.prt",
+                       "$FindBin::RealBin/selftest/perffail1.prt",
+                       "$FindBin::RealBin/selftest/perffail2.prt",
+                       "$FindBin::RealBin/selftest/perffail3.prt",
+                       "$FindBin::RealBin/selftest/perffail4.prt",
+		       "$FindBin::RealBin/selftest/perffail5.prt",
+		       "$FindBin::RealBin/selftest/perffail6.prt",
+                       "$FindBin::RealBin/selftest/comparo-failures.prt",
+                       "$FindBin::RealBin/selftest/negative-tests.prt",
+                       "$FindBin::RealBin/selftest/fail_exit_default.prt",
+                       "$FindBin::RealBin/selftest/fail_exit_expect0.prt",
+                       "$FindBin::RealBin/selftest/fail_exit_expect1.prt",
+                       "$FindBin::RealBin/selftest/fail_daemon_must_survive0.prt",
+                       "$FindBin::RealBin/selftest/fail_daemon_must_survive1.prt",
+                       "$FindBin::RealBin/selftest/fail_unordered.prt",
+                      ],
+      exit_code    => 15, # NOTE match the number of tests above!!!
+      comparo      => new PRT::LineComparo( key_fact_regexp => "FAIL.*" )
+    }
+  ]
+};
+# Always end with a reference to the test specification hash reference.
+$test;

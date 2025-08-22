@@ -1,0 +1,102 @@
+#!/bin/bash
+# one argument: which lisp to run, "sbcl" or "ccl"
+
+# FIXME if we want multiple OPT this needs to take args like run-ccl-agent
+# FIXME and would need a start-matchmaker arg too
+
+# if AT_SIFT, logs go to logdir; otherwise stdout for visibility through docker log of svc ctr
+
+LISP=$1
+
+### Exit codes
+MM_PUSHD_FAIL=2
+MM_POPD_FAIL=3
+LISP_CD_FAIL=4
+INVALID_LISP_ARG=5
+
+thisdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && /bin/pwd )"
+
+make_timestamp () { date +"%Y-%m-%d %H:%M:%S.%3N"; }
+
+PROGNAME=$(basename "$0")
+warn()  { echo "$(make_timestamp) $PROGNAME: ${@}" 1>&2; }
+die()   { warn "${@}"; exit 1; }
+dbug()   { test -z $DEBUG || warn "${@}"; }
+
+export CIRCA_MM_HOST=${CIRCA_MM_HOST}
+export CIRCA_BASEPORT=${CIRCA_BASEPORT:-10000}
+export AGENT_NAME=OPTIMUS0
+export CIRCA_PORT=$CIRCA_PORT
+export BRIDGE_PORT=$BRIDGE_PORT
+export CIRCA_HOST=${CIRCA_HOST}
+
+export DOCKER_EXTRA_ARGS="-e CP_BASE_EXTRA_CFLAGS=-g -e CP_BASE_EXTRA_CXXFLAGS=-g -e CP_HARNESS_EXTRA_CFLAGS=-g -e CP_HARNESS_EXTRA_CXXFLAGS=-g"
+
+warn "CIRCA_MM_HOST is $CIRCA_MM_HOST"
+warn "CIRCA_BASEPORT is $CIRCA_BASEPORT"
+warn "AGENT_NAME is $AGENT_NAME"
+warn "BRIDGE_PORT is $BRIDGE_PORT"
+warn "CIRCA_PORT is $CIRCA_PORT"
+warn "CIRCA_HOST is $CIRCA_HOST"
+
+echo pwd:
+/bin/pwd
+echo whoami:
+whoami
+#echo thisdir
+#echo ${thisdir}
+#echo about to compile
+#${thisdir}/../tools/lax-compile-lisp
+#echo compile finished
+echo AT_SIFT : $AT_SIFT
+echo LISP : $LISP
+
+#if [ "${AT_SIFT}" -eq "0" ]; then echo "AT_SIFT is set to 0"; else \
+  #echo "AT_SIFT is set to 1. Create LOGDIR."
+## find the most recent logdir and write there, if you find one, else /crs_scratch per competition
+	#LOGDIR=`find /lacrosse/code/test/results/ -mindepth 1 -maxdepth 3 -type d -printf "%T@\t%p\n" | sort -n | cut -f2- | tail -n1`
+	#LOGDIR=${LOGDIR:-/crs_scratch} ;
+#fi
+
+warn Setting timestamp for this run
+date "+%Y-%m-%d-%H%M-%N" > "${AIXCC_CRS_SCRATCH_SPACE}/timestamp"
+
+warn about to start mm
+${thisdir}/../matchmaker/lax-ensure-new-matchmaker
+warn mm startup finished
+/bin/pwd
+whoami
+
+# if [ "${AT_SIFT}" -eq "0" ]; then
+#   # FIXME If the CRS ever restarts then mm-is-up will already exist.
+#   # This could confuse restarting FUZZBOMBs.
+#   # It might be better for FUZZBOMB to try to do a health check on the matchmaker.
+#   touch ${AIXCC_CRS_SCRATCH_SPACE}/mm-is-up
+# fi
+
+cd ${thisdir}/../lisp || exit ${LISP_CD_FAIL}
+# this is *exactly* the same as how normal run-ccl-agent works... except redirect output to files b/c
+# docker compose wont let me stash em right
+#CIRCA_MM_HOST=${CIRCA_MM_HOST} \
+#  CIRCA_BASEPORT=${CIRCA_BASEPORT} \
+if [ "${AT_SIFT}" -eq "0" ]; then
+  echo "${AGENT_NAME} running NOT at SIFT"
+  if [ "${LISP}" == "sbcl" ]; then
+      sbcl --noinform --no-userinit --load load.lisp --eval "(progn (setf *fb-instance* \"${AGENT_NAME}\") (load \"/lacrosse/code/experiment.lisp\") (fb::run-amp :name \"${AGENT_NAME}\") (quit))";
+  elif [ "${LISP}" == "ccl" ]; then
+      ccl -Q -n -l load.lisp -e "(progn (setf *fb-instance* \"${AGENT_NAME}\") (load \"/lacrosse/code/experiment.lisp\") (fb::run-amp :name \"${AGENT_NAME}\") (quit))";
+  else
+      echo "Invalid value for LISP argument (1): ${LISP}"
+      exit ${INVALID_LISP_ARG}
+  fi
+else
+  echo "${AGENT_NAME} running at SIFT"
+  if [ "${LISP}" == "sbcl" ]; then
+    sbcl --noinform --no-userinit --load load.lisp --eval "(progn (setf *fb-instance* \"${AGENT_NAME}\") (load \"../experiment.lisp\") (fb::run-amp :name \"${AGENT_NAME}\") (quit))" ;
+  elif [ "${LISP}" == "ccl" ]; then
+      ccl -Q -n -l load.lisp -e "(progn (setf *fb-instance* \"${AGENT_NAME}\") (load \"../experiment.lisp\") (fb::run-amp :name \"${AGENT_NAME}\") (quit))" 1>>"${LOGDIR}/${AGENT_NAME}.log" 2>&1;
+  else
+      echo "Invalid value for LISP argument (1): ${LISP}"
+      exit ${INVALID_LISP_ARG}
+  fi
+fi

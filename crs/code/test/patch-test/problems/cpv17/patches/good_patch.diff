@@ -1,0 +1,12 @@
+diff --git a/src/mail/ngx_mail_smtp_handler.c b/src/mail/ngx_mail_smtp_handler.c
+index a7d4012..201da8f 100644
+--- a/src/mail/ngx_mail_smtp_handler.c
++++ b/src/mail/ngx_mail_smtp_handler.c
+@@ -833,7 +833,6 @@ ngx_mail_smtp_noop(ngx_mail_session_t *s, ngx_connection_t *c)
+ {
+     if (s->args.nelts > 10) {
+         ngx_str_set(&s->out, smtp_invalid_argument);
+-        ngx_mail_close_connection(c);
+         return NGX_ERROR;
+     }
+ 

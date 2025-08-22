@@ -1,0 +1,92 @@
+{
+  "runs": [
+    {
+      "artifacts": [
+        {
+          "location": {
+            "index": 0,
+            "uri": "pngrutil.c"
+          }
+        }
+      ],
+      "automationDetails": {
+        "id": "/"
+      },
+      "conversion": {
+        "tool": {
+          "driver": {
+            "name": "GitHub Code Scanning"
+          }
+        }
+      },
+      "results": [
+        {
+          "correlationGuid": "f6ee941a-9944-4871-bea0-623718367f9f",
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "index": 0,
+                  "uri": "pngrutil.c"
+                },
+                "region": {
+                  "endColumn": 38,
+                  "endLine": 1447,
+                  "startColumn": 7,
+                  "startLine": 1421
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "An improper use of sizeof leads to an out of bounds read and write in the png_handle_iCCP function.\n"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "0c5cff99fbe402ff:6"
+          },
+          "properties": {
+            "github/alertNumber": 1,
+            "github/alertUrl": "https://api.github.com/repos/aixcc-afc/round-exhibition3-libpng/code-scanning/alerts/1"
+          },
+          "rule": {
+            "id": "CWE-121",
+            "index": 0
+          },
+          "ruleId": "CWE-121"
+        }
+      ],
+      "tool": {
+        "driver": {
+          "name": "CodeScan++",
+          "rules": [
+            {
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "fullDescription": {
+                "text": "A stack-based buffer overflow condition is a condition where the buffer being overwritten is allocated on the stack (i.e., is a local variable or, rarely, a parameter to a function)."
+              },
+              "helpUri": "https://cwe.mitre.org/",
+              "id": "CWE-121",
+              "properties": {},
+              "shortDescription": {
+                "text": "Stack-based Buffer Overflow"
+              }
+            }
+          ],
+          "version": "1.0.0"
+        }
+      },
+      "versionControlProvenance": [
+        {
+          "branch": "refs/heads/challenges/lp-delta-01",
+          "repositoryUri": "https://github.com/aixcc-afc/round-exhibition3-libpng",
+          "revisionId": "b01c01839ea54022893281798910adfe1638c646"
+        }
+      ]
+    }
+  ],
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0"
+}

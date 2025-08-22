@@ -1,0 +1,89 @@
+## This will be the .bashrc for the realuser inside docker container
+## boilerplate linux stuff plus some of Dave's customizations
+
+export USER=`whoami`
+ulimit -c 0     # limit core sizes to zero
+
+PROGNAME=$(basename "$0")
+warn()  { echo "$PROGNAME: ${@}" 1>&2; }
+die()   { warn "${@}"; exit 1; }
+dbug()   { test -z $DEBUG || warn "${@}"; }
+
+# example usage:
+   #dbug This only prints if DEBUG is defined
+   #test -e foo || die file foo must exist
+   #test -z $FOO && die Environment variable FOO must be defined
+
+# cant do this in realuser.sh b/c arent the right UID there, so cant access the mounted .ssh files.
+	if [ -e /ssh ]; then	# could skip if ~/.ssh already exists, but then wouldnt update sockets
+		cd $HOME
+		mkdir -p .ssh
+		chmod 700 .ssh
+		#cp `find /ssh -type f` .ssh	# dont try to copy the controlmaster sockets, for example
+		find /ssh -type f -exec cp {} .ssh \; || warn "Warning: no files found in /ssh"	
+	fi
+
+IGNOREEOF=1
+FIGNORE=.o:\~:.bak:.class
+HISTFILE=$HOME/.history
+cmdhist=1
+HISTSIZE=256
+HISTCONTROL=ignoreboth  # ignore both dups and commands starting w/ space
+alias h=history
+alias b='cd -'
+export PAGER="less -is"         # Less is favored over more:
+export EDITOR=vim
+alias cl=alisp
+alias v=vim
+alias m=make
+alias vi=vim
+ffs() { egrep -lR $1 * ;  }
+ffsi() { egrep -liR $1 * ;  }
+alias ls="ls $LS_OPTS -Fh"
+alias la="ls $LS_OPTS -FAh"
+alias ll="ls $LS_OPTS -Flh"
+alias lst="ls -1 -l -t|head -20"
+alias lds="ls -l |grep ^d"
+alias rm='rm -i'
+alias cp='cp -i'
+alias cx='chmod +rx'
+alias mv='mv -i'
+alias less='less -is'
+alias which='type -all $*'
+
+alias cdr='cd `ls -d -1 -t /circa/code/test/results/* |head -1`'
+alias vdr='vim `ls -d -1 -t /circa/code/test/results/* |head -1`'
+alias vr='vim `ls -d -1 -t /circa/code/test/results/* |head -1`'
+
+# in case someone starts (deliv) docker with no args at all, set some defaults
+
+export CIRCA_HOME=${CIRCA_HOME:-/circa}
+dbug CIRCA_HOME is $CIRCA_HOME
+
+export CIRCA_BASEPORT=${CIRCA_BASEPORT:-10000}
+dbug CIRCA_BASEPORT is $CIRCA_BASEPORT
+
+export CIRCA_MM_HOST=${CIRCA_MM_HOST:-"localhost"}
+dbug CIRCA_MM_HOST is $CIRCA_MM_HOST
+
+export CIRCA_BASENAME=${CIRCA_BASENAME:-${USER}}
+dbug CIRCA_BASENAME is $CIRCA_BASENAME
+
+export PRT_LISP=${PRT_LISP:-"ccl"}
+dbug PRT_LISP is $PRT_LISP
+
+export CIRCA_CCL_LISP_UTILS_HOME=${CIRCA_CCL_LISP_UTILS_HOME:-/lisp-utils}
+dbug CIRCA_CCL_LISP_UTILS_HOME is $CIRCA_CCL_LISP_UTILS_HOME
+
+export PATH="$PATH:${CIRCA_HOME}/code/prt"
+export PATH="$PATH:${CIRCA_HOME}/code/tools"
+
+export PATH="$PATH:$PRT_DIR:$TOOL_DIR"
+
+running_in_docker() {
+  awk -F/ '$2 == "docker"' /proc/self/cgroup | read
+}
+running_in_docker
+export IN_DOCKER_EXITCODE=$?
+
+echo container is up!      # this triggers the success pattern of test/common.pl logwatcher; if you change it, change there too

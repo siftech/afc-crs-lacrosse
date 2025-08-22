@@ -1,0 +1,40 @@
+do "./defaults.pl" || die "Can't do './defaults.pl': $@";
+
+$run_in_compose = 1;
+
+our $experiment = '
+  (push :msg *debug-list*)
+  (push :amp *debug-list*)
+  (push :target *debug-list*)
+  (setf *run-fake-bridge* t)
+  (setf *lacrosse* t)
+  (setf *fake-bridge-script*
+    \'(
+       (1 ((:type :new-challenge-project)
+           (:target ((;;(:cp-address "")
+                        ;;(:cp-address "")
+				)))))
+;;       (12000 ((:type :halt)))
+))
+';
+
+our $numfbs = 1;
+our $allocationmethod = "balanced";
+
+#   Run forever?
+our $success_pattern = "Submitted 10 GPs";
+
+do "./common.pl" || die "Can't do './common.pl': $@";
+
+$test = {
+    defaultIgnore => 1,
+    keywords => [ qw / lacrosse / ],
+    cleanup => \&condor_killer,
+    agents => [
+        @clean_and_start_agents,
+    ],
+};
+
+$test;
+
+# vim: set ft=perl :

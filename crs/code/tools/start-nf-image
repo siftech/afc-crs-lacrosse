@@ -1,0 +1,93 @@
+#!/bin/bash
+# NF specific wrapper for start-image, adds project-wide mounts and defs
+
+if [ "$#" == "0" ]; then
+	echo "Usage: $0 imagename other-docker-run-args"
+	exit 1
+fi
+
+PROGNAME=$(basename "$0")
+warn()  { echo "$PROGNAME: ${@}" 1>&2; }
+die()   { warn "${@}"; exit 1; }
+dbug()   { test -z $DEBUG || warn "${@}"; }
+
+# example usage:
+   #dbug This only prints if DEBUG is defined
+   #test -e foo || die file foo must exist
+   #test -z $FOO && die Environment variable FOO must be defined
+
+# bash-ism to get location of script.  Must use /bin/pwd to get absolute path.
+thisdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && /bin/pwd )"
+dbug thisdir is $thisdir
+
+IMAGE=$1
+dbug image arg is $IMAGE
+shift	# drop the first arg
+
+# If you are in a docker, this will already be set and will be used for any future start-image calls for mounting the project home dir.
+dbug ENV HOST_LACROSSE_HOME is $HOST_LACROSSE_HOME
+HOST_LACROSSE_HOME=${HOST_LACROSSE_HOME:-${thisdir}/../../../rsync}    # Note this must be an absolute path, docker insists for mounts; hence /bin/pwd above
+dbug HOST_LACROSSE_HOME is $HOST_LACROSSE_HOME
+# The docker image *assumes* it is always mounted to /lacrosse
+DOCKER_LACROSSE_HOME=/lacrosse
+dbug DOCKER_LACROSSE_HOME is $DOCKER_LACROSSE_HOME
+
+DEFAULT_OPENAI_API_KEY=""
+OPENAI_API_KEY=${OPENAI_API_KEY:-$DEFAULT_OPENAI_API_KEY}
+
+DEFAULT_ANTHROPIC_API_KEY=""
+ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-$DEFAULT_ANTHROPIC_API_KEY}
+
+DEFAULT_GEMINI_API_KEY=""
+GEMINI_API_KEY=${GEMINI_API_KEY:-$DEFAULT_GEMINI_API_KEY}
+
+# Define crs_scratch and cp_root
+HOST_AIXCC_CP_ROOT=${HOST_AIXCC_CP_ROOT:-${thisdir}/../../../cp_root}
+dbug HOST_AIXCC_CP_ROOT arg is $HOST_AIXCC_CP_ROOT
+AIXCC_CP_ROOT=${AIXCC_CP_ROOT:-/cp_root}
+dbug AIXCC_CP_ROOT arg is $AIXCC_CP_ROOT
+
+HOST_AIXCC_CRS_SCRATCH_SPACE=${HOST_AIXCC_CRS_SCRATCH_SPACE:-${thisdir}/../../../crs_scratch}
+dbug HOST_AIXCC_CRS_SCRATCH_SPACE arg is $HOST_AIXCC_CRS_SCRATCH_SPACE
+AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-/crs_scratch}
+dbug AIXCC_CRS_SCRATCH_SPACE arg is $AIXCC_CRS_SCRATCH_SPACE
+
+AT_SIFT=${AT_SIFT:-1}
+dbug AT_SIFT is $AT_SIFT
+
+# /scratch mount is used on all hosts now, condor or not, for shared files b/w docker containers
+# /tmp mount allows sharing of ssh controlmaster sockets created there
+# .ssh mount shares config and auth keys, which change per user so cannot be done in Dockerfile; realuser's bashrc copies after user created
+# note this relies on your bashrc linking ssh-agent's SSH_AUTH_SOCK into your .ssh before
+$thisdir/start-image $IMAGE \
+	-v $HOST_LACROSSE_HOME:$DOCKER_LACROSSE_HOME \
+        -v $HOST_AIXCC_CP_ROOT:$AIXCC_CP_ROOT \
+        -v $HOST_AIXCC_CRS_SCRATCH_SPACE:$AIXCC_CRS_SCRATCH_SPACE \
+        -e HOST_LOGDIR\
+	-v $HOST_LOGDIR:/logdir\
+	-v /tmp:/tmp \
+	-e "HOST_LACROSSE_HOME=$HOST_LACROSSE_HOME" \
+        -e "LACROSSE_HOME=$LACROSSE_HOME" \
+	-e "DOCKER_LACROSSE_HOME=$DOCKER_LACROSSE_HOME" \
+	-e "TOOL_DIR=$HOST_LACROSSE_HOME/code/tools" \
+	-e "PRT_DIR=$HOST_LACROSSE_HOME/code/prt" \
+	-e "DOCKER_SUBNET=$DOCKER_SUBNET" \
+ 	-e PI\
+	-e PI_USER\
+	-e POV_SERVER_PORT\
+	-e POV_SERVER_IP\
+	-e OTEL_EXPORTER_OTLP_ENDPOINT \
+	-e OTEL_EXPORTER_OTLP_HEADERS \
+	-e OTEL_EXPORTER_OTLP_PROTOCOL \
+	-e XDG_RUNTIME_DIR \
+        -e DOCKER_HOST \
+        -e "OPENAI_API_KEY=$OPENAI_API_KEY" \
+        -e "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY" \
+	-e "GEMINI_API_KEY=$GEMINI_API_KEY" \
+        -e "HOST_AIXCC_CP_ROOT=$HOST_AIXCC_CP_ROOT" \
+        -e "AIXCC_CP_ROOT=$AIXCC_CP_ROOT" \
+        -e "HOST_AIXCC_CRS_SCRATCH_SPACE=$HOST_AIXCC_CRS_SCRATCH_SPACE" \
+        -e "AIXCC_CRS_SCRATCH_SPACE=$AIXCC_CRS_SCRATCH_SPACE" \
+        -e "AT_SIFT=$AT_SIFT" \
+	"$@"
+

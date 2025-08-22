@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euxo pipefail
+
+# Runs a VM, assuming that the kernel and rootfs have already been built.
+
+# Go here.
+cd "$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
+
+# Launch the VM.
+qemu-system-x86_64 \
+	-M q35 \
+	-cpu host \
+	-accel kvm \
+	-m 32G \
+	-kernel linux/arch/x86/boot/bzImage \
+	-nographic \
+	-no-reboot \
+	-drive file=rootfs/rootfs.img,if=virtio,index=0,format=raw,read-only=on \
+	-virtfs local,path=..,mount_tag=code,security_model=mapped \
+	-virtfs local,path=.,mount_tag=here,security_model=mapped \
+	-netdev user,id=net0 \
+	-device virtio-net,mac=52:54:00:00:00:00,netdev=net0 \
+	-append "console=ttyS0 nokaslr root=/dev/vda" \
+	"$@"

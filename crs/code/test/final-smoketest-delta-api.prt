@@ -1,0 +1,49 @@
+do "./defaults.pl" || die "Can't do './defaults.pl': $@";
+
+$run_in_compose = 0;
+$final_smoketest = 0;
+$run_with_api = 1;
+
+our $cp_config = "../crs-sandbox-items/sift/mock-cp-config.yaml";
+
+# This will spin up the api, so use for competition
+
+sbcl_test();
+
+our $experiment = '
+  (push :msg *debug-list*)
+  (push :amp *debug-list*)
+  (push :target *debug-list*)
+  (setf *run-fake-bridge* t)
+  (setf *fake-fuzz* nil)
+  (setf *lacrosse* t)
+  (setf *fuzzer-timeout* "1m")
+  (setf *lax-final* t)
+';
+
+our $numfbs = 3;
+our $allocationmethod = "balanced";
+
+# Stop after task is received by optimus and ctask object created.
+#our $success_pattern = "TOP: Adding ctask:";
+# Stop after first idle msg received.
+our $success_pattern = "AMP: Releasing fuzzbomb";
+our $success_timeout = "15m";
+
+
+do "./common.pl" || die "Can't do './common.pl': $@";
+
+$ENV{'LAX_LOAD_CP_IMAGES'} = "false";
+
+$test = {
+    defaultIgnore => 1,
+    keywords => [ qw / lacrosse / ],
+    cleanup => \&condor_killer,
+    agents => [
+        @clean_and_start_agents,
+    ],
+};
+
+$test;
+
+# vim: set ft=perl :

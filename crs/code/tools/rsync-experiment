@@ -1,0 +1,46 @@
+#!/bin/bash
+
+# bash-ism to get location of script.
+toolsdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && pwd )"
+
+# from now on, the "deployed" code that gets run is in NEO_FUZZ_HOME/rsync/code ... consistent across all ways of running
+codedir=$toolsdir/../../rsync/code
+
+localhostonly=$1
+#echo localhostonly is [$localhostonly]
+
+thishost=`hostname`
+
+doit () {
+    host=$1;
+    echo "Syncing experiment.lisp to cluster host $host"
+    rc=1
+    attempt=0
+    while [ $rc -ne 0 ]
+     do
+  	attempt=$(($attempt + 1))
+  	#echo "Attempt $attempt at rsync to $host."
+ 	rsync --force -e "$toolsdir/sshc"  $toolsdir/../experiment.lisp $host:$codedir/ 
+  	rc=$?
+  	if [ $rc -eq 0 ]
+  	then
+    		echo "rsync finished to $host."
+  	else
+    		echo "rsync failed to $host: $rc."
+  	fi
+     done
+}
+
+
+if [ -z $localhostonly ] || [ $localhostonly == 0 ]; then
+  for h in $($toolsdir/list-cluster-nodes); do
+   doit $h  &
+  done
+else
+   #echo Syncing to localhost only
+   doit $thishost
+fi 
+
+wait 
+echo "rsync-experiment complete"
+exit 0

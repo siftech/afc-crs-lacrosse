@@ -1,0 +1,70 @@
+#!/bin/bash
+# Checks if named container is already running, with the desired DOCKER_TAG (if set; default=:latest); if so, exit 0.  
+# If a container of that name exists but is not running, kill and remove it, then exit 1.
+
+if [[ $# != 1 ]]; then
+	echo "Usage: $0 imagename"
+	exit 1
+fi
+
+PROGIMAGE=$(basename "$0")
+warn()  { echo "$PROGIMAGE: ${@}" 1>&2; }
+die()   { warn "${@}"; exit 1; }
+dbug()   { test -z $DEBUG || warn "${@}"; }
+
+# bash-ism to get location of script.  Must use /bin/pwd to get absolute path.
+thisdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && /bin/pwd )"
+dbug thisdir is $thisdir
+
+IMAGE=$1
+dbug image arg is $IMAGE
+
+export DOCKER_TAG=${DOCKER_TAG:-"latest"} 	# Set default docker tag if not already set
+dbug DOCKER_TAG is $DOCKER_TAG
+
+export CONTAINER_PREFIX=${CONTAINER_PREFIX:-$USER}       # Set default docker tag if not already set
+dbug CONTAINER_PREFIX is $CONTAINER_PREFIX
+
+	# by default docker ps only shows running images; so if this doesnt find it, the below -a will find non-running ones and kill them, heh
+	# if we filter on the full $USER-$IMAGE default name then we need to use something other than just docker return b/c it is 0 even if none found
+	# like this if [[ `docker ps -q -a --filter "name=$USER"` != "" ]] ; then echo hi; fi
+	# But this can also be fooled by image names that overlap, doh, like circa-ccl-deliv and circa-ccl.
+	# To force the exact image, note that non-q output ends in end of image name, hence the second $ in grep below:
+	# Update: using ancestor filter will force only right image name to match.
+
+	# NOTE so far this only reliably works if container name is not over-ridden by wrapper scripts.
+
+	# First check to see if it is already running with the right tag.  If so, exit 0.
+if $thisdir/docker ps --filter "ancestor=$IMAGE:$DOCKER_TAG" |grep "${CONTAINER_PREFIX}$" 1>&2 >/dev/null; then
+  echo "$IMAGE:$DOCKER_TAG docker image already running"
+  echo "Exiting with success (and ignoring all other arguments)"
+  echo "If you want to interact with the running container, try:  docker exec -it ${USER}-${IMAGE} /realuser.sh bash"
+  exit 0 # Just exit with success code.
+fi
+
+# because Mac xargs doesnt support -r arg, we have to figure out where we are running:
+case $OSTYPE in
+ linux*)
+   xargs="xargs -r"
+   dbug on linux!
+   ;;
+ darwin*)
+   xargs="xargs"
+   dbug on mac!
+   ;;
+ *)
+   warn WARNING: Not running in a recognized Linux or Mac OS, this may need to be ported!
+   xargs="xargs"
+   ;;
+esac
+
+	# If we get to this check and one of the right name is running, it's for the wrong DOCKER_TAG,
+	# so kill it.  
+	# Here we use -a to also show the non-running containers...kill them too.
+if $thisdir/docker ps -a --filter "ancestor=$IMAGE" |grep "${CONTAINER_PREFIX}$" 1>&2 >/dev/null; then
+  echo "$IMAGE docker image already exists in non-running state or with wrong DOCKER_TAG; I'll kill it."
+	# tail eliminates the header line; cut grabs just the container id
+  $thisdir/docker ps -a --filter "ancestor=$IMAGE" |grep "${CONTAINER_PREFIX}$"|tail -1 |cut -d " " -f 1 | ${xargs} $thisdir/docker rm -f
+fi
+
+exit 1;

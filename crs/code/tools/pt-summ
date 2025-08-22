@@ -1,0 +1,166 @@
+#!/bin/bash
+
+record=1 # controls whether the passing problems for each category (apply/build/run_pov/run_tests) are recorded to log files
+patch_results="results/prev-batch-pass-fail"
+
+inputs=$1
+pipeline=$2
+model=$3
+
+echo
+#echo "pipeline=$pipeline"
+#echo "model=$model"
+
+shift 3  # Remove the first three arguments
+
+# Enable nullglob to ensure no match for the glob results in an empty list
+shopt -s nullglob
+
+# Check if there are remaining arguments
+if [ $# -eq 0 ]; then
+    # If no third argument is provided, expand the glob manually
+    matching_subdirs=(problems/*)
+else
+    # Otherwise, use the remaining arguments as is
+    matching_subdirs=("$@")
+fi
+
+calling_dir=$(realpath ".")
+patch_name="${inputs}--${pipeline}--${model}"
+
+# echo "calling_dir=$calling_dir"
+
+# Count the number of matching directories
+dir_count=${#matching_subdirs[@]}
+
+# echo "Matching directories count: $dir_count"
+
+results_dir="${calling_dir}/results"
+
+log_path() {
+    local problem="$1"
+    local patch_name="$2"
+    results_subdir="$results_dir/$problem/$patch_name"
+    echo "$results_subdir/test-patch/test.log"
+}
+
+# Define the project directory containing poetry.lock
+POETRY_PROJECT_DIR="$LACROSSE_HOME/code/dspy"
+
+# Initialize arrays to store filenames passing each pattern
+declare -a pass_run_tests
+declare -a pass_run_pov
+declare -a pass_build
+declare -a pass_apply
+declare -a fail_run_tests
+declare -a fail_run_pov
+declare -a fail_build
+declare -a fail_apply
+declare -a all_problems
+
+# Make the patches
+for subdir in "${matching_subdirs[@]}"; do
+    #echo "subdir is $subdir"
+    problem=$(basename $subdir)
+    # echo "problem $problem"
+    testlog=$(log_path $problem $patch_name)
+    #echo $testlog
+    #head -n 3 $testlog
+    if grep -q "\*PASS\* apply" $testlog; then
+	pass_apply+=("$problem")
+    else
+	fail_apply+=("$problem")
+    fi
+    if grep -q "\*PASS\* build" $testlog; then
+	pass_build+=("$problem")
+    else
+	fail_build+=("$problem")
+    fi
+    if grep -q "\*PASS\* run_pov" $testlog; then
+	pass_run_pov+=("$problem")
+    else
+	fail_run_pov+=("$problem")
+    fi
+    if grep -q "\*PASS\* run_tests" $testlog; then
+	pass_run_tests+=("$problem")
+    else
+	fail_run_tests+=("$problem")
+    fi
+    all_problems+=("$problem")
+done
+
+
+
+total=${#all_problems[@]}
+pass_apply_ct=${#pass_apply[@]}
+pass_build_ct=${#pass_build[@]}
+pass_run_pov_ct=${#pass_run_pov[@]}
+pass_run_tests_ct=${#pass_run_tests[@]}
+
+
+if [$record]; then
+    pass_apply_log="${patch_results}/pass-apply.log"
+    pass_build_log="${patch_results}/pass-build.log"
+    pass_run_pov_log="${patch_results}/pass-run_pov.log"
+    pass_run_tests_log="${patch_results}/pass-run_tests.log"
+    fail_apply_log="${patch_results}/fail-apply.log"
+    fail_build_log="${patch_results}/fail-build.log"
+    fail_run_pov_log="${patch_results}/fail-run_pov.log"
+    fail_run_tests_log="${patch_results}/fail-run_tests.log"
+    mkdir -p $(dirname $pass_apply_log)
+    rm -f $pass_apply_log
+    rm -f $pass_build_log
+    rm -f $pass_run_pov_log
+    rm -f $pass_run_tests_log
+    rm -f $fail_apply_log
+    rm -f $fail_build_log
+    rm -f $fail_run_pov_log
+    rm -f $fail_run_tests_log
+    touch $pass_apply_log
+    touch $pass_build_log
+    touch $pass_run_pov_log
+    touch $pass_run_tests_log
+    touch $fail_apply_log
+    touch $fail_build_log
+    touch $fail_run_pov_log
+    touch $fail_run_tests_log
+    echo "passing apply list: $pass_apply_log"
+    for problem in "${pass_apply[@]}"; do
+	echo "$problem" >> $pass_apply_log
+    done
+    echo "passing build list: $pass_build_log"
+    for problem in "${pass_build[@]}"; do
+	echo "$problem" >> $pass_build_log
+    done
+    echo "passing run_pov list: $pass_run_pov_log"
+    for problem in "${pass_run_pov[@]}"; do
+	echo "$problem" >> $pass_run_pov_log
+    done
+    echo "passing run_tests list: $pass_run_tests_log"
+    for problem in "${pass_run_tests[@]}"; do
+	echo "$problem" >> $pass_run_tests_log
+    done
+    echo "failing apply list: $fail_apply_log"
+    echo "failing build list: $fail_build_log"
+    echo "failing run_pov list: $fail_run_pov_log"
+    echo "failing run_tests list: $fail_run_tests_log"
+    for problem in "${fail_apply[@]}"; do
+	echo "$problem" >> $fail_apply_log
+    done
+    for problem in "${fail_build[@]}"; do
+	echo "$problem" >> $fail_build_log
+    done
+    for problem in "${fail_run_pov[@]}"; do
+	echo "$problem" >> $fail_run_pov_log
+    done
+    for problem in "${fail_run_tests[@]}"; do
+	echo "$problem" >> $fail_run_tests_log
+    done
+fi
+echo
+echo "Num passing apply: $pass_apply_ct of $total ($((100 * $pass_apply_ct/$total))%)"
+echo "Num passing build: $pass_build_ct of $total ($((100 * $pass_build_ct/$total))%)"
+echo "Num passing run_pov: $pass_run_pov_ct of $total ($((100 * $pass_run_pov_ct/$total))%)"
+echo "Num passing run_tests: $pass_run_tests_ct of $total ($((100 * $pass_run_tests_ct/$total))%)"
+echo
+

@@ -1,0 +1,22 @@
+[package]
+name = "grab-a-func"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+addr2line = { version = "0.23.0", default-features = false, features = ["loader"] }
+anyhow = { version = "1.0.86", default-features = false, features = ["backtrace", "std"] }
+bstr = { version = "1.9.1", default-features = false }
+clap = { version = "4.5.7", default-features = false, features = ["derive", "help", "std", "usage"] }
+contracts = { version = "0.6.3", default-features = false }
+log = { version = "0.4.21", default-features = false }
+object = { version = "0.36.0", default-features = false, features = ["elf", "read"] }
+serde = { version = "1.0.204", default-features = false, features = ["derive", "std"] }
+serde_json = { version = "1.0.120", default-features = false, features = ["std"] }
+simple_logger = { version = "5.0.0", default-features = false, features = ["stderr", "timestamps"] }
+tree-sitter = { version = "0.22.6", default-features = false }
+tree-sitter-c = { version = "0.21.4", default-features = false }
+tree-sitter-java = { version = "0.21.0", default-features = false }
+
+[dev-dependencies]
+tempdir = { version = "0.3.7", default-features = false }

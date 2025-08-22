@@ -1,0 +1,32 @@
+metadata_spec_version: v1
+
+name: "Example vulnerability 0"
+
+author: AIxCC Organizers
+
+details:
+
+  cwes:
+    - CWE-121
+
+  description: >
+    An improper use of sizeof leads to an out of bounds
+    read and write in the png_handle_iCCP function.
+
+  locations:
+    - path_from_root: "src/ui/user_input.c"
+      startLine: 1421
+      startColumn: 7
+      endLine: 1447
+      endColumn: 38
+
+pov:
+    blob: 'sample_data.bin'
+    harness: 'libpng_read_fuzzer'
+    architecture: 'x86_64'
+    engine: 'libfuzzer'
+    sanitizer: 'address'
+
+patch:
+    good: 'good_patch.diff'
+    bad: ''

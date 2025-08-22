@@ -1,0 +1,12 @@
+#!/bin/bash
+# args: CIRCA_MM_HOST CIRCA_BASEPORT agentname
+
+thisdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && /bin/pwd )"
+CIRCA_MM_HOST=$1
+CIRCA_BASEPORT=$2
+AGENT_NAME=$3
+
+cd $thisdir/../lisp
+CIRCA_MM_HOST=${CIRCA_MM_HOST} \
+  CIRCA_BASEPORT=${CIRCA_BASEPORT} \
+  ccl -Q -n -l load.lisp -e "(progn (setf *fb-instance* \"${AGENT_NAME}\") (load \"../experiment.lisp\") (fb::run-amp :name \"${AGENT_NAME}\") (quit))"

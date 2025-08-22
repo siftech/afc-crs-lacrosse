@@ -1,0 +1,18 @@
+#!/bin/bash
+# usage: flaky retries secs-between-tries cmd*
+
+PROGNAME=$(basename "$0")
+warn()  { echo "$PROGNAME: ${@}" 1>&2; }
+die()   { warn "${@}"; exit 1; }
+dbug()   { test -z $DEBUG || warn "${@}"; }
+
+retries=$1
+delay=$2
+dbug retries is $retries; dbug delay is $delay
+shift; shift
+dbug remaining args "$@"
+for i in `seq -s " " 1 $retries` ; do 
+  [ $i -gt 1 ] && sleep $delay; dbug Flaky attempt $i && "$@" && s=0 && break || s=$?; 
+done; 
+dbug exiting with $s; 
+exit $s

@@ -1,0 +1,51 @@
+# Hey EMACS, this should be in -*- perl -*- mode
+# ------------------------------------------------------------
+# COPYRIGHT START
+# Copyright (c) 2014, Smart Information Flow Technologies (SIFT).
+# COPYRIGHT END
+# ------------------------------------------------------------
+
+use PRT::UnorderedComparo;
+
+$test = {
+  description => "verifies unordered rubric/result comparison functionality",
+  # defaultIgnore => 1,
+  agents => [
+      {
+        name         => "unordered1",
+        command   => [ "bash", "-c", "echo one\necho two\necho three" ],
+        #comparo => new PRT::UnorderedComparo(show_comparisons   => 2),
+        comparo => new PRT::UnorderedComparo(),
+      },
+      {
+        name         => "unordered2",
+        command   => [ "bash", "-c", "echo two\necho one\necho three" ],
+        comparo => new PRT::UnorderedComparo(),
+      },
+      {
+        name         => "unordered3",
+        command   => [ "bash", "-c", "echo FOOthree\necho FOOtwo\necho FOOone" ],
+        comparo => new PRT::UnorderedComparo( key_fact_regexp  => "FOO.*",
+        			#show_comparisons   => 2
+			),
+      },
+      {
+	# extra entries in result should be ok
+        name         => "unordered4",
+        command   => [ "bash", "-c", "echo FOOfour\necho FOOthree\necho FOOtwo\necho FOOone" ],
+        comparo => new PRT::UnorderedComparo( key_fact_regexp  => "FOO.*",
+        			#show_comparisons   => 2
+			),
+      },
+      {
+	# diff stuff not matching the key_fact should be ok too
+        name         => "unordered5",
+        command   => [ "bash", "-c", "echo barfFOOfour\necho anotherFOOthree\necho FOOtwo\necho hithereFOOone" ],
+        comparo => new PRT::UnorderedComparo( key_fact_regexp  => "FOO.*",
+        			show_comparisons   => 2
+			),
+      },
+    ]
+  };
+
+$test;

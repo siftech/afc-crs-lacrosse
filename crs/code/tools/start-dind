@@ -1,0 +1,45 @@
+#!/bin/bash
+# this gets run inside docker ctr to start the inner docker engine
+
+set -x
+
+#if [ "$#" == "0" ]; then
+#	echo "Usage: $0 imagename [other-docker-run-args]"
+#	exit 1
+#fi
+
+PROGNAME=$(basename "$0")
+warn()  { echo "$PROGNAME: ${@}" 1>&2; }
+die()   { warn "${@}"; exit 1; }
+dbug()   { test -z $DEBUG || warn "${@}"; }
+
+# example usage:
+   #dbug This only prints if DEBUG is defined
+   #test -e foo || die file foo must exist
+   #test -z $FOO && die Environment variable FOO must be defined
+
+# bash-ism to get location of script.  Must use /bin/pwd to get absolute path.
+thisdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && /bin/pwd )"
+dbug thisdir is $thisdir
+
+LACROSSE_HOME=$thisdir/../../..
+dbug LACROSSE_HOME is $LACROSSE_HOME
+
+export CIRCA_BASEPORT=${CIRCA_BASEPORT:-10000}
+dbug CirCA_BASEPORT is $CIRCA_BASEPORT
+
+# Define crs_scratch and cp_root
+HOST_AIXCC_CP_ROOT=${HOST_AIXCC_CP_ROOT:-${thisdir}/../../../cp_root}
+dbug HOST_AIXCC_CP_ROOT arg is $HOST_AIXCC_CP_ROOT
+AIXCC_CP_ROOT=${AIXCC_CP_ROOT:-/cp_root}
+dbug AIXCC_CP_ROOT arg is $AIXCC_CP_ROOT
+
+HOST_AIXCC_CRS_SCRATCH_SPACE=${HOST_AIXCC_CRS_SCRATCH_SPACE:-${thisdir}/../../../crs_scratch}
+dbug HOST_AIXCC_CRS_SCRATCH_SPACE arg is $HOST_AIXCC_CRS_SCRATCH_SPACE
+AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-/crs_scratch}
+dbug AIXCC_CRS_SCRATCH_SPACE arg is $AIXCC_CRS_SCRATCH_SPACE
+
+docker pull docker:24-dind
+
+export DOCKER_TLS_CERTDIR
+docker run --name $USER-dind --privileged -p`expr $CIRCA_BASEPORT + 50`:2375 -v $HOST_AIXCC_CRS_SCRATCH_SPACE:$AIXCC_CRS_SCRATCH_SPACE -v $HOST_AIXCC_CP_ROOT:$AIXCC_CP_ROOT -e RUNC_NO_NEW_KEYRING=1 docker:24-dind dockerd -H tcp://0.0.0.0:2375 --tls=false --storage-driver=overlay2

@@ -1,0 +1,32 @@
+# Local development environment variable example file
+# Copy this file to env and replace the variables with your own
+# This variable file along with env will not be used at competition time
+# However, any pre-existing variables will have the same key name at competition time
+# These are to be populated manually for local development
+
+# if set to false, cAPI will actually run tests
+AIXCC_MOCK_MODE=false
+
+# competition API credentials.  these don't typically need to be customized
+CAPI_ID=00000000-0000-0000-0000-000000000000
+CAPI_TOKEN=secret
+
+# Github credentials for cloning CPs
+GITHUB_TOKEN=""
+GITHUB_USER=""
+
+# Same as Github, adjusted for LAX
+LAX_TOKEN=""
+LAX_USERNAME=""
+
+SIFT_USER=${USER}
+
+# API keys for LLM providers
+ANTHROPIC_API_KEY=""
+AZURE_API_BASE=https://eastus2aoi.openai.azure.com/
+AZURE_API_KEY=<REPLACE_WITH_REAL_CREDS>
+GOOGLE_APPLICATION_CREDENTIALS=/vertex_key.json
+OPENAI_API_KEY=""
+VERTEX_PROJECT=""
+VERTEX_REGION=us-central1
+CAPI_AUTH_HEADER=""

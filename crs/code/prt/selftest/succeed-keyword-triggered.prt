@@ -1,0 +1,22 @@
+# Hey EMACS, this should be in -*- perl -*- mode
+# ------------------------------------------------------------
+# COPYRIGHT START
+# COPYRIGHT END
+# ------------------------------------------------------------
+#
+
+$test = { 
+  description => "test if can tell whether test *was* triggered by a specific keyword",
+  keywords => [ qw / prt self-test / ],  
+  agents => [ 
+    {
+      name         => "shouldpass", 
+      command   => ["../prt","-k","keyword","--all"],
+      exit_code    => 0,
+      comparo      => undef,
+    },
+  ]
+};
+  
+# Always end with a reference to the test specification hash reference.
+$test;

@@ -1,0 +1,92 @@
+{
+  "runs": [
+    {
+      "artifacts": [
+        {
+          "location": {
+            "index": 0,
+            "uri": "libfreerdp/crypto/certificate.c"
+          }
+        }
+      ],
+      "automationDetails": {
+        "id": "/"
+      },
+      "conversion": {
+        "tool": {
+          "driver": {
+            "name": "GitHub Code Scanning"
+          }
+        }
+      },
+      "results": [
+        {
+          "correlationGuid": "81e99ca6-bcd7-4202-b178-749cea64ad3a",
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "index": 0,
+                  "uri": "libfreerdp/crypto/certificate.c"
+                },
+                "region": {
+                  "endColumn": 1,
+                  "endLine": 1569,
+                  "startColumn": 1,
+                  "startLine": 1546
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Failure to handle an integer overflow and correctly allocate sufficient data when parsing large x509 files.\n"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "3dc687f8edd2b64c:2"
+          },
+          "properties": {
+            "github/alertNumber": 1,
+            "github/alertUrl": "https://api.github.com/repos/aixcc-afc/round-exhibition3-freerdp/code-scanning/alerts/1"
+          },
+          "rule": {
+            "id": "CWE-122",
+            "index": 0
+          },
+          "ruleId": "CWE-122"
+        }
+      ],
+      "tool": {
+        "driver": {
+          "name": "CodeScan++",
+          "rules": [
+            {
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "fullDescription": {
+                "text": "A heap overflow condition is a buffer overflow, where the buffer that can be overwritten is allocated in the heap portion of memory, generally meaning that the buffer was allocated using a routine such as malloc()."
+              },
+              "helpUri": "https://cwe.mitre.org/",
+              "id": "CWE-122",
+              "properties": {},
+              "shortDescription": {
+                "text": "Heap-based Buffer Overflow"
+              }
+            }
+          ],
+          "version": "1.0.0"
+        }
+      },
+      "versionControlProvenance": [
+        {
+          "branch": "refs/heads/challenges/fp-delta-01",
+          "repositoryUri": "https://github.com/aixcc-afc/round-exhibition3-freerdp",
+          "revisionId": "f2eca76e70b951495d90cc245412ee1acccf4d70"
+        }
+      ]
+    }
+  ],
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0"
+}

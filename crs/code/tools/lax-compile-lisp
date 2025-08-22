@@ -1,0 +1,6 @@
+#!/bin/bash
+# for lax, no docker exec call, this runs right in the lax ctr
+
+thisdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && /bin/pwd )"
+
+cd $thisdir/../lisp; ccl -b -Q -n -l load.lisp -e '(quit)'

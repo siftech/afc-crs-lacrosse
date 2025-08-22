@@ -1,0 +1,116 @@
+#!/bin/bash
+
+# This script performs a cleanup of Docker images, targeting unused or redundant images
+# to free up disk space while preserving the latest and relevant images for each repository.
+# Features:
+# 1. Stops all running Docker containers to ensure safe cleanup.
+# 2. Processes specific repositories if IMAGE_NAME is set; otherwise, processes all repositories.
+# 3. Retains the most recent image for each repository, along with any images tagged as 'latest'.
+# 4. Removes older, untagged, or redundant images that are no longer required.
+# 5. Optionally runs in dry-run mode (DRY_RUN), displaying actions without performing them.
+# 6. Performs a final cleanup of any dangling images using `docker image prune`.
+#
+# Environment Variables:
+# - DRY_RUN: If set, no actual deletions are performed (outputs actions to the console).
+# - IMAGE_NAME: Specify a single repository to process. If unset, all repositories are processed.
+# - DEBUG: Enable detailed debug output for internal variable states.
+#
+# Usage:
+#   DRY_RUN=1 IMAGE_NAME=myrepo ./clean-old-docker-images
+
+PROGNAME=$(basename "$0")
+warn()  { echo "$PROGNAME: ${@}" 1>&2; }
+die()   { warn "${@}"; exit 1; }
+dbug()  { test -z $DEBUG || warn "${@}"; }
+
+# Check if DRY_RUN is set
+if [ -n "$DRY_RUN" ]; then
+    echo "Dry run mode: No images will be removed."
+else
+    echo "Starting the cleanup process..."
+fi
+
+# Stop all Docker processes, if there are any
+RUNNING_CONTAINERS=$(docker ps -q)
+if [ -n "$RUNNING_CONTAINERS" ]; then
+    echo "Stopping all running Docker containers..."
+    [ -z "$DRY_RUN" ] && docker stop $RUNNING_CONTAINERS
+else
+    echo "No running containers to stop."
+fi
+
+# Determine which repositories to process
+if [ -n "$IMAGE_NAME" ]; then
+    REPOS="$IMAGE_NAME"
+    echo "Processing only repository: $IMAGE_NAME"
+else
+    REPOS=$(docker images --format '{{.Repository}}' | sort | uniq)
+    echo "Processing all repositories..."
+fi
+
+# Find all unique images and only keep the latest
+for REPO in $REPOS; do
+    echo "Processing repository: $REPO"
+
+    # Get the full list of images for this repository
+    IMAGE_LIST=$(docker images --format '{{.ID}} {{.CreatedAt}} {{.Repository}}:{{.Tag}}' "$REPO")
+    dbug IMAGE_LIST is $IMAGE_LIST
+
+    # Extract the image IDs and sort them by creation date
+    IMAGE_IDS=$(echo "$IMAGE_LIST" | sort -k2 -r | awk '{print $1}')
+    dbug IMAGE_IDS is $IMAGE_IDS
+
+    # Keep all images tagged with 'latest' (e.g., 'latest', 'latest-gitlab', etc.)
+    LATEST_IMAGES=$(echo "$IMAGE_LIST" | grep -E "$REPO:.*latest.*" | awk '{print $1}')
+    dbug LATEST_IMAGES is $LATEST_IMAGES
+
+    # Retain all tags associated with those images
+    if [ -n "$LATEST_IMAGES" ]; then
+        ASSOCIATED_IMAGES=$(echo "$IMAGE_LIST" | grep -E "$(echo "$LATEST_IMAGES" | paste -sd '|')" | awk '{print $1}')
+    else
+        ASSOCIATED_IMAGES=""
+    fi
+
+    # Get the latest image ID (first one in the sorted list) that is not 'latest*'
+    LATEST_IMAGE_ID=$(echo "$IMAGE_IDS" | head -n 1)
+
+    echo "Keeping 'latest*' image IDs for $REPO:"
+    echo "$LATEST_IMAGES"
+    echo "Keeping associated image IDs for 'latest*' images:"
+    echo "$ASSOCIATED_IMAGES"
+    echo "Additionally keeping the latest image ID for $REPO: $LATEST_IMAGE_ID"
+
+    # Get all other image IDs (excluding the latest and 'latest*' images)
+    OLD_IMAGE_IDS=$(echo "$IMAGE_LIST" | grep -v -E "${LATEST_IMAGE_ID}|${LATEST_IMAGES// /|}" | awk '{print $1}')
+
+    if [ -n "$OLD_IMAGE_IDS" ]; then
+        echo "Old image IDs for $REPO:"
+        echo "$OLD_IMAGE_IDS"
+
+        # Remove old images
+        for IMAGE_ID in $OLD_IMAGE_IDS; do
+            if [ -n "$DRY_RUN" ]; then
+                echo "Would remove image: $IMAGE_ID"
+            else
+                echo "Removing image: $IMAGE_ID"
+                docker rmi "$IMAGE_ID" -f || echo "Error removing image: $IMAGE_ID"
+            fi
+        done
+    else
+        echo "No old images to remove for $REPO."
+    fi
+done
+
+# Remove any hanging images (using --force flag to bypass y/N prompt)
+if [ -n "$DRY_RUN" ]; then
+    echo "Would remove any hanging images."
+else
+    echo "Removing any hanging images (using --force flag to bypass y/N prompt)..."
+    docker image prune -f
+    docker volume rm $(docker volume ls -qf dangling=true) || true
+fi
+
+# Clean up anything left around
+docker system prune -f
+
+echo "Cleanup process completed."

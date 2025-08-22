@@ -1,0 +1,4631 @@
+---
+######################################################################################################
+# DO NOT MODIFY THIS FILE ANYWHERE OTHER THAN WITHIN THE CUSTOMIZE BLOCKS
+#
+#
+# New services are acceptable
+#
+# Profiles
+# We use the profiles "development" and "competition"
+# All containers added by competitors must include the appropriate profiles
+# At competition time only the `--profile competition` will be used
+# This will cause the LiteLLM proxy to disappear.
+# Competitors should be using the AIXCC_LITELLM_HOSTNAME environment variable
+# for accessing LiteLLM, so we can swap the URL at competition time.
+#
+######################################################################################################
+
+include:
+  - path:
+      - sandbox/compose.yaml
+
+#############
+### CUSTOMIZE
+#############
+
+## SIFT NOTE this is a template, to be processed by tools/dupl-template to create replicated
+## service entries for (at least) multiple FBs and maybe multiple OPTs, but note the latter would
+## need to be enhanced to not start extra MMs or try to bind multiple MM ports
+
+### Additional services are welcomed, just make sure to use the supplied variables and profile names
+services:
+  crs:
+    labels:
+      kompose.service.accountname: "crs"  # make sure to use this label if you want your CRS to have K8S API access
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    # FIXME this version tag needs to be updated after any release...
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command:
+       - ./lax-run-optimus0
+    container_name: crs-container
+    expose:
+      - "10002" ## FIXME depends on circa-baseport.
+      - "10003" 
+      - "10004"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=crs
+      - CIRCA_PORT=10003
+      - BRIDGE_PORT=10004
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-foo}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        # Might need to disable in compose_local_overides
+        bind:
+          propagation: rshared
+        # This is the core CP mount point where repos are attached as subdirectories.
+        # A CRS must automatically copy subdirectories here to some location for building and should not modify this read_only setting.
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      iapi:
+        condition: service_healthy
+    healthcheck:
+      test: ../matchmaker/mmhealth
+      interval: 60s
+      start_period: 5s
+      start_interval: 10s
+      retries: 6
+
+  nix-copy:
+    profiles:
+      - development
+      - competition
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/nix-copy:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/nix-copy/Dockerfile
+    working_dir: /lacrosse/nix/
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        # Might need to disable in compose_local_overides
+        bind:
+          propagation: rshared
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 10
+        window: 120s
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB0:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB0"]
+    container_name: FUZZBOMB0-container
+    expose:
+      - "12345"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB0
+      - CIRCA_PORT=12345
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB1:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB1"]
+    container_name: FUZZBOMB1-container
+    expose:
+      - "12346"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB1
+      - CIRCA_PORT=12346
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB2:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB2"]
+    container_name: FUZZBOMB2-container
+    expose:
+      - "12347"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB2
+      - CIRCA_PORT=12347
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB3:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB3"]
+    container_name: FUZZBOMB3-container
+    expose:
+      - "12348"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB3
+      - CIRCA_PORT=12348
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB4:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB4"]
+    container_name: FUZZBOMB4-container
+    expose:
+      - "12349"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB4
+      - CIRCA_PORT=12349
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB5:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB5"]
+    container_name: FUZZBOMB5-container
+    expose:
+      - "12350"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB5
+      - CIRCA_PORT=12350
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB6:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB6"]
+    container_name: FUZZBOMB6-container
+    expose:
+      - "12351"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB6
+      - CIRCA_PORT=12351
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB7:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB7"]
+    container_name: FUZZBOMB7-container
+    expose:
+      - "12352"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB7
+      - CIRCA_PORT=12352
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB8:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB8"]
+    container_name: FUZZBOMB8-container
+    expose:
+      - "12353"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB8
+      - CIRCA_PORT=12353
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB9:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB9"]
+    container_name: FUZZBOMB9-container
+    expose:
+      - "12354"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB9
+      - CIRCA_PORT=12354
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB10:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB10"]
+    container_name: FUZZBOMB10-container
+    expose:
+      - "12355"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB10
+      - CIRCA_PORT=12355
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB11:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB11"]
+    container_name: FUZZBOMB11-container
+    expose:
+      - "12356"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB11
+      - CIRCA_PORT=12356
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB12:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB12"]
+    container_name: FUZZBOMB12-container
+    expose:
+      - "12357"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB12
+      - CIRCA_PORT=12357
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB13:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB13"]
+    container_name: FUZZBOMB13-container
+    expose:
+      - "12358"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB13
+      - CIRCA_PORT=12358
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB14:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB14"]
+    container_name: FUZZBOMB14-container
+    expose:
+      - "12359"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB14
+      - CIRCA_PORT=12359
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB15:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB15"]
+    container_name: FUZZBOMB15-container
+    expose:
+      - "12360"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB15
+      - CIRCA_PORT=12360
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB16:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB16"]
+    container_name: FUZZBOMB16-container
+    expose:
+      - "12361"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB16
+      - CIRCA_PORT=12361
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB17:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB17"]
+    container_name: FUZZBOMB17-container
+    expose:
+      - "12362"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB17
+      - CIRCA_PORT=12362
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB18:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB18"]
+    container_name: FUZZBOMB18-container
+    expose:
+      - "12363"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB18
+      - CIRCA_PORT=12363
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB19:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB19"]
+    container_name: FUZZBOMB19-container
+    expose:
+      - "12364"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB19
+      - CIRCA_PORT=12364
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB20:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB20"]
+    container_name: FUZZBOMB20-container
+    expose:
+      - "12365"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB20
+      - CIRCA_PORT=12365
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB21:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB21"]
+    container_name: FUZZBOMB21-container
+    expose:
+      - "12366"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB21
+      - CIRCA_PORT=12366
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB22:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB22"]
+    container_name: FUZZBOMB22-container
+    expose:
+      - "12367"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB22
+      - CIRCA_PORT=12367
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB23:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB23"]
+    container_name: FUZZBOMB23-container
+    expose:
+      - "12368"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB23
+      - CIRCA_PORT=12368
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB24:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB24"]
+    container_name: FUZZBOMB24-container
+    expose:
+      - "12369"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB24
+      - CIRCA_PORT=12369
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB25:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB25"]
+    container_name: FUZZBOMB25-container
+    expose:
+      - "12370"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB25
+      - CIRCA_PORT=12370
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB26:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB26"]
+    container_name: FUZZBOMB26-container
+    expose:
+      - "12371"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB26
+      - CIRCA_PORT=12371
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB27:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB27"]
+    container_name: FUZZBOMB27-container
+    expose:
+      - "12372"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB27
+      - CIRCA_PORT=12372
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB28:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB28"]
+    container_name: FUZZBOMB28-container
+    expose:
+      - "12373"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB28
+      - CIRCA_PORT=12373
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB29:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB29"]
+    container_name: FUZZBOMB29-container
+    expose:
+      - "12374"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB29
+      - CIRCA_PORT=12374
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB30:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB30"]
+    container_name: FUZZBOMB30-container
+    expose:
+      - "12375"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB30
+      - CIRCA_PORT=12375
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB31:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB31"]
+    container_name: FUZZBOMB31-container
+    expose:
+      - "12376"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB31
+      - CIRCA_PORT=12376
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB32:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB32"]
+    container_name: FUZZBOMB32-container
+    expose:
+      - "12377"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB32
+      - CIRCA_PORT=12377
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB33:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB33"]
+    container_name: FUZZBOMB33-container
+    expose:
+      - "12378"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB33
+      - CIRCA_PORT=12378
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB34:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB34"]
+    container_name: FUZZBOMB34-container
+    expose:
+      - "12379"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB34
+      - CIRCA_PORT=12379
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB35:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB35"]
+    container_name: FUZZBOMB35-container
+    expose:
+      - "12380"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB35
+      - CIRCA_PORT=12380
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB36:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB36"]
+    container_name: FUZZBOMB36-container
+    expose:
+      - "12381"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB36
+      - CIRCA_PORT=12381
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB37:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB37"]
+    container_name: FUZZBOMB37-container
+    expose:
+      - "12382"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB37
+      - CIRCA_PORT=12382
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB38:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB38"]
+    container_name: FUZZBOMB38-container
+    expose:
+      - "12383"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB38
+      - CIRCA_PORT=12383
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB39:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB39"]
+    container_name: FUZZBOMB39-container
+    expose:
+      - "12384"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB39
+      - CIRCA_PORT=12384
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB40:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB40"]
+    container_name: FUZZBOMB40-container
+    expose:
+      - "12385"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB40
+      - CIRCA_PORT=12385
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB41:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB41"]
+    container_name: FUZZBOMB41-container
+    expose:
+      - "12386"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB41
+      - CIRCA_PORT=12386
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB42:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB42"]
+    container_name: FUZZBOMB42-container
+    expose:
+      - "12387"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB42
+      - CIRCA_PORT=12387
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB43:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB43"]
+    container_name: FUZZBOMB43-container
+    expose:
+      - "12388"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB43
+      - CIRCA_PORT=12388
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB44:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB44"]
+    container_name: FUZZBOMB44-container
+    expose:
+      - "12389"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB44
+      - CIRCA_PORT=12389
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB45:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB45"]
+    container_name: FUZZBOMB45-container
+    expose:
+      - "12390"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB45
+      - CIRCA_PORT=12390
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB46:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB46"]
+    container_name: FUZZBOMB46-container
+    expose:
+      - "12391"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB46
+      - CIRCA_PORT=12391
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB47:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB47"]
+    container_name: FUZZBOMB47-container
+    expose:
+      - "12392"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node1
+      - CIRCA_HOST=FUZZBOMB47
+      - CIRCA_PORT=12392
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB48:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB48"]
+    container_name: FUZZBOMB48-container
+    expose:
+      - "12393"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB48
+      - CIRCA_PORT=12393
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB49:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB49"]
+    container_name: FUZZBOMB49-container
+    expose:
+      - "12394"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB49
+      - CIRCA_PORT=12394
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB50:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB50"]
+    container_name: FUZZBOMB50-container
+    expose:
+      - "12395"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB50
+      - CIRCA_PORT=12395
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB51:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB51"]
+    container_name: FUZZBOMB51-container
+    expose:
+      - "12396"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB51
+      - CIRCA_PORT=12396
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB52:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB52"]
+    container_name: FUZZBOMB52-container
+    expose:
+      - "12397"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB52
+      - CIRCA_PORT=12397
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB53:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB53"]
+    container_name: FUZZBOMB53-container
+    expose:
+      - "12398"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB53
+      - CIRCA_PORT=12398
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB54:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB54"]
+    container_name: FUZZBOMB54-container
+    expose:
+      - "12399"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB54
+      - CIRCA_PORT=12399
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB55:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB55"]
+    container_name: FUZZBOMB55-container
+    expose:
+      - "12400"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB55
+      - CIRCA_PORT=12400
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB56:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB56"]
+    container_name: FUZZBOMB56-container
+    expose:
+      - "12401"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB56
+      - CIRCA_PORT=12401
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB57:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB57"]
+    container_name: FUZZBOMB57-container
+    expose:
+      - "12402"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB57
+      - CIRCA_PORT=12402
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB58:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB58"]
+    container_name: FUZZBOMB58-container
+    expose:
+      - "12403"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB58
+      - CIRCA_PORT=12403
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB59:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB59"]
+    container_name: FUZZBOMB59-container
+    expose:
+      - "12404"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB59
+      - CIRCA_PORT=12404
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB60:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB60"]
+    container_name: FUZZBOMB60-container
+    expose:
+      - "12405"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB60
+      - CIRCA_PORT=12405
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB61:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB61"]
+    container_name: FUZZBOMB61-container
+    expose:
+      - "12406"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB61
+      - CIRCA_PORT=12406
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB62:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB62"]
+    container_name: FUZZBOMB62-container
+    expose:
+      - "12407"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB62
+      - CIRCA_PORT=12407
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB63:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB63"]
+    container_name: FUZZBOMB63-container
+    expose:
+      - "12408"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB63
+      - CIRCA_PORT=12408
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB64:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB64"]
+    container_name: FUZZBOMB64-container
+    expose:
+      - "12409"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB64
+      - CIRCA_PORT=12409
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB65:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB65"]
+    container_name: FUZZBOMB65-container
+    expose:
+      - "12410"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB65
+      - CIRCA_PORT=12410
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB66:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB66"]
+    container_name: FUZZBOMB66-container
+    expose:
+      - "12411"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB66
+      - CIRCA_PORT=12411
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB67:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB67"]
+    container_name: FUZZBOMB67-container
+    expose:
+      - "12412"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB67
+      - CIRCA_PORT=12412
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB68:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB68"]
+    container_name: FUZZBOMB68-container
+    expose:
+      - "12413"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB68
+      - CIRCA_PORT=12413
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB69:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB69"]
+    container_name: FUZZBOMB69-container
+    expose:
+      - "12414"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB69
+      - CIRCA_PORT=12414
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB70:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB70"]
+    container_name: FUZZBOMB70-container
+    expose:
+      - "12415"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB70
+      - CIRCA_PORT=12415
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB71:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB71"]
+    container_name: FUZZBOMB71-container
+    expose:
+      - "12416"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB71
+      - CIRCA_PORT=12416
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB72:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB72"]
+    container_name: FUZZBOMB72-container
+    expose:
+      - "12417"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB72
+      - CIRCA_PORT=12417
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB73:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB73"]
+    container_name: FUZZBOMB73-container
+    expose:
+      - "12418"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB73
+      - CIRCA_PORT=12418
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB74:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB74"]
+    container_name: FUZZBOMB74-container
+    expose:
+      - "12419"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB74
+      - CIRCA_PORT=12419
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB75:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB75"]
+    container_name: FUZZBOMB75-container
+    expose:
+      - "12420"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB75
+      - CIRCA_PORT=12420
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB76:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB76"]
+    container_name: FUZZBOMB76-container
+    expose:
+      - "12421"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB76
+      - CIRCA_PORT=12421
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB77:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB77"]
+    container_name: FUZZBOMB77-container
+    expose:
+      - "12422"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB77
+      - CIRCA_PORT=12422
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB78:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB78"]
+    container_name: FUZZBOMB78-container
+    expose:
+      - "12423"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB78
+      - CIRCA_PORT=12423
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB79:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB79"]
+    container_name: FUZZBOMB79-container
+    expose:
+      - "12424"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB79
+      - CIRCA_PORT=12424
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB80:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB80"]
+    container_name: FUZZBOMB80-container
+    expose:
+      - "12425"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB80
+      - CIRCA_PORT=12425
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB81:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB81"]
+    container_name: FUZZBOMB81-container
+    expose:
+      - "12426"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB81
+      - CIRCA_PORT=12426
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB82:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB82"]
+    container_name: FUZZBOMB82-container
+    expose:
+      - "12427"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB82
+      - CIRCA_PORT=12427
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB83:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB83"]
+    container_name: FUZZBOMB83-container
+    expose:
+      - "12428"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB83
+      - CIRCA_PORT=12428
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB84:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB84"]
+    container_name: FUZZBOMB84-container
+    expose:
+      - "12429"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB84
+      - CIRCA_PORT=12429
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB85:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB85"]
+    container_name: FUZZBOMB85-container
+    expose:
+      - "12430"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB85
+      - CIRCA_PORT=12430
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB86:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB86"]
+    container_name: FUZZBOMB86-container
+    expose:
+      - "12431"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB86
+      - CIRCA_PORT=12431
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB87:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB87"]
+    container_name: FUZZBOMB87-container
+    expose:
+      - "12432"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB87
+      - CIRCA_PORT=12432
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB88:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB88"]
+    container_name: FUZZBOMB88-container
+    expose:
+      - "12433"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB88
+      - CIRCA_PORT=12433
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB89:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB89"]
+    container_name: FUZZBOMB89-container
+    expose:
+      - "12434"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB89
+      - CIRCA_PORT=12434
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB90:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB90"]
+    container_name: FUZZBOMB90-container
+    expose:
+      - "12435"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB90
+      - CIRCA_PORT=12435
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB91:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB91"]
+    container_name: FUZZBOMB91-container
+    expose:
+      - "12436"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB91
+      - CIRCA_PORT=12436
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB92:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB92"]
+    container_name: FUZZBOMB92-container
+    expose:
+      - "12437"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB92
+      - CIRCA_PORT=12437
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB93:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB93"]
+    container_name: FUZZBOMB93-container
+    expose:
+      - "12438"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB93
+      - CIRCA_PORT=12438
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB94:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB94"]
+    container_name: FUZZBOMB94-container
+    expose:
+      - "12439"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB94
+      - CIRCA_PORT=12439
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+##DUPL: 48
+  FUZZBOMB95:
+    profiles:
+      - development
+      - competition
+    networks:
+      - crs-internal
+    image: ghcr.io/aixcc-sc/asc-crs-lacrosse/neo-fuzz-ccl:${RELEASE_TAG:-v1.5.1}
+    build:
+      context: .
+      dockerfile: crs/code/docker/neo-fuzz-ccl/Dockerfile
+    working_dir: /lacrosse/code/tools
+    command: ["../tools/lax-run-ccl-agent","crs", "10000","FUZZBOMB95"]
+    container_name: FUZZBOMB95-container
+    expose:
+      - "12440"
+    environment:
+      # These values will be modified automatically at competition time
+      - DOCKER_HOST=tcp://dind:2375
+      - AIXCC_LITELLM_HOSTNAME=http://litellm
+      - AIXCC_API_HOSTNAME=http://iapi:8080
+      - AIXCC_CP_ROOT=/cp_root
+      - AIXCC_CRS_SCRATCH_SPACE=/crs_scratch
+      - LITELLM_KEY=sk-1234
+      - AT_SIFT=0
+      - LAX_NODE_LABEL=node2
+      - CIRCA_HOST=FUZZBOMB95
+      - CIRCA_PORT=12440
+      - DOCKER_EXTRA_ARGS=-e CP_HARNESS_EXTRA_CFLAGS=-fsanitize=fuzzer-no-link -e CP_HARNESS_EXTRA_CXXFLAGS=-fsanitize=fuzzer-no-link
+      #- AIXCC_CRS_SCRATCH_SPACE=${AIXCC_CRS_SCRATCH_SPACE:-.}
+      #- LOGDIR=${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+      #- LOGDIR=. # ${LOGDIR:-${AIXCC_CRS_SCRATCH_SPACE}}
+    privileged: true
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rshared
+      - ./cp_root:/cp_root
+    env_file:
+      - crs/sift-env
+      - sandbox/env
+    depends_on:
+      crs:
+        condition: service_healthy
+##DUPLEND
+
+#############
+### CUSTOMIZE
+#############

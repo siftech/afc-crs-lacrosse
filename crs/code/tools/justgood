@@ -1,0 +1,11 @@
+#!/usr/bin/env perl
+# omits the Bad stuff from juliet examples
+while (<>) {
+
+	if (/^\#ifndef\s*OMITBAD/) {$dontprint=1; next;}
+	if ($dontprint && /^\#endif/) {$dontprint=0; next;}
+	if (/^\#ifndef\s*OMITGOOD/) {$dontprintndef=1; next;}
+	if ($dontprintndef && /^\#endif/) {$dontprintndef=0; next;}
+	if ($dontprint) {next;}
+	print;
+}

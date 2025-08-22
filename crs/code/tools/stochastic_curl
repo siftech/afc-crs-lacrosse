@@ -1,0 +1,21 @@
+#!/bin/bash
+# usage: stochastic_curl.sh <success_pct> <src_url> <dest_path>
+
+success_pct=$1
+src_url=$2
+dest_path=$3
+
+rand=$(( RANDOM % 100 ))
+
+echo "Stochastic curl (random=$rand, threshold=$success_pct)" >&2
+echo "Current time: $(date +%T)" >&2
+
+if (( rand < success_pct )); then
+  echo "Stochastic curl: letting real command run" >&2
+  curl -o "$dest_path" -L "$src_url"
+else
+  # Replace domain with "tls-timeout.test"
+  corrupted_url=$(echo "$src_url" | sed -E 's#(https?://)[^/]+#\1tls-timeout.test#')
+  echo "Stochastic curl: simulating TLS failure with corrupted URL: $corrupted_url" >&2
+  curl -o "$dest_path" -L "$corrupted_url"
+fi

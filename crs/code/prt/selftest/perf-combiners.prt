@@ -1,0 +1,55 @@
+# Hey EMACS, this should be in -*- perl -*- mode
+# ------------------------------------------------------------
+# COPYRIGHT START
+# Copyright (c) 2014, Smart Information Flow Technologies (SIFT).
+# COPYRIGHT END
+# ------------------------------------------------------------
+use PRT::Perf;
+use FindBin;
+
+$test = {
+  description => "Testing the PerfChecker: combine functions exercise",
+  keywords => [ qw / perf / ],
+  agents => [
+    {
+      name         => "optimus",
+      description  => "Runs optimus on a fixed workload",
+      command => ["cat", "$FindBin::RealBin/selftest/perf-combiners-src.log"],
+      exit_code    => 0,
+      comparo      => new PRT::LineComparo( key_fact_regexp => "^This" ),
+      perfchecks   => [
+        {
+	 show_comparisons => 2,
+          regex => "^(CB[0-9]+) ([a-zA-Z0-9_]*) ([0-9.]+)",
+          tests => [
+            { labels => ['.*', 'dft'],
+              compFn => PRT::Perf::same_number(),
+            },
+            { labels => ['.*', 'over'],
+              compFn => PRT::Perf::same_number(),
+              combineFn => PRT::Perf::overwrite_combiner(),
+            },
+            { labels => ['.*', 'ignore'],
+              compFn => PRT::Perf::same_number(),
+              combineFn => PRT::Perf::ignore_combiner(),
+            },
+            { labels => ['.*', 'sum'],
+              compFn => PRT::Perf::same_number(),
+              combineFn => PRT::Perf::sum_combiner(),
+            },
+            { labels => ['.*', 'max'],
+              compFn => same_number(),
+              combineFn => PRT::Perf::max_combiner(),
+            },
+            { labels => ['.*', 'min'],
+              compFn => same_number(),
+              combineFn => PRT::Perf::min_combiner(),
+            },
+          ],
+        },
+      ],
+    },
+  ],
+};
+# Always end with a reference to the test specification hash reference.
+$test;

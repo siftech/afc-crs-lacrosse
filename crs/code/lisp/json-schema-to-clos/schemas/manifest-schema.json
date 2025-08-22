@@ -1,0 +1,31 @@
+{
+	"additionalProperties": false,
+	"properties": {
+		"input": {
+			"type": "string"
+		},
+		"executable": {
+			"anyOf": [
+				{
+					"type": "string"
+				},
+				{
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				}
+			]
+		},
+		"stackinfo": {
+			"type": "string"
+		}
+	},
+	"required": [
+		"input",
+		"executable",
+		"stackinfo"
+	],
+	"title": "manifest.json file",
+	"type": "object"
+}

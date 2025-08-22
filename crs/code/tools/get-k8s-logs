@@ -1,0 +1,23 @@
+#!/bin/bash
+
+CRS_NAMESPACE_PODS=$(kubectl get pods --no-headers -o=name -n crs | sed -e 's|^pod/||')
+CRS_POD=$(echo "$CRS_NAMESPACE_PODS" | grep -e '^crs')
+
+echo "Pods:"
+echo "$CRS_NAMESPACE_PODS"
+
+echo "CRS pod is $CRS_POD"
+
+TIMESTAMP=$(kubectl exec --container crs-container "${CRS_POD}" -- bash -c "cat /crs_scratch/timestamp")
+echo "timestamp is $TIMESTAMP"
+
+OUTDIR="crs-k8s-${TIMESTAMP}"
+mkdir -p "${OUTDIR}"
+pushd "${OUTDIR}"
+
+while IFS= read -r line ; do
+    kubectl logs "${line}" > "${line}.log"
+done <<< "$CRS_NAMESPACE_PODS"
+
+kubectl get pods -o wide > get-pods-wide.txt
+kubectl get services -o wide > get-services-wide.txt

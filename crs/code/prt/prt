@@ -1,0 +1,1599 @@
+#!/usr/bin/env perl
+#
+# prt - $Id: prt 47049 2020-08-19 15:25:57Z musliner $
+# ------------------------------------------------------------
+# COPYRIGHT START
+# Copyright (c) 2014, Smart Information Flow Technologies (SIFT).
+# COPYRIGHT END
+# ------------------------------------------------------------
+#
+# See usage at end of this file, or run 'prt -man' for full man page usage
+#
+# Non-standard modules used:
+#   File::Spec            -- http://perldoc.perl.org/File/Spec.html
+#   IPC::Run              -- http://search.cpan.org/~adamk/IPC-Run-0.84/lib/IPC/Run.pm
+#                            (see also) http://www.perlmonks.org/?node_id=274875
+#   Parallel::ForkManager -- http://search.cpan.org/~dlux/Parallel-ForkManager-0.7.7/ForkManager.pm
+##
+
+package PRT;
+
+use strict;
+use POSIX;
+use FindBin;
+
+use lib '.';	# for annoying removal of this decades old default, breaking everyone
+use lib ( $FindBin::RealBin , $FindBin::RealBin . "/lib",
+          $FindBin::RealBin . "/lib/IPC/lib");  # for PRT-local modules
+
+use Carp; $Carp::Verbose = 1; # qw ( verbose );
+## # Uncomment the next line to get a backtrace on any error.
+## $SIG{ __DIE__ } = sub { Carp::confess( @_ ) };
+
+$|++;		# turn on autoflush of stdout, every time newline printed
+
+use Cwd;
+use Data::Dumper;
+use File::Basename;
+use File::Copy qw ( copy );
+use File::Find;
+use File::Glob qw( :bsd_glob );
+use File::Path qw(); # do not import any symbols
+use File::Spec;
+use FileHandle;
+use Getopt::Long qw( :config no_ignore_case bundling );
+use Parallel::ForkManager;
+use Pod::Usage qw( pod2usage );
+use Sys::Hostname;
+use Time::localtime qw(); # do not import any symbols
+use Time::HiRes qw( time );
+
+
+
+use PRT::Config qw( :default :modes );
+use PRT::TestSpec;
+use PRT::TestAgent;
+
+my $RUNALL    = 0;       # run ALL the tests, including skipped tests
+my $MODE      = "RUN";   # ONE of : run, compare, bless, list
+my @KEYWORDS;            # keywords to search for in test specifications
+
+#my $TEST_PATH   = ".";         # relative to CWD
+my @TEST_DIRS   = ( );
+#my $RESULTS_DIR = File::Spec->catdir(Cwd::cwd(), "results");
+#my $RUBRIC_DIR  = "./rubrics";   # relative to test specification file
+#my $RESULTS_FORMAT = "testname-results-dd-mm-yyyy-machinename";
+
+my $PRT_EXTENSION = 'prt';    # prt test spec files have this extension
+my $PRT_SAMPLE = File::Spec->catfile($FindBin::RealBin, "sample.prt");
+my $PRT_SUITE_PREFIX = "prt-suite-";  # for test suites composed of multiple tests
+
+my $agent_name = undef;
+my $output = undef;
+my $sectionGroup = "";
+my $sectionLevel = undef;
+my $sectionTitle = undef;
+my $terse = 0;
+my $test_name = undef;
+
+GetOptions('h|help'         => sub { pod2usage(-verbose => 1) },
+           'm|man'          => sub { pod2usage(-verbose => 2) },
+           's|sample'       => sub { printSample(1) },
+           # generic options
+           'a|all'          => \$RUNALL,
+           'n|noop|no-op'   => \$PRT::Config::DRYRUN,
+           #'t|timeout=n'    => \$PRT::Config::DEFAULTS->{timeout},
+           'w|warn!'        => \$PRT::Config::WARN,
+           'v|verbose!'     => \$PRT::Config::VERBOSE,
+           'q|quiet'        => sub { $PRT::Config::VERBOSE--; $PRT::Config::WARN--; },
+           'd|demo!'        => \$PRT::Config::DEMO,
+           'u|rubricsdir=s' => \$PRT::Config::RUBRIC_DEFAULT_DIR,
+           'rubrics-dir=s' => \$PRT::Config::RUBRIC_DEFAULT_DIR,
+           'resultsdir=s'   => \$PRT::Config::RESULTS_DEFAULT_DIR,
+           'results-dir=s'  => \$PRT::Config::RESULTS_DEFAULT_DIR,
+           # Modes:
+           'r|run|test'     => sub { $MODE = 'RUN' },
+           'i|interactive'  => sub { $MODE = 'INTERACTIVE' },
+           'l|list'         => sub { $MODE = 'LIST' },
+           'c|compare'      => sub { $MODE = 'COMPARE' },
+           'b|bless'        => sub { $MODE = 'BLESS' },
+           'e|examine'      => sub { $MODE = 'EXAMINE' },
+           'C|clean'        => sub { $MODE = 'CLEAN' },
+           'E|editor'       => sub { $MODE = 'EDITOR' },
+           # LaTeX output
+           'L|latex'        => sub { $MODE = 'LATEX' },
+           'S|section=n'    => sub { $sectionLevel = $_[1] },
+           'G|group=s'      => sub { $sectionGroup = $_[1] },
+           'o|output=s'     => sub { $output = $_[1] },
+           # test selection
+           'k|keyword=s'    => sub { $_[1] =~ tr/A-Z/a-z/; push @KEYWORDS, $_[1] },
+           'T|test-dir=s'   => sub { push @TEST_DIRS, $_[1] },
+           'P|test-name=s'  => sub { $test_name = $_[1] },
+           'R|terse'        => sub { $terse = 1 },
+           'A|agent=s'      => sub { $agent_name = $_[1] },
+           # Debug
+           'D|DEBUG'        => sub { $PRT::Config::DEBUG += 1; })
+  or pod2usage(-verbose => 1);
+
+# allow the first argument to tell us what our mode is
+$MODE = uc shift
+  if (@ARGV && $ARGV[0] =~ m/^(RUN|INTERACTIVE|LIST|COMPARE|BLESS|LATEX|CLEAN|EXAMINE|FOO|EDITOR)$/i);
+
+if (! (-d $PRT::Config::RUBRIC_DEFAULT_DIR)) {
+        warn "Creating rubric directory $PRT::Config::RUBRIC_DEFAULT_DIR\n";
+        mkdir $PRT::Config::RUBRIC_DEFAULT_DIR;
+  }
+
+verbose("PRT mode: '$MODE'\n");
+verbose("PRT debug level: $PRT::Config::DEBUG\n");
+# hack to get around strict refs for "mode" functions
+my $mode_fn = \&{'do_' . $MODE};
+my $result = &$mode_fn(@ARGV);
+
+exit $result;
+
+sub do_FOO(@) {
+
+  print PRT::LineComparo->isa("PRT::Base"), "\n";
+  print PRT::FullArffComparo->isa("PRT::LineComparo"), "\n";
+  print PRT::PRSGoalComparo->isa("PRT::LineComparo"), "\n";
+  return;
+
+  print $PRT::Config::RESULTS_DEFAULT_DIR, "\n";
+
+  my @test_files = find_tests(@ARGV);
+  #printf("Found: (%d)\n  %s\n", scalar(@test_files), join("\n  ", @test_files));
+
+  # If we have no tests, then complain to user and exit
+  unless (@test_files) {
+    warn "No test files specified or found.\n";
+    pod2usage(2);
+  }
+
+  # Load tests into test hash
+  my @tests = load_tests(\@test_files);
+
+  # filter based upon keywords, if any
+  @tests = filter_tests(\@tests);
+  debug("after filtering: %s\n", join(",", @tests));
+
+}
+
+
+#------------------------------------------------------------
+# Run each test, collecting results in a single directory
+sub do_LIST(@) {
+  return do_RUN(@_);
+}
+sub do_RUN(@) {
+  warn "Option -o/--output provided but will be ignored"
+    if defined $output;
+  warn "Option -S/--section provided but will be ignored"
+    if defined $sectionLevel;
+  warn "Option -A/--agent provided but will be ignored"
+    if defined $agent_name;
+
+  # Use command-line specified tests, or find all tests
+  my @test_files = find_tests(@ARGV);
+  # If we have no tests, then complain to user and exit
+  unless (@test_files) {
+    warn "No test files specified or found.\n";
+    pod2usage(2);
+  }
+
+  # Load tests into test hash
+  my @tests = load_tests(\@test_files);
+
+  # filter based upon keywords, if any
+  @tests = filter_tests(\@tests);
+  debug("after filtering: %s\n", join(",", @tests));
+
+  # If, after filter, we have no tests left, die w/ message
+  unless (@tests) {
+    warn "No valid tests specified or remaining after filtering.\n";
+    pod2usage(2);
+  }
+
+  #print Dumper(\@tests) if debugMode();
+
+  # List all tests that remain after filtering, with some nice user formatting
+  if ($MODE eq 'LIST')  {
+    verbose("Tests available: %d %s\n", scalar(@tests),
+           ( (@ARGV || @KEYWORDS) ? " (filtered)" : "" ) );
+    foreach my $test (@tests) {
+      print $test->toString();
+    }
+    exit;
+  }
+
+  my $testCount = scalar(@tests);
+  printf("Running %d tests:\n", $testCount);
+
+  # where do we put the results.  Use the default top-level dir as a start
+  my $results_prefix = $PRT::Config::RESULTS_DEFAULT_DIR;
+
+  # But wait --- if we're running several tests, need another layer.
+  if ($testCount > 1) {
+    $results_prefix = File::Spec->catdir($results_prefix,
+                                         $PRT_SUITE_PREFIX . timestamp());
+    verbose("Suite results dir: '%s'\n", $results_prefix);
+    unless (dryrunMode()) {
+      mkpath($results_prefix);
+      # Use this dotfile to distinguish a suite of results from a
+      # run of a single test.
+      open SUITEMARKER, "> $results_prefix/.suitemarker";
+      print SUITEMARKER "Suite!\n";
+      close SUITEMARKER;
+    }
+  }
+
+  my $passedTests=0;
+  my @failures=();
+  my $fmtlen = 3+(reverse sort { $a <=> $b } map { length($_->name) } @tests)[0];
+  my $result = 0;
+
+  #this line allows tests to be run in parallel, in future may add parallel option
+  #my $pm = new Parallel::ForkManager( scalar(@tests) );
+  my $pm = new Parallel::ForkManager(0);
+  $pm->run_on_finish(
+    sub { my ($pid, $exit_code, $ident, $exit_signal, $core_dump, $data) = @_;
+      if(defined($data)) {
+        if(length($$data) > 0) {
+          push @failures, $$data
+        }
+        else { $passedTests++; }
+      }
+    }
+  );
+   
+  TEST_FORK_LOOP:
+  foreach my $test (@tests) {
+
+	# reload the test, because its variables might have been stomped by other loads.  This is
+	# semi-gross, but loading all the tests up front is needed to determine if running a multi-file suite or not.
+    verbose("reloading test file: '%s'\n", $test->filename);
+    $test = new PRT::TestSpec( filename => $test->filename);
+
+    ## Run it.  Pass in the base directory.
+    my $pid = $pm->start and next TEST_FORK_LOOP;
+    #printf("  %s %s\n", $test->name, "."x($fmtlen - length($test->name)))
+    printf("  %s %s ", $test->name, "."x($fmtlen - length($test->name)))
+           if ! (verboseMode() || demoMode());
+    runTest($test, $results_prefix);
+    my $failedName;
+
+    unless (dryrunMode() || demoMode()) {
+      ## Assess the results.  Or should we do all the comparing at the
+      ## end, to keep them from scrolling off the screen?
+      $test->compareTestToRubric();
+      #my $result = ($test->printResults() && $test->{_pass});
+      $result = $test->printResults();
+      if($result == 0) {
+        $failedName = $test->name;
+      } else {
+        $failedName = "";
+      }
+    }
+    $pm->finish( $result, \$failedName ) ;
+  }
+  $pm->wait_all_children;
+  unless (dryrunMode() || demoMode()) {
+    printf("%d of %d test%s passed.\n",
+           $passedTests, $testCount, singplur_s($testCount));
+    printf("Failure%s: %s.\n",
+           singplur_s($testCount-$passedTests), join(", ", @failures))
+      if $passedTests<$testCount;
+  }
+
+  unlink bsd_glob "/tmp/Parallel-ForkManager*";
+  return ($testCount - $passedTests);
+}
+
+#------------------------------------------------------------
+# Interactively select and run tests
+sub do_INTERACTIVE(@) {
+  # Use command-line specified tests, or find all tests
+  my @test_files = find_tests(@ARGV);
+  # If we have no tests, then complain to user and exit
+  unless (@test_files) {
+    warn "No test files specified or found.\n";
+    pod2usage(2);
+  }
+
+  # Load test files
+  my @tests = load_tests(\@test_files);
+
+  # Filter for tags, ignore, etc.
+  @tests = filter_tests(\@tests);
+
+  # If, after filter, we have no tests left, die w/ message
+  unless (@tests) {
+    warn "No valid tests specified or remaining after filtering.\n";
+    pod2usage(2);
+  }
+
+  while(1) {
+    print '=' x 50;
+    print "\nPlease select a test to run:\n\n";
+    my $count = 1;
+    foreach my $test(@tests) {
+      printf("[%3d]: %s\n", $count, $test->{name});
+      #printf("       %s\n", $test->{description});
+      ++$count;
+    }
+    printf "\n[ q ]: Quit\n\n";
+
+    my $invalid_input;
+    do {
+      $invalid_input = 0;
+      print "Enter your choice: ";
+      my $choice = <STDIN>;
+      chomp($choice);
+
+      if ($choice =~ /^q$/i) {
+        print "\nGoodbye!\n\n";
+        exit(0);
+      } elsif ($choice =~ /^\d+$/ && $choice > 0 && $choice <= @tests) {
+        # This is a valid choice; run its command
+        runTest($tests[$choice-1], $PRT::Config::RESULTS_DEFAULT_DIR);
+      } else {
+        print "Invalid option '$choice'\n";
+        $invalid_input = 1;
+      }
+    } while ($invalid_input);
+  }
+  # Until (quit)
+  #   Print menu
+  #   Get input
+  #   Run selected test
+
+}
+
+#------------------------------------------------------------
+# Compare a a test run (results) to the rubric
+sub do_BLESS(@) {
+  # check command-line arguments
+  foreach my $dir (@ARGV) {
+    die "Results directory $dir unfound" unless -d $dir;
+  }
+  # if the user specifies --results-dir, use that.
+  if ( $PRT::Config::RESULTS_DEFAULT_DIR ) {
+    my $dir = $PRT::Config::RESULTS_DEFAULT_DIR;
+    die "Results directory $dir unfound" unless -d $dir;
+    push @ARGV, $dir;
+  }
+  return do_COMPARE(@_);
+}
+
+# despite what the name advertises, this subroutine does BOTH
+# blessing *and* comparing, depending on the value of the
+# $MODE global variable.
+sub do_COMPARE(@) {
+  warn "Option -o/--output provided but will be ignored"
+    if defined $output;
+  warn "Option -S/--section provided but will be ignored"
+    if defined $sectionLevel;
+  warn "Option -A/--agent provided but will be ignored"
+    if defined $agent_name;
+
+  # set the rubric_default_dir to be relative to the test spec we are
+  # loading FROM the test results directory.
+  #$PRT::Config::RUBRIC_DEFAULT_DIR = "../../rubrics";
+
+  # filter ARGV looking for results directories
+  my @results_dirs = grep { -d $_ } @ARGV;
+
+  # If, after filter, we have no tests left, die w/ message
+  unless (@results_dirs) {
+    warn sprintf("No results directories specified - nothing to %s.\n", lc $MODE);
+    pod2usage(2);
+  }
+
+  foreach my $dir (@results_dirs) {
+    verbose("%sing '%s'\n", lc $MODE, $dir);
+    my $testfile = File::Spec->canonpath(<${dir}/*.${PRT_EXTENSION}>);
+    verbose("loading testfile '%s'\n", $testfile);
+    my $test = new PRT::TestSpec( filename => "$testfile", results_dir => "$dir");
+    my $rubric_dir = $test->rubric_dir;
+    verbose("rubric_dir '%s'\n", $rubric_dir);
+
+    if ($MODE eq 'COMPARE') {
+      verbose("results_dir '%s'\n", $test->results_dir);
+      $test->compareTestToRubric();
+      return $test->printResults();
+
+    } elsif ($MODE eq 'BLESS') {
+      if (-d $rubric_dir) {
+        printf(STDERR
+               "Test '%s' rubric directory '%s' already exists!\n Overwrite?: [Y/n] ",
+               $test->name, File::Spec->abs2rel($rubric_dir));
+        my $answer = <STDIN>;
+        next if ($answer !~ m/^(y(es)?)?$/i);
+        print "overwriting\n";
+      } else {
+        mkpath($rubric_dir);
+      }
+      foreach my $agent (@{$test->agents()}) {
+        my $logfile = $agent->logfile;
+        my $rubric_file = File::Spec->catfile($rubric_dir, basename($logfile));
+
+       if (-f $logfile) {
+        if (defined $agent->comparo
+            && $agent->comparo->isa('PRT::GenericLineComparo')) {
+          my $blessing = $agent->getBlessing();
+          verbose(" ** Agent " . $test->name . " >> " . $agent->name
+                  . ":\n    Log file " . $logfile
+                  . "\n    Rubric " . $rubric_file
+                  . "\n    Blessing " . $blessing
+                  . "\n");
+          open RUBRIC, ">$rubric_file";
+          $blessing->bless_rubric(\*RUBRIC, $logfile, $agent, $test);
+          close RUBRIC;
+        } else {
+          verbose("$logfile -> $rubric_file\n");
+          copy($logfile, $rubric_file)  || die "error copying $logfile to $rubric_file";
+        }
+       } else { verbose("skipping nonexistent $logfile\n"); }
+      }
+    } else {
+      die "Unexpected mode: $MODE";
+    }
+    # bless always returns success, I guess
+    return 0;
+  }
+}
+
+#------------------------------------------------------------
+# Clean (i.e. remove) the results directory
+sub do_CLEAN(@) {
+  if (-d $PRT::Config::RESULTS_DEFAULT_DIR) {
+    verbose("Cleaning (i.e. REMOVING) results directory '%s'\n", $PRT::Config::RESULTS_DEFAULT_DIR);
+    return rmtree($PRT::Config::RESULTS_DEFAULT_DIR);
+  }
+  # otherwise, always returns success
+  return 0;
+}
+
+#------------------------------------------------------------
+# Generate LaTeX documentation from PRT specifications
+sub do_LATEX(@) {
+  warn "Option -A/--agent provided but will be ignored"
+    if defined $agent_name;
+
+  $sectionLevel = 1  unless defined $sectionLevel;
+  $sectionLevel = 5  if $sectionLevel>5;
+  $sectionLevel = 0  if $sectionLevel<0;
+  $sectionTitle = "PRT regression tests" unless defined $sectionTitle;
+  my @section = ("\\chapter", "\\section", "\\subsection", "\\subsubsection",
+                 "\\paragraph", "\\subparagraph");
+
+  # Use command-line specified tests, or find all tests
+  my @test_files = find_tests(@ARGV);
+  # If we have no tests, then complain to user and exit
+  unless (@test_files) {
+    warn "No test files specified or found.\n";
+    pod2usage(2);
+  }
+
+  if (defined $output) {
+    open OUTPUT, ">$output";
+  } else {
+    *OUTPUT = *STDOUT;
+  }
+  print OUTPUT <<ENDOUTPUTHEAD;
+\%\%\%
+\%\%\% DO NOT EDIT THIS FILE
+\%\%\%
+\%\%\% Generated from the Makefile in components/neo .
+\%\%\%
+
+ENDOUTPUTHEAD
+
+  print OUTPUT $section[$sectionLevel], "{", $sectionTitle, "}\n";
+
+  if ($sectionGroup =~ /enumerate|itemize/) {
+    print OUTPUT "\\begin{$sectionGroup}\n";
+  }
+
+  foreach my $testfile (@test_files) {
+    my $test = new PRT::TestSpec(filename => Cwd::abs_path($testfile));
+
+    if ($test) {
+      my $testName = $test->{name};
+      my $testDesc = $test->{description};
+      my $testKeys = $test->{keywords};
+      my $corrector = qr|([_\$\^])|;
+      $testName =~ s/$corrector/\\$1/g;
+      $testDesc =~ s/$corrector/\\$1/g;
+      $testKeys =~ s/$corrector/\\$1/g;
+
+      if ($sectionGroup =~ /enumerate|itemize/) {
+        print OUTPUT "\\item\\textbf{$testName} --- ";
+      } else {
+        print OUTPUT "\\paragraph{$testName}\n";
+      }
+
+      print OUTPUT "$testDesc\n";
+      print OUTPUT "\\\\ Keywords: ", join(", ", @$testKeys), ".\n";
+    } else {
+      warn "Error loading test specification from '$testfile'; ignored.\n"
+    }
+  }
+
+  if ($sectionGroup =~ /enumerate|itemize/) {
+    print OUTPUT "\\end{$sectionGroup}\n";
+  }
+
+  if (defined $output) {
+    close OUTPUT;
+  }
+
+  # LATEX generation always succeeeds?
+  return 0;
+}
+
+
+
+#------------------------------------------------------------
+#
+sub do_EXAMINE(@) {
+  my ($most_recent_path, $test, $agent_name, $logfile) = logfile_helper(@_);
+
+  if (debugMode()) {
+    if (defined $agent_name) {
+      print "Agent: $agent_name\n";
+    }
+    else {
+        print "No agent specified: will print logs of all agents.\n";
+      }
+  }
+  # exit 0 if debugMode();
+
+  if (defined $agent_name) {
+    if(defined $logfile) {
+      print_agent_log($most_recent_path, $agent_name, $logfile);
+    } else {
+      print_agent_log($most_recent_path, $agent_name);
+    }
+  } else {
+    foreach my $agent (@{$test->{agents}}) {
+      if(defined $agent->{logfile}) {
+        my $agent_name = $agent->{name};
+        print_agent_log($most_recent_path, $agent_name, $agent->{logfile});
+      } else {
+        my $agent_name = $agent->{name};
+        print_agent_log($most_recent_path, $agent_name);
+      }
+    }
+  }
+
+  # always return success?
+  return 0;
+}
+
+sub do_EDITOR(@) {
+  my ($most_recent_path, $test, $agent_name, $logfile) = logfile_helper(@_);
+  if (debugMode()) {
+    if (defined $agent_name) {
+      print "Agent: $agent_name\n";
+    }
+    else {
+        print "No agent specified: will print logs of all agents.\n";
+      }
+  }
+  # exit 0 if debugMode();
+
+  my $editor = $ENV{EDITOR} || 'vim';
+  if (defined $agent_name) {
+    if(defined $logfile) {
+      system $editor=>"$most_recent_path/$logfile";
+    } else {
+      system $editor=>"$most_recent_path/$agent_name.log";
+    }
+  } else {
+    #print $editor, " opening ", $most_recent_path, "\n";
+    system $editor=>$most_recent_path;
+  }
+
+ # always return success?
+  return 0;
+}
+
+sub print_agent_log {
+  my $path = shift;
+  my $agent_name = shift;
+  my $log_name = shift;
+  my $filename = "$path$agent_name";
+  if(defined $log_name) {
+    $filename = "$path$log_name";
+  } else {
+    $filename = $filename . ".log";
+  }
+  if (-e $filename ) {
+    print "Last run of agent with log $agent_name\n:";
+    print "--------------------------------------------------\n";
+    open LOG, "<$filename"
+      or die "Unexpectedly can't open \"$filename\"\n";
+    while (<LOG>) {
+      if (verboseMode()) {
+        print;
+      } elsif (!/_instance/ && !/_stdin/ && (!$terse || /posting the fact:/i)) {
+        print;
+      }
+    }
+    close LOG;
+  } else {
+    print "No log for agent $agent_name\n:";
+  }
+}
+
+
+
+#------------------------------------------------------------
+# support functions go here
+
+#locate appropriate logfile for tests and agents
+sub logfile_helper(@) {
+  my $test_name_glob = ($#ARGV>=0) ? $ARGV[0] : "*";
+  # if the test name argument has the .prt suffix, remove it.
+  $test_name_glob =~ s/(.*)\.prt$/$1/;
+  print "Glob string: $test_name_glob\n" if debugMode();
+
+  my $most_recent_spec = undef;
+  my $most_recent_path = undef;
+  my $most_recent_name = undef;
+  my $update = undef;
+  my $results_dir = $PRT::Config::RESULTS_DEFAULT_DIR;
+  print "Searching results directory $results_dir\n" if debugMode();
+  my @possible = bsd_glob "$results_dir/$test_name_glob-*/$test_name_glob.prt";
+  # in case the user doesn't guess s/he needs to supply "results/"
+  foreach my $also (bsd_glob "$results_dir/results/*/$test_name_glob-*/$test_name_glob.prt") {
+    push @possible, $also;
+  }
+  foreach my $also (bsd_glob "$results_dir/*/$test_name_glob-*/$test_name_glob.prt") {
+    push @possible, $also;
+  }
+  if ( debugMode() ) {
+    print "Checking possible candidates:\n";
+    foreach my $file (@possible) {
+      print "\t$file\n";
+    }
+    print "\n";
+  }
+  foreach my $prt (@possible) {
+    if ($prt =~ m|${results_dir}/(([^/]+/)?(.+))-([0-9]+)-([0-9]+)-([0-9]+)-([0-9]+)-(.+)/|) {
+      my $pathMatch = $&;
+      my $testPath = $1;
+      my $testName = $3;
+      my $year = $4;
+      my $month = $5;
+      my $date = $6;
+      my $timeOfDay = $7;
+      my $machineName = $8;
+      if ($prt =~ m|${results_dir}/$testPath-$year-$month-$date-$timeOfDay-$machineName/$testName.prt|) {
+        my $thisUpdate = (((($year*100)+$month)*100+$date)*1000000)+$timeOfDay;
+        if (!(defined $update) || ($update < $thisUpdate)) {
+          $most_recent_name = $testName;
+          $most_recent_path = $pathMatch;
+          $most_recent_spec = $prt;
+          $update = $thisUpdate;
+        }
+      }
+    }
+  }
+  die "Could not find a test to examine." unless defined $most_recent_spec;
+  print "Most recent is: $most_recent_path\n" if debugMode();
+
+  my $test = new PRT::TestSpec( filename => Cwd::abs_path($most_recent_spec) )
+    || die "Can't load test spec $most_recent_spec";
+
+  my $logfile;
+
+  if (defined $agent_name) {
+    # Make sure that agent exists in this test
+    foreach my $agent(@{$test->{agents}}) {
+      if($agent_name eq $agent->{name} && defined $agent->{logfile}) {
+        $logfile = $agent->{logfile};
+      }
+    }
+    die "No log for agent \"$agent_name\"\n"
+      unless (-e "${most_recent_path}/${agent_name}.log" || -e "${most_recent_path}/$logfile");
+  } else {
+    # Pick an agent
+    die "No agents in spec $most_recent_spec\n"
+      unless (defined $test->{agents})
+        && ($#{$test->{agents}} >= 0);
+
+    if ($#{$test->{agents}} == 0) {
+      $agent_name = $test->{agents}[0]{name};
+    } else {
+      foreach my $agent (@{$test->{agents}}) {
+        if ($agent->{name} eq $most_recent_name) {
+          $agent_name = $most_recent_name;
+          last;
+        }
+      }
+    }
+  }
+
+  return ($most_recent_path, $test, $agent_name, $logfile);
+}
+# Print the sample file, and perhaps exit
+sub printSample($) {
+  my $exitval = (@_);
+  my $sampleFH = FileHandle->new($PRT_SAMPLE, "r")
+      || die "Opening '$PRT_SAMPLE' failed.";
+  print <$sampleFH>;
+  $sampleFH->close();
+  exit $exitval;
+}
+
+sub uniq(@) {
+  my %seen;
+  return grep { ! $seen{$_}++ } @_;
+}
+
+#sub abspath {
+#  return Cwd::abs_path(File::Spec->cat
+#}
+
+# Find all the tests we can, given the args specified
+# args may be:
+#   directory names; absolute or relative
+#   file names; absolute or relative, w/ or w/out .prt
+#   test names
+# search directories specified or default dir if none
+sub find_tests(\@) {
+  # dirs to serach, as specified on command line
+  my @searchdirs = @TEST_DIRS;
+  my @regexs;
+  # default regex includes anything that ends in .prt
+  my $regex = sprintf('\.%s$', $PRT_EXTENSION);
+
+  # if we have arguments specified, then use those to constrain the search
+  if (@_) {
+    # collect all the searchdirs of the files/names
+    my @argdirs = uniq( map { (-d $_ ? $_ : dirname($_)) } @_ );
+    debug("arg dirs:  ('%s')\n", join("' , '", @argdirs ));
+    push @searchdirs, @argdirs;
+
+    # collect the files/names next.
+    my @argfiles = uniq( grep { defined($_) }
+                         map { ! -e && $_ || -f && basename($_) || undef }
+                         @_ );
+    if (@argfiles) {
+      # strip trailing "." and ".prt"
+      @argfiles = map { s/\.(${PRT_EXTENSION})?\Z//; $_ } @argfiles;
+      debug("arg names: ('%s')\n", join("' , '", @argfiles ));
+      foreach my $argfile (@argfiles) {
+        $regex = sprintf('(\A|[\\\/\:])(%s)\.%s\Z',
+                       $argfile,
+                       $PRT_EXTENSION);
+        push @regexs, $regex;
+      }
+      # force to run anything we find, since we "explicitly" seleceted tests
+      $RUNALL = 1;
+    }
+  } else {
+    #if no arguments were supplied, push the default regex
+    push @regexs, $regex;
+  }
+
+  # if we have nothing to search, add the default test path
+  push @searchdirs, $PRT::Config::TEST_DEFAULT_DIR
+    unless (@searchdirs);
+  debug("search:    ('%s')\n", join("' , '", @searchdirs ));
+  debug("regex:     '%s'\n", $regex);
+
+  my @found = ();
+  foreach my $findRegex (@regexs) {
+    my $foundtest = 0;
+    find({
+      preprocess => sub {
+        return grep { ! -d $_ } @_;
+      },
+      wanted => sub {
+        push @found, $File::Find::name if(-f && m/$findRegex/);
+        $foundtest = 1 if(-f && m/$findRegex/);
+      }
+    }, @searchdirs);
+    if ($foundtest == 0) {
+      my $strippedFileName = substr($findRegex, 13, -8);
+      die "No file matches the regular expression: $strippedFileName";
+    }
+  }
+
+  # make absolute and unique.
+  @found = sort( uniq( map { Cwd::abs_path($_) } @found ) );
+  #printf("Found: (%d)\n  %s\n", scalar(@found), join("\n  ", @found));
+
+  return @found;
+}
+
+
+# Load the contents of the given test files
+sub load_tests(\@) {
+  my @tests;
+  foreach my $testfile (@{shift()}) {
+    verbose("loading $testfile\n");
+    my $test = new PRT::TestSpec( filename => Cwd::abs_path($testfile) );
+    if (! $test) {
+      warn "Error loading test specification from '$testfile'; ignored.\n"
+    } elsif ($test->{defaultIgnore} && ! $RUNALL) {
+      verbose("Skipping '%s'; marked ignored\n", $test->{name});
+      #print "Will skip ", $test->{name}, ": marked as ignored\n"
+    } else {
+      #print Dumper($test) if debugMode();
+      push @tests, $test;
+    }
+  }
+  return @tests
+}
+
+# Filter tests based on keywords
+sub filter_tests(\@) {
+  return @{shift()} if ! @KEYWORDS;
+  my @filtered_tests;
+  my $union_re = '(\A| )(' . join('|', @KEYWORDS) . ')(\z| )';
+  debug("union regex:     '%s'\n", $union_re);
+  foreach my $test (@{shift()}) {
+   if (defined ($test->{keywords})) {
+    my $keywords = join(' ', @{$test->{keywords}});
+    debug("keywords search: '%s'\n", $keywords);
+    if ($keywords =~ m/$union_re/) {
+      push @filtered_tests, $test;
+    } else {
+      verbose("Skipping '%s'; did not match keyword filter\n", $test->{name});
+      #print "Will skip ", $test->{name}, ": did not match keyword filter.\n";
+    }
+  }}
+  return @filtered_tests;
+}
+
+# this can be used within a test to see if test was triggered by a specific keyword,
+# so the test can do something different/dependent (eg, if run with -k overnight)
+sub triggered_by_keyword {
+  if ( grep( /^$_[0]$/, @KEYWORDS ) ) {
+    #print "found it";
+     return 1; } 
+  else {return 0; }
+}
+
+sub timestamp() {
+  my $tm = Time::localtime::localtime();
+  return sprintf("%04d-%02d-%02d-%02d%02d%02d-%s",
+                 $tm->year+1900, $tm->mon+1, $tm->mday,
+                 $tm->hour, $tm->min, $tm->sec,
+                 hostname);
+}
+
+sub mkpath {
+#  foreach my $dir (@_) {
+#    die "Directory already exists: '$dir'"
+#      if (-d $dir);
+#  }
+  if ($File::Path::VERSION >= 2.06) {
+    File::Path::make_path(@_, {verbose => verboseMode() });
+  } elsif ($File::Path::VERSION >= 2.0) {
+    File::Path::mkpath(@_, {verbose => verboseMode() });
+  } else {
+    File::Path::mkpath([@_], verboseMode());
+  }
+}
+
+sub rmtree {
+  my $err;
+  if ($File::Path::VERSION >= 2.06) {
+    File::Path::remove_tree(@_, {verbose => verboseMode(), safe => 1, error => \$err});
+  } elsif ($File::Path::VERSION >= 2.0) {
+    File::Path::rmtree(@_, {verbose => verboseMode(), safe => 1, error => \$err});
+  } else {
+    File::Path::rmtree([@_], verboseMode(), 1);
+    # can't capture any errors, assume success
+    return 0;
+  }
+  if (@$err) {
+    for my $diag (@$err) {
+      my ($file, $message) = %$diag;
+      print "problem unlinking $file: $message\n";
+    }
+  }
+  # return 0 if no errors
+  return scalar @{$err};
+}
+
+
+
+sub runTest($$) {
+  my $test = shift;
+  my $basedir = shift;
+  my $ran_cleanup=0;
+
+  my %agents; # hash to store information about the agents running.
+
+  $SIG{INT} = sub {
+    warn "PRT: Caught interrupt, aborting the test and running test's cleanup function (if defined)\n";
+    foreach my $pid (keys(%agents)) {
+       kill TERM => $pid;
+    }
+    if (exists $test->{cleanup}) {
+      &{$test->{cleanup}}($test);
+      $test->{_pass} = 0;	# this definitely didnt pass!
+      $ran_cleanup=1;
+    }
+    unlink bsd_glob "/tmp/Parallel-ForkManager*";
+  };
+
+  # determine and make the results directory
+  my $resultsdir = File::Spec->catdir($basedir,
+                                      $test->name . "-" . timestamp());
+  # save the results dir in the test spec
+  $test->results_dir($resultsdir);
+  unless (dryrunMode()) {
+    mkpath($resultsdir);
+    $test->copySpecToResultsDir();
+  }
+
+  if (exists $test->{setup}) {
+    &{$test->{setup}}($test);
+  }
+
+  if (verboseMode()) {
+    # FIXME - add a timestamp to the test start
+    debug("START running test: '%s'", $test->name);
+    print "\n", $test->toString();
+  }
+
+
+  my $ending_test=0;
+  my @agents=( @{$test->{agents}} );
+  my $pm = new Parallel::ForkManager( scalar(@agents) );
+
+  # setup callbacks for processes started - only run in PARENT
+  # ... when a child starts
+#   $pm->run_on_start(
+#     sub { my ($pid,$ident)=@_;
+#         print "** $ident started, pid: $pid\n";
+#         #$children{$pid} = $ident;
+#       }
+#   );
+
+  # List of the agents that need to be started.
+  my @ready_agents = ();
+  my %blocking_agents = ();
+
+  # ... while waiting for children to finish
+  my $last_signal_time = 0;
+  $pm->run_on_wait(
+    sub {
+      #   Note that this function gets called
+      # too frequently to be printing a log message.
+      # debug("** Dispatcher woke up, checking for next child to signal.\n");
+
+      # Check to see that enough time has elapsed.
+      my $ready_to_exec = 1;
+      if(defined($test->agent_delay)) {
+        my $current_time = time();
+        my $elapsed_sec = $current_time - $last_signal_time;
+        if ($test->agent_delay >= $elapsed_sec) {
+          $ready_to_exec = 0;
+        }
+      }
+
+      # Send a SIGUSR1 to the next child that needs activation.
+      my $num_ready_agents = scalar(@ready_agents);
+      if($ready_to_exec && 0 < $num_ready_agents) {
+
+        my $agent_to_start = shift(@ready_agents);
+        my $pid_to_start;
+        while (my ($pid, $agent) = each(%agents)){
+          if ($agent == $agent_to_start) {
+            $pid_to_start = $pid;
+            # debug("** Found pid for agent '%s': $pid_to_start\n", $agent_to_start->name);
+          }
+        }
+        # TODO Eric needs to clean this up properly... die might not
+        # actually stop all of our children.
+        if (defined($pid_to_start)) {
+          debug("** There are $num_ready_agents ready to start, starting: '%s' ($pid_to_start)\n",
+                $agent_to_start->name);
+          kill USR1 => $pid_to_start;
+          $last_signal_time = time();
+        } else {
+          warn sprintf("Unable to find pid for agent '%s'\n", $agent_to_start->name);
+        }         
+      }
+   }, 0.1
+  );
+
+
+  # ... when a child finishes up so we can get it's exit code
+  $pm->run_on_finish(
+    sub { my ($pid, $exit_code, $ident, $exit_signal, $core_dump, $data) = @_;
+          debug("** $ident just got out of the pool ".
+                "with PID $pid and exit code: $exit_code and exit signal: $exit_signal\n");
+          # grab this agent out of child hash and delete it
+          my $agent = delete($agents{$pid});
+          $agent->result($exit_code);
+          # see if we should end the entire test:
+          my $abort_test = $agent->check_exit_code($exit_code);
+          if ($abort_test) {
+            warn("** check_exit_code for $ident returned $abort_test - aborting test\n");
+            $agent->{_pass} = 0;
+            $agent->testspec->{_pass} = 0;
+          }
+          if (!$ending_test && !$abort_test && $agent->daemon && $agent->must_survive) {
+            warn("** Daemon $ident died and was labeled must_survive - aborting test\n");
+            $abort_test=1;
+            $agent->{_pass} = 0;
+            $agent->testspec->{_pass} = 0;
+          }
+          if (!$ending_test && !$abort_test && $agent->daemon && $agent->testspec->all_daemons_must_survive) {
+            warn("** Daemon $ident died and all_daemons_must_survive is true - aborting test\n");
+            $abort_test=1;
+            $agent->{_pass} = 0;
+            $agent->testspec->{_pass} = 0;
+          }
+          my $end_test = 1;
+          my $agent_count = 0;
+          foreach my $end_agent (values %agents) {
+            if (!$end_agent->daemon) {
+              $end_test = 0;
+            }
+            $agent_count++;
+          }
+          $end_test &&= ($agent_count > 0);
+          if ($end_test) {
+            debug("** Only daemon agents remain - ending test\n");
+          }
+          if ($end_test || $abort_test) {
+            $ending_test=1;
+            foreach my $pid (keys(%agents)) {
+              kill TERM => $pid;
+            }
+          }
+          else {
+            # Identify what children are now unblocked, add them to
+            # the list of ready agents.
+            if (defined($blocking_agents{$agent})) {
+              my @blocked_agents = @{$blocking_agents{$agent}};
+              debug("** Agent '%s' finished, unblocking:\n", $agent->name);
+              for my $blocked_agent (@blocked_agents) {
+                debug("**   - %s\n", $blocked_agent->name);
+                push(@ready_agents, $blocked_agent);
+              }
+            }
+          }
+        }
+   );
+
+  # As we start various agents here, we record the dependencies so
+  # that they can be used in the run on finish handler above.
+  #
+  # We can record the list of preconditions in the agent. Each time an
+  # agent finishes, we remove them from each precondition list. If
+  # they were the last precondition, we put the agent in the
+  # ready_agents list.
+
+  # Install a handler for SIGUSR1. We need to do this here, so that
+  # the children have the signal handler from the moment they are
+  # created.
+  my $start_execution = 0;
+  $SIG{USR1} = sub { $SIG{USR1} = 'DEFAULT';
+                     debug("++ SIGUSR1 received, starting execution\n");
+                     $start_execution = 1;
+                   };
+
+  # We set this to the last agent that needs to complete before
+  # continuing.
+  my $blocking_agent = undef;
+
+  # Now I actually fork the processes and start the agents....
+  while (my $agent = shift(@agents)) {
+    #debug("%s\n", ref($agent));
+    verbose("Starting agent: '%s'\n", $agent->name);
+    # fork a new process for this agent:
+    if (my $pid = $pm->start($agent->name)) {
+      # --- PARENT PROCESS ---
+      $agents{$pid} = $agent;
+
+      # If the agent is blocked by a prior agent, save them in the
+      # hash instead of marking them ready to start.>
+      if (defined($blocking_agent)) {
+        # This agent cannot be started yet, it needs to wait for the
+        # blocking_agent.
+        debug("Putting agent '%s' on blocked list for '%s'\n", $agent->name, $blocking_agent->name);
+        push(@{$blocking_agents{$blocking_agent}}, $agent);
+      }
+      else {
+        # No one is blocking us, just queue us up to start.
+        push(@ready_agents, $agent);
+      }
+
+      # If the process we just started must complete before
+      # continuing, it blocks everyone that follows.
+      if ($agent->complete_before_continuing) {
+        $blocking_agent = $agent;
+        $blocking_agents{$agent} = [];
+      }
+
+    } else {
+      # --- CHILD/AGENT PROCESS ---
+      my $abort_child_execution = 0;
+      debug("This is Agent %s (PID: %d)\n", $agent->name, $$);
+      $SIG{TERM} = sub { debug("++ SIGTERM killing child %d\n", $$);
+                         kill TERM => -$$;
+                         # mark this child to abort execution, in case
+                         # we are still waiting to be told to start.
+                         $abort_child_execution = 1; };
+
+      $SIG{INT} = sub { debug("++ SIGINT killing child %d\n", $$);
+                        kill TERM => -$$;
+                        $abort_child_execution = 1; };
+      # Wait for the signal to start. The signal handler for SIGUSR1
+      # is inherited from the parent.
+      while(!$start_execution) {
+        #   Too bad we sleep for so long, would
+        # like to check for continuation more frequently. Though it is
+        # possible that receiving the SIGUSR1 interrupts the sleep.
+        #
+        # Why not just wait indefinitely? Because of a race condition
+        # where we check $start_execution and then the signal arrives
+        # before we get into the sleep.
+        sleep(1);
+        if(1 == $abort_child_execution) {
+          debug("Agent '%s'(%d) aborting execution due to TERM signal before start signal.\n",
+                $agent->name, $$);
+          exit;
+        }
+      }
+      debug("Agent '%s' received signal to start.\n", $agent->name);
+      $agent->start();
+      $SIG{TERM} = sub { debug("++ SIGTERM: killing agent %s\n", $agent->name);
+                         $agent->kill(); };
+
+      $SIG{INT} = sub { debug("++ SIGINT: killing agent %s\n", $agent->name);
+                        $agent->kill(); };
+
+      $pm->finish( ( (dryrunMode()) ? 0 : $agent->finish() ) );
+      die "SHOULD NOT GET HERE - child code for process $$ / agent " . $agent->name;
+    }
+
+  }
+
+  # We only defined a SIGUSR1 interrupt handler to give to our
+  # children, so we'll revert to the default here.
+  $SIG{USR1} = 'DEFAULT';
+
+  # Parent now waits for all children
+  debug("%d agents started; waiting for test to complete\n", scalar(%agents));
+  $pm->wait_all_children;
+  $ending_test=1;       ## set this so that any daemons that die async in cleanup will not cause test to fail
+  debug("END running test: '%s'\n", $test->name);
+
+  if (exists $test->{cleanup} && !$ran_cleanup) {
+    &{$test->{cleanup}}($test);
+  }
+  unlink bsd_glob "/tmp/Parallel-ForkManager*";
+}
+
+sub singplur_s {
+  my $q = shift;
+  return singplur("", "s", $q);
+}
+
+sub singplur {
+  my $sing = shift;
+  my $plur = shift;
+  my $i = shift;
+  return ($i==1) ? $sing : $plur;
+}
+
+## POD USAGE
+__END__
+
+=head1 NAME
+
+prt - PRS Regression Test
+
+=head1 SYNOPSIS
+
+ prt [ options... ] [ RUN|INTERACTIVE|LIST|BLESS|COMPARE ][ test-name [test-name ...] ]
+ prt [ options... ] COMPARE <result directory>+
+ prt [--results-dir <dir> --agent <agent name>] EXAMINE test-name
+ prt [--results-dir <dir>] BLESS [<results-directory>]
+ prt -h[elp]    ---  brief help, outlining all options
+ prt -m[an]     ---  full help, man-page style
+ prt -s[ample]  ---  show sample F<.prt> file specification, with embedded documentation
+
+=head1 DESCRIPTION
+
+B<prt> runs a test (from a F<.prt> specification file) and compares the logged results to rubric file(s).
+(definintely need more here...)
+
+B<prt> starts all agents specified in a given test specification file.
+Once all agents are started, B<prt> waits for at least one of them to
+complete.  Depending upon the test specficiation, all agents must
+complete before the test is terminated and the results are compared to
+the rubric file(s).
+
+B<prt> will abandon the test and kill any remaining agents (but still
+run the rubric comparison) if any B<'required agent'> fails with a
+non-zero exit code.  Subsequent tests are unaffected.
+
+=for comment
+AFAICT none of these settings are supported. [rpg]
+The notion of
+'required agent' is specified in the F<.prt> file with some the
+F<abort_test_on_failure> and F<wait_until_complete> flags, both of
+which default to true if the agent executable matches F</x?oprs/>.
+See the F<sample.prt> for more information.
+
+B<prt>'s standard operation is to compare the output of each agent's
+output to a I<rubric> or key lines.  Normally a rubric is taken to be
+a I<superset> of the lines required of the program output --- the
+rubric should contain key lines identified by a regular expression.
+The I<comparo> for a particular test agent looks for the key rubric
+lines in the program output.  The results directory for a test can be
+\emph{blessed}, and made into the rubric.
+
+=head1 ARGUMENTS
+
+Arguments to B<prt> are assumed to be test specification names or
+filenames.  When specified, the arguments supplied effectively filter
+the list of tests that B<prt> will run.  Supported forms:
+
+=over 12
+
+=item * directory -- e.g. F<./tests/> ; default = F<./>
+
+=item * filename  -- e.g. F<test.prt> ; default = F<*.prt>
+
+=item * test name -- e.g. F<test>     ; default = F<*>
+
+=item * full path -- e.g. F<../tests/test.prt>
+
+=back
+
+For example, if the following files are in the current working directory:
+    S<F<hello.prt     test1.prt     test12.prt    another-test.prt>>
+
+... then running B<prt hello.prt test1 ./another-test.prt> will
+exclude only F<test12.prt>.
+
+=head1 OPTIONS
+
+=head2 Generic Options:
+
+   -h --help        brief help message
+   -m --man         full man-page style output
+   -v --verbose     be verbose during operation
+   -q --quiet       be less verbose during operation
+   -n --noop        show what would be done, but do not actually do anything
+   -s --sample      show the sample B<.prt> test specification file on stdout
+                    redirect to a file to start a new test specifcation
+
+=head2 Modes of Operation:
+
+   -r --run --test  run the specified tests (DEFAULT)
+   -i --interactive interactively select and run tests
+   -l --list        list matching tests and associated information
+   -c --compare     compare the results from one or more test runs against a rubric (note cannot recheck exit codes)
+   -b --bless       bless a given set of results and transform them into a rubric
+   -C --clean       remove all results
+   -e --examine     examine the log file from the most recent run of a specified test
+                    and, optionally, agent specified after the test with -A
+   -L --latex       generate latex importable output from test specifications
+
+May also be specified by using one of
+B<RUN> | B<INTERACTIVE> | B<LIST> | B<BLESS> | B<COMPARE> | B<CLEAN> | B<EXAMINE> | B<LATEX>
+as a bare-word mode argument (case-insensitive), as the
+first non-option argument before all other arguments
+
+=head3 Compare:
+
+Takes a list of results directories.  Infers the name of the test from the result
+directory name, and then compares the result directories' contents with the
+corresponding rubrics, and prints the results.
+
+Any argument which is not a recognized option or a result directory will be quietly
+ignored.  This is probably a bug.
+
+=head3 Bless:
+
+The default behavior for blessing a set of results is to simply copy
+the result logs into the rubrics directory. Certain comparos offer
+extended functionality for bless; see for example
+L<PRT::GenericLineComparo>.
+
+The results directory for a test can be I<blessed>, and made into the
+rubric.  The following command prepares log files from the results
+directory into the rubrics directory for a test called
+C<run_pl_with_patches>:
+
+  prt bless results/run_pl_with_patches-2011-02-09-145449-beast
+
+Note that blessing result logs into rubrics is a test-by-test
+operation. Although PRT can I<run> a suite of multiple tests at one
+time, it cannot I<bless> a suite of tests at once.  Each test must be
+individually blessed by naming the test result subdirectory of the
+suite result directory:
+
+  prt bless results/prt-suite-2011-02-09-145449-beast/run_pl_with_patches-2011-02-09-145449-beast
+
+=head2 Test Configuration:
+
+   -a --all         run all tests, even those marked as `ignore` in the spec file
+   -d --demo        print less to avoid distraction, log less to improve performance
+   -k --keyword [string]   Add a keyword to the list when search for matching tests
+
+=head1 NOTES / FAQ
+
+=head2 Default PRS Includes
+
+B<prt> does B<not> specify any default includes for F<x?oprs> agents.
+The only includes are specified in the F<.prt> file.
+The overall test specification and individual agents can define
+includes, all of which form the complete set of includes for a given
+agent.  Currently, in case order matters to you, the agent-specific
+includes precede the parent test-spec includes.
+
+=head2 Default PRS Commands
+
+However, unlike includes above, there are implicit "commands" that
+B<prt> sends on the command line to all `x?oprs` agents. Specifically:
+   trace user trace on
+   trace user fact on
+   declare predicate user-trace-start-time
+   add (user-trace-start-time (current (time)))
+   add (achieve (main))
+
+When in `-d[emo]` mode, that is reduced to:
+   trace user trace off
+   trace all off
+   add (achieve (main))
+
+=head2 XOPRS and STDERR
+
+When specifying the oprs executable in the test specification file
+(using the F<executable> option), if you specify F<xoprs>, I<STDERR> of
+xoprs will be redirected to a I<separate> logfile in the results
+directory.  This is because F<xoprs> does not allow the conventional
+use of 'F<->' as the output file to the F<-log> option.
+
+=head2 TEST SPEC FIELDS
+
+=over
+
+=item C<setup>, C<cleanup>
+
+If provided, should be functions of one argument. If C<setup> is
+defined, the function will be called with the test spec as argument
+before the test is run. If C<cleanup> is defined, the function will be
+called with the test spec as argument after the test is run.
+
+=back
+
+=head1 REQUIRED MODULES
+
+Built in PERL, this script requires many of the core modules that are
+provided with PERL.  There are a small number of required,
+non-standard modules, all of which should be availble from L<CPAN>:
+
+=over
+
+=item * L<IPC::Run>
+
+=item * L<File::Spec>
+
+=item * L<Parallel::ForkManager>
+
+=back
+
+=head1 COMPARO DESIGN AND FEATURES
+
+=head2 Top-level and general comparo classes
+
+The main two top-level classes for line-by-line comparison comparos
+are L<PRT::LineComparo> and L<PRT::GenericLineComparo>.
+L<LineComparo|PRT::LineComparo> is simpler.
+L<GenericLineComparo|PRT::GenericLineComparo> has a more
+object-oriented structure with methods that subclasses can be
+overridden, so it is more flexible but also more complicated than
+L<LineComparo|PRT::LineComparo>.  See these packages' POD for more
+details.
+
+=head2 Pattern matching in rubrics
+
+Some program output lines will have content which varies from run to
+run, but which is consistent within one run.  For example, the names
+associated with dynamically-created instances of ontology-derived
+classes can be expected to vary over time since their names rely on
+internal counters.  We can require consistency of these names in
+rubrics using a pattern-matching construct in the rubric.  The
+L<PRT::GenericLineComparo> provides this functionality; see its POD
+for details.
+
+Introducing pattern-matching constructs can be done manually, but this
+process quickly becomes horrible, so is best done automatically by
+L<customizing the BLESS operation for the particular
+comparo|/"Customized bless operations">.
+
+=head2 Property values testing and other summary testing
+
+PRT can extract property/value pairs from a results log and its
+rubric, and then after the files are read, insure that the values in
+the results match those in the rubric to certain tolerances.  This
+test is separate from the usual line-by-line comparison carried out by
+PRT, and can either suppliment or replace it.  For a test to pass, it
+must pass both any usual line matching and any property values
+testing.
+
+To use property values testing in a PRT test,
+
+=over
+
+=item 1.  Use a comparo which extends L<PRT::AllLinesConsumer>.  For
+    backward compatibility, PRT will not call the methods which
+    implement property values testing if the comparo does not have
+    this superclass.
+
+=item 2.  Give an array value to the C<perfchecks> field in the agent
+    hash.  That array should contain hashes over the following fields:
+
+=over
+
+=item C<regex>
+
+Holds a string regular expression against which each line of the
+rubric and results are matched to find the property labels and value.
+The labels and value are taken from captured substrings of the regex.
+
+This field is mandatory.
+
+=item C<value>
+
+The index of the captured regex substring identifying the property
+value in the matched line.  By default the index is -1, indicating the
+last captured substring.  Note that in Perl, the capture groups in
+regexes are numbered from 1, not 0.
+
+=item C<labelIndices>
+
+The indices of the captured regex substrings identifying the labels
+constituting the names of the property.  By default all indices are
+included in this list I<except> the index for the value.  Note that in
+Perl, the capture groups in regexes are numbered from 1, not 0.
+
+=item C<defaultCompFn>
+
+The default value for the C<compFn> field in the C<tests> hashes for
+this C<perfcheck>.  Note that this C<defaultCompFn> field may be given
+in the comparo, the L<PRT::TestSpec>, the L<PRT::TestAgent> or this
+C<perfcheck> hash.
+
+=item C<tests>
+
+An array of hashes describing how various properties' values should be
+compared.  Each hash may contain the following fields:
+
+=over
+
+=item C<labels>
+
+A list of regular expressions to which captured label elements will be
+checked.  This test applies only if all of the regular expressions
+match.  The final number of captured substrings which define the
+property is implied by the field: if fewer regular expressions are
+given than are indexed by C<labelIndices>, the additional ones will be
+ignored.  The regular expressions and label indices are associated
+positionally.  If this field is not given, PRT looks for the field
+C<defaultPerfTestLabels> in the comparo, the agent, or the test spec.
+Otherwise it uses the list
+
+  ['.*', '.*']
+
+as its default.
+
+=item C<compFn>
+
+This slot describes how the rubric and result values should be
+compared.
+
+The value at this slot should be a function taking two values,
+respectively the rubric's and result log's value, and returns a true
+value if the log's value is acceptable. The L<PRT::Perf> class
+provides a number of comparison function generators (and they are
+documented there).
+
+=item C<combineFn>
+
+It is not an error for the same combination of labels to be given more
+than once.  The behavior in this case is governed by the C<combineFn>
+field.  By default, later values override earlier values, which are
+dropped.  This default corresponds to the use case of seeing
+preliminary results in a log.
+
+The value at this slot should be a function taking two values,
+respectively the older and never value, and returns the value which
+should be stored against the property. The L<PRT::Perf> class provides
+a number of combination function generators (and they are documented
+there).
+
+=back
+
+=back
+
+=back
+
+L<PRT::AllLinesConsumer> is the general interface defining the methods
+which implement performance testing; L<PRT::PerfChecker> is just one
+concrete mixin providing these methods.  Comparos which implement
+these methods must extend L<PRT::AllLinesConsumer>, because the
+L<PRT::TestSpec> tests for this superclass before calling the
+C<initializeLinesConsumer> and C<finalizeLinesConsumer> methods.  It
+is the responsibility of the comparo itself to call the
+C<consumeRubricLine> and C<consumeResultsLine> methods B<after
+checking for the AllLinesConsumer superclass> on every line of both
+the rubric and results log (but not if the comparo reports a failure
+of the primary correctness testing, in which case
+C<finalizeLinesConsumer> may not be consulted).
+
+The L<PRT::LineComparo> has L<PRT::PerfChecker> as a parent class, and
+will invoke C<consumeRubricLine> and C<consumeResultsLine> on the log
+files it checks, so any agent using L<PRT::LineComparo> or one of its
+subclasses can use performance checking simply by adding a
+C<perfcheck> field.  Subclasses of L<PRT::LineComparo> can also
+override the L<PRT::AllLinesConsumer> methods for other behaviors.
+The L<PRT::GenericLineComparo> will also invoke C<consumeRubricLine>
+and C<consumeResultsLine> on the log files it checks, but it does not
+have either L<PRT::AllLinesConsumer> or L<PRT::PerfChecker> as a
+parent class.  So its subclasses can include the L<PRT::PerfChecker>
+or so other mixin, or include L<PRT::AllLinesConsumer> and provide its
+own method overrides.
+
+=head2 Customized bless operations
+
+TODO Fill in
+
+=head1 AGENT CONFIGURATION
+
+=head2 Daemon mode and process termination
+
+It is often the case that some agents in a test need a signal to stop
+or some other indication from PRT to go away, and otherwise will
+prevent the test from completing. The F<daemon> flag can be set to
+true for those agents. PRT will not wait for these agents to complete,
+but instead will kill them when the test ends.
+
+If you have set the daemon flag and the signal from PRT is not strong
+enough to make the processes exit, you have a couple choices. 1) You
+could add a reaper agent (marked daemon) that will die from the normal
+PRT signal, but before exiting, will send much stronger kill signals to
+the stubborn processes. 2) You could wrap the stubborn processes with
+light-duty pass-through scripts that start the stubborn processes as
+children. Then, when they receive the normal PRT signal, they would kill
+their child with a much stronger signal.
+
+Sometimes tests will spawn lots of children, and when the PRT test
+shuts down, it kills the parents but some children are still left
+around? Contact Jeff for a solution for this case.
+
+=head2 Running agents on remote hosts
+
+It is sometimes convenient or desirable to run an agent in a test on a host
+different from the one which is running prt.  The remote_host and remote_user
+paramters can be set for those agents.  If the remote user's home directory at
+the remote host contains a subdirectory "remoteLogs" and the remote_log flag
+is set to true for an agent, the agent will log all output on the remote host and
+scp will gather that file and place it in the appropriate results directory on
+completion of the agent.  Likewise, if the agent is killed, the handling should
+obtain the log file.
+
+The current implementation requires passwordless access from the prt local host 
+to the remote host.  It is therefore necessary to give the ssh key of the prt host
+to the remote host in order to make use of remote agent running and logging.
+
+
+=head2 Done
+

@@ -1,0 +1,46 @@
+#!/bin/bash
+
+#Assume working in the local directory unless otherwise stated
+WORKING_PATH=.
+
+#If an argument has been given for the path, then use that instead of local .
+if [ $# -gt 0 ]; then
+    WORKING_PATH=$1
+fi
+
+PROGNAME=$(basename "$0")
+warn()  { echo "$PROGNAME: ${@}" 1>&2; }
+die()   { warn "${@}"; exit 1; }
+dbug()   { test -z $DEBUG || warn "${@}"; }
+
+# example usage:
+   #dbug This only prints if DEBUG is defined
+   #test -e foo || die file foo must exist
+   #test -z $FOO && die Environment variable FOO must be defined
+
+# bash-ism to get location of script.  Must use /bin/pwd to get absolute path.
+thisdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && /bin/pwd )"
+dbug thisdir is $thisdir
+#Place to store the files we do not want to consider in this test
+
+cd ${WORKING_PATH}
+dbug `/bin/pwd`
+
+mkdir -p unreliably-bad
+
+# these categories never actually work right, nothing sends in crashing input
+mv *socket*.out *socket*.c* unreliably-bad
+mv *fscanf*.out *fscanf*.c* unreliably-bad
+
+#Run the isnt-always-bad script to determine which executables are not reliable sanitizer-wise
+setasides="$(for f in *.out; do ASAN_OPTIONS='detect_leaks=0' $thisdir/isnt-alway-bad $f; done)"
+
+echo setasides: $setasides
+
+#Move these into the unreliably-bad directory (both the .out files and the .c or .cpp files)
+mv $setasides unreliably-bad
+s=`echo "${setasides}" | sed s/\.out/\.c\*/`
+#NOTE: .c* covers both .c and .cpp files
+#echo "${setasides}" | sed s/\.out/\.c\*/ | xargs mv % unreliably-bad
+echo setasides C: $s
+mv $s unreliably-bad

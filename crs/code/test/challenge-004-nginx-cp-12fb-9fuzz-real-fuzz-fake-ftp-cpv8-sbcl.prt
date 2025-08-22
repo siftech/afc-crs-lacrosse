@@ -1,0 +1,46 @@
+do "./defaults.pl" || die "Can't do './defaults.pl': $@";
+
+$run_in_compose = 1;
+sbcl_test();
+
+our $experiment = '
+  (push :msg *debug-list*)
+  (push :amp *debug-list*)
+  (push :target *debug-list*)
+  (push :pov-deep *debug-list*)
+  (setf *run-fake-bridge* t)
+  (setf *fake-fuzz* nil)
+  (setf *fake-file-to-patch* t)
+  (setf *use-revert-to-patch-p* t)
+  (setf *lacrosse* t)
+  (setf *fake-bridge-script*
+    \'(
+       (1 ((:type :new-challenge-project)
+           ))
+))
+';
+
+our $numfbs = 12;
+our $allocationmethod = "balanced";
+
+our $cp_config = "../crs-sandbox-items/sift/challenge-004-nginx-cp.config";
+
+our $success_pattern = "Patch status received: accepted, CPV_UUID=";
+our $success_timeout = "240m";
+
+do "./common.pl" || die "Can't do './common.pl': $@";
+
+$test = {
+    description => "cp4 experiment, with canned cpv8 pov, faking fuzzing and file-to-patch selection.  (Won't use revert-to-patch, in order to test llm patching.)",
+    defaultIgnore => 1,
+    keywords => [ qw / lacrosse one_small_ftp / ],
+    cleanup => \&condor_killer,
+    agents => [
+        @clean_and_start_agents,
+        cp_most_recent_scratch_to_results(),
+    ],
+};
+
+$test;
+
+# vim: set ft=perl :

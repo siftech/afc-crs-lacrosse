@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+
+# Pulled from https://github.com/aixcc-finals/example-crs-architecture/tree/main/example-competition-server
+# Replaced leading port value with circa baseport offset
+
+PROGNAME=$(basename "$0")
+warn()  { echo "$PROGNAME: ${@}" 1>&2; }
+die()   { warn "${@}"; exit 1; }
+dbug()   { test -z $DEBUG || warn "${@}"; }
+
+thisdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && /bin/pwd )"
+
+export CIRCA_BASEPORT=${CIRCA_BASEPORT:-10000}
+dbug CIRCA_BASEPORT is $CIRCA_BASEPORT
+
+if [[ ! -z "${HOST_USERID}" ]]; then
+    dbug HOST_USERID is $HOST_USERID
+    dbug HOST_GROUPID is $HOST_GROUPID
+elif [[ ( ! -n "${DOCKER_HOST}" ) && ( -z "$IN_DOCKER") ]]; then
+    export HOST_USERID=`id -u $HOST_USERNAME`
+    dbug HOST_USERID is $HOST_USERID
+    export HOST_GROUPID=`id -g $HOST_USERNAME`
+    dbug HOST_GROUPID is $HOST_GROUPID
+else
+    export HOST_USERID=`id -u $USER`
+    dbug HOST_USERID is $HOST_USERID
+    export HOST_GROUPID=`id -g $USER`
+    dbug HOST_GROUPID is $HOST_GROUPID
+fi
+
+if [ -n "${DOCKER_HOST}" ]; then        # we're in docker rootless, disable realuser
+    export HOST_USERNAME=root
+	# if in rootless docker and CIRCA_MM_HOST is localhost or
+	# same as `hostname`, then use the special rootless loopback address.
+	# Although other stuff about multi-agent NF is probably broken,
+	# still trying to keep this part right.
+    if [ ${CIRCA_MM_HOST} = `hostname` ] || [ ${CIRCA_MM_HOST} = "localhost" ]; then
+    	export CIRCA_MM_HOST=10.0.2.2
+        dbug NOTE inside rootless docker, so loopback is different and CIRCA_MM_HOST is $CIRCA_MM_HOST
+    fi
+elif [[ ( -f "/home/${USER}/bin/docker" ) && ( ! -z "$IN_DOCKER") ]]; then
+    export HOST_USERNAME=$USER
+else
+    export HOST_USERNAME=$USER
+fi
+
+export CONTAINER_PREFIX=${CONTAINER_PREFIX:-$USER}       # Set default container prefix if not already s$
+dbug CONTAINER_PREFIX is $CONTAINER_PREFIX
+
+export EX_COMP_SERVER_PORT=${EX_COMP_SERVER_PORT:-$(( CIRCA_BASEPORT + 501 ))}
+dbug CRS_API_PORT is $CRS_API_PORT
+
+# Comp client api is live on 88. CRS server api is live on 80.
+export EX_CRS_API_PORT=${CRS_API_PORT:-$(( CIRCA_BASEPORT + 80 ))}
+dbug CRS_API_PORT is $CRS_API_PORT
+
+dbug LACROSSE_HOME is $LACROSSE_HOME
+toolsdir="${LACROSSE_HOME}/code/tools"
+dbug lacrosse toolsdir is $toolsdir
+
+dbug "Setting SCANTRON_GITHUB_PAT to LACROSSE_GITHUB_PAT in example-competition-server"
+#export SCANTRON_GITHUB_PAT=${LACROSSE_GITHUB_PAT}
+dbug "Setting environmnet vars EX_CRS_API_KEY_ID and EX_CRS_API_KEY_TOKEN in example-competition-server container"
+
+EX_CRS_API_KEY_ID="lax-username"
+EX_CRS_API_KEY_TOKEN="lax-password"
+
+# Hacks for port mapping...
+SCANTRON_FILE=${thisdir}/GENERATED-scantron.yaml
+cp "${thisdir}/scantron.yaml" "${SCANTRON_FILE}"
+sed -i "s|31080|${EX_CRS_API_PORT}|g" "${SCANTRON_FILE}"
+
+# Pull the necessary example-competition-server image
+docker pull ghcr.io/aixcc-finals/example-crs-architecture/competition-test-api:v1.4-rc1
+
+$toolsdir/docker run -t --privileged \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    -v /run/user/${HOST_USERID}:/run/user/${HOST_USERID} \
+    -v ${SCANTRON_FILE}:/etc/scantron/scantron.yaml \
+    -v /tmp:/tmp \
+    -e REALUSER_DIR \
+    -e HOST_USERNAME \
+	-e HOST_USERID\
+	-e HOST_GROUPNAME \
+	-e HOST_GROUPID\
+    -e IN_DOCKER=1 \
+    -e DEBUG \
+	-e "DOCKER_HOSTNAME=`hostname -f`" \
+    -e DOCKER_TAG \
+    -e XDG_RUNTIME_DIR \
+    -e DOCKER_HOST \
+    -e SCANTRON_GITHUB_PAT=${LACROSSE_GITHUB_PAT} \
+    -e CRS_API_KEY_ID=$EX_CRS_API_KEY_ID \
+    -e CRS_API_KEY_TOKEN=$EX_CRS_API_KEY_TOKEN \
+    -e CRS_API_PORT=$EX_CRS_API_PORT \
+    -p $EX_COMP_SERVER_PORT:1323 \
+    --add-host=host.docker.internal:host-gateway \
+    --name ${CONTAINER_PREFIX}-competition-testing-server \
+    ghcr.io/aixcc-finals/example-crs-architecture/competition-test-api:v1.4-rc1 server

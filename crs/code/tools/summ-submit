@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+thisdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && /bin/pwd )"
+
+echo -n "povs submitted (by opt to afc-submit): "
+grep "submitting vc" OPTIMUS0.log | wc -l
+
+echo -n "pov statuses received by afc-submit: "
+grep "AFC-Submit: Pov polling has completed with status" OPTIMUS0.log | wc -l
+
+echo -n "pov statuses processed by optimus: "
+grep "TOP: Received status on pov" OPTIMUS0.log | wc -l
+
+echo
+
+echo -n "patches submitted (by opt to afc-submit): "
+grep "Submitting patch" OPTIMUS0.log | wc -l
+
+echo -n "patch statuses received by afc-submit: "
+grep "AFC-Submit: Patch polling has completed with status" OPTIMUS0.log | wc -l
+
+
+echo -n "patch statuses processed by optimus: "
+grep "TOP: Received status on patch" OPTIMUS0.log | wc -l

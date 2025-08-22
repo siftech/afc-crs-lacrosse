@@ -1,0 +1,18 @@
+#!/usr/bin/perl
+use FindBin qw($Bin);
+
+$user=$ENV{USER};
+$_ = `$Bin/docker network inspect bridge|grep $user`;
+@res=split;
+print @res;
+foreach $r (@res) {
+  chop($r);
+  print "$r\n";
+  if ($r =~ /$user/) { 
+        $r =~ s/\"//g; 
+        #$list .= " $r"; 
+        system("$Bin/docker network disconnect -f bridge $r");
+        }
+}
+
+#print "list: $list\n";

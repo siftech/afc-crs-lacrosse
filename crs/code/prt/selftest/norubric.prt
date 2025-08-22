@@ -1,0 +1,44 @@
+# Hey EMACS, this should be in -*- perl -*- mode
+# ------------------------------------------------------------
+# COPYRIGHT START
+# Copyright (c) 2014, Smart Information Flow Technologies (SIFT).
+# COPYRIGHT END
+# ------------------------------------------------------------
+#
+# PRT (PRS Regression Tester) sample test specification file
+#
+# Test specification hash reference -- The name of the variable is not
+# important, EXCEPT that it must be "returned" by this file; i.e. it
+# must be the the last reference in the file
+$test = {
+  # Name: single-word (no spaces) name of the test
+  # Default: basename of filename sans .prt file extension
+  # name => "sample",
+
+  # Description: arbitrary text for human consumption only
+  # Default: "<no-description>"
+  description => "Verifies that PRT doesn't barf completely on NO rubrics",
+
+  # Keywords: arbitrary list of key words by which can be used to
+  #    filter the tests when running or showing results, etc...
+  # Default: [ ] - empty list
+  keywords => [ qw / prt self-test / ],
+
+  # Agents: Array-ref of agents, each of which MUST specify:
+  #  - name: PRS name of the agent, without spaces
+  #  - inc:  array ref of include files
+  agents => [
+      { # Agent 1: It does the good stuff
+        name         => "norubric",
+        description  => "This agent has no rubric, and exits non-zero, but we should still pass",
+        command   => ["perl", "-e" , 'exit 2' ],
+        exit_code    => 2,
+        comparo      => undef,
+      },
+    ]
+  };
+
+# you could put other code here, but not sure what that would serve.
+
+# Always end with a reference to the test specification hash reference.
+$test;

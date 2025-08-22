@@ -1,0 +1,68 @@
+do "./defaults.pl" || die "Can't do './defaults.pl': $@";
+
+######################################################################
+# FIXME Fixes from final-smoketest-delta need to be ported here.  
+######################################################################
+our $run_in_compose = 1;
+
+our $cp_config = "../crs-sandbox-items/sift/mock-cp-config.yaml";
+sbcl_test();
+
+our $experiment = '
+  (push :msg *debug-list*)
+  (push :amp *debug-list*)
+  (push :target *debug-list*)
+  (setf *run-fake-bridge* t)
+  (setf *fake-fuzz* nil)
+  (setf *lacrosse* t)
+  (setf *fuzzer-timeout* "1m")
+  (setf *lax-final* t)
+  (setf *fake-bridge-script*
+    \'(
+       (1
+         ((:TYPE :V1-TASK--POST)
+          (:MESSAGE-ID  "8f956518-ef6d-4cde-ace3-8408b54d08cd")
+          (:MESSAGE-TIME  1740775811000)
+          (:TASKS
+           ((:TASK-ID  "4a1ccf74-dee7-48b1-a7ef-ca430104c6f9")
+            (:TYPE  "full")
+            (:DEADLINE  1740790211000)
+            (:FOCUS  "")
+            (:METADATA
+              (:ROUND-ID  "local-dev")
+              (:TASK-ID  "4a1ccf74-dee7-48b1-a7ef-ca430104c6f9"))
+            (:PROJECT-NAME  "example-libpng")
+            (:SOURCE
+             ((:TYPE  "repo")
+              (:URL  "repo-placeholder")
+              (:SHA-256  ""))
+             ((:TYPE  "fuzz-tooling")
+              (:URL  "oss-fuzz-placeholder")
+              (:SHA-256  ""))))))
+)
+;;       (12000 ((:type :halt)))
+))
+';
+
+our $numfbs = 3;
+our $allocationmethod = "balanced";
+
+#our $success_pattern = "Received BIC-FOUND";
+#our $success_pattern = "Status received: accepted, VD_UUID=";
+our $success_pattern = "Patch status received: accepted, CPV_UUID=";
+our $success_timeout = "10m";
+
+do "./common.pl" || die "Can't do './common.pl': $@";
+
+$test = {
+    defaultIgnore => 1,
+    keywords => [ qw / lacrosse / ],
+    cleanup => \&condor_killer,
+    agents => [
+        @clean_and_start_agents,
+    ],
+};
+
+$test;
+
+# vim: set ft=perl :

@@ -1,0 +1,122 @@
+#!/usr/bin/env bash
+
+thisdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && /bin/pwd )"
+
+#echo LACROSSE_HOME: ${LACROSSE_HOME}
+
+#PARTIAL_EXP_DIR=$(grep -m 1 -oP "Creating \*experiment-dir\*: /lacrosse\K.*" OPTIMUS0.log)
+#PARTIAL_EXP_DIR=$(grep -m 1 -oP "EXP_DIR: /lacrosse\K.*" OPTIMUS0.log)
+#echo PARTIAL_EXP_DIR: ${PARTIAL_EXP_DIR}
+#EXP_DIR=$(realpath "${LACROSSE_HOME}/${PARTIAL_EXP_DIR}")
+#echo EXP_DIR: ${EXP_DIR}
+
+PARTIAL_EXP_DIR=$(grep -m 1 -oP "TOP: \*experiment-dir\*: \K.*" OPTIMUS0.log)
+echo PARTIAL_EXP_DIR: ${PARTIAL_EXP_DIR}
+EXP_DIR=$(realpath "${LACROSSE_HOME}/${PARTIAL_EXP_DIR}")
+echo EXP_DIR: ${EXP_DIR}
+
+# First, check for "Ignoring...carry on..."
+# Unfort, "error" or even "ERROR" is too noisy to be generally useful.
+#CARRY_ONS=$(grep -E -B 3 "Ignoring...carry on...|After unwind-protected-deliberation" FUZZBOMB*.log OPTIMUS0.log)
+#CARRY_ONS=$(grep -E -B 3 "Ignoring...carry on..." FUZZBOMB*.log OPTIMUS0.log)
+#CARRY_ONS=$(grep -E -B 3 "Ignoring...carry on...|error-handler called with condition" FUZZBOMB*.log OPTIMUS0.log)
+#if [ -n "${CARRY_ONS}" ]; then
+#    echo "CARRY_ONS:"
+#    echo "${CARRY_ONS}"
+#else
+#    echo "NO CARRY_ONS."
+#fi
+
+# we routinely see carry-ons before agents all connect...ignore them.
+echo CARRY-ONs after Atomic:
+for file in [OF]*log; do
+   count=$(awk '
+     /Atomic/ {found=1; next}
+     found && /carry on/ {c++}
+     END {if (c > 0) print c}
+   ' "$file")
+
+   if [ -n "$count" ]; then
+     echo "$file: $count"
+   fi
+ done
+
+
+echo
+echo -n "ctasks: "
+grep "TOP: New ctask: " OPTIMUS0.log | wc -l
+grep "TOP: New ctask: " OPTIMUS0.log
+
+echo
+echo -n "Successful ctasks inits: "
+grep "TOP: Successful ctask-init for: " OPTIMUS0.log | wc -l
+grep "TOP: Successful ctask-init for: " OPTIMUS0.log
+
+
+echo
+echo "Vulnerability Discoveries:"
+grep "submitting vc" OPTIMUS0.log
+
+echo
+echo "explain pov successes:"
+grep "TYPE :EXPLAIN-POV-SUCCEEDED" OPTIMUS0.log
+
+
+# Selected tasks w a line of context to get the cmd.
+echo
+echo "Patching tasks:"
+grep -A 1 "TOP: Selected #<LACROSSE-LLM-GEN-PATCH-TASK" FUZZBOMB*.log
+
+# Patch results.
+echo
+echo "Proposed patch results:"
+grep "Proposed patch result" FUZZBOMB*.log
+
+# Should match success and failure msgs from lacrosse-llm-gen-patch-task.
+echo
+echo "Patching msgs:"
+grep "TOP: Received PATCH-GENERATION-" OPTIMUS0.log
+
+echo
+echo "Submitted patches:"
+grep "TOP: Submitting patch to AFC: " OPTIMUS0.log
+
+echo
+echo "Failed POVs:"
+grep "AFC-Submit: Pov polling has completed with status failed" OPTIMUS0.log
+
+echo
+echo "Failed Patches:"
+grep "AFC-Submit: Patch polling has completed with status failed" OPTIMUS0.log
+
+
+echo
+echo "Deadline exceeded:"
+grep "TOP: Deadline exceeded" OPTIMUS0.log FUZZBOMB*.log
+
+echo
+#echo "Dupe blobs:"
+#grep "TOP: Dropping vc which matches" OPTIMUS0.log
+echo "Num Dupe blobs:"
+grep "TOP: Dropping vc which matches" OPTIMUS0.log | wc -l
+
+echo
+echo "Context window exceeded:"
+grep ContextWindowExceededError OPTIMUS0.log FUZZBOMB*.log
+
+echo "DIND inotify faults:"
+egrep -icH inotify start-din* | grep -v ":0$"
+
+echo "DIND errors causing retry:"
+egrep -icH "DIND error" [OF]*.log | grep -v ":0$"
+
+echo "DIND fails after retry:"
+egrep -icH "dind failed after retrying" [OF]*.log | grep -v ":0$"
+
+echo
+echo "Most recent status and num-w-passed:"
+egrep 'num-w-passed|ctask status' OPTIMUS0.log | $thisdir/lines-from-last-match.sh 'ctask status summary'
+
+
+echo
+summ-submit

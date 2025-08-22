@@ -1,0 +1,125 @@
+# Hey EMACS, this should be in -*- perl -*- mode
+# ------------------------------------------------------------
+# COPYRIGHT START
+# Copyright (c) 2014, Smart Information Flow Technologies (SIFT).
+# COPYRIGHT END
+# ------------------------------------------------------------
+#
+$test = { 
+  defaultIgnore => 1, 
+  description => "Test agent 'command' field, as well as deprecated 'executable' and 'add_args'.",
+  keywords => [ qw / prt self-test command / ],  
+  agents => [ 
+    # SCALAR forms
+    {
+      name         => "string-true", 
+      description  => "Command specified as a single string",
+      command      => 'true',
+      exit_code    => 0,
+      comparo      => undef,
+    },
+    {
+      name         => "string-false", 
+      description  => "Command specified as a single string",
+      command      => 'false',
+      exit_code    => 1,
+      comparo      => undef,
+    },
+#    {  ### This one is NOT allowed
+#      name         => "string-with-args", 
+#      description  => "Command specified as a single string",
+#      command      => "perl -e 'exit 2;'",
+#      exit_code    => 2,
+#      comparo      => undef,
+#    },
+
+    # ARRAY forms
+    {
+      name         => "array-true", 
+      description  => "Command specified as an array with no args",
+      command      => qw ( true ),
+      exit_code    => 0,
+      comparo      => undef,
+    },
+    {
+      name         => "array-with-args", 
+      description  => "Command specified as an array with args",
+      command      => [ 'perl', '-e', 'exit 2' ],
+      exit_code    => 2,
+      comparo      => undef,
+    },
+    {
+      name         => "qw-array-with-args", 
+      description  => "Command specified as an array with args",
+      command      => qw ( perl -e exit ),
+      exit_code    => 0,
+      comparo      => undef,
+    },
+
+    # CODE/Subroutine forms
+    {
+      name         => "sub", 
+      description  => "Command specified as subroutine returning an array - no args",
+      command      => sub { return qw ( true ) },
+      exit_code    => 0,
+      comparo      => undef,
+    },
+    {
+      name         => "sub-false", 
+      description  => "Command specified as subroutine returning an array - no args",
+      command      => sub { return qw ( false ) },
+      exit_code    => 1,
+      comparo      => undef,
+    },
+    {
+      name         => "sub-with-args", 
+      description  => "Command specified as subroutine returning an array - with args",
+      command      => sub { return  'perl', "-e" , 'exit 2' },
+      exit_code    => 2,
+      comparo      => undef,
+    },
+    
+    # Handle deprecated formats using executable and add-args fields
+    {
+      name         => "executable-string", 
+      description  => "Deprected 'executable' as a string - no args",
+      executable   => 'true',
+      exit_code    => 0,
+      comparo      => undef,
+    },
+    {
+      name         => "executable-string-false", 
+      description  => "Deprected 'executable' as a string - no args",
+      executable   => 'false',
+      exit_code    => 1,
+      comparo      => undef,
+    },
+    {
+      name         => "executable-string-with-args", 
+      description  => "Deprected 'executable' as a string - with args",
+      executable   => 'perl',
+      add_args     => [ '-e', 'exit 3' ],
+      exit_code    => 3,
+      comparo      => undef,
+    },
+    {
+      name         => "executable-code-ref", 
+      description  => "Deprected 'executable' as a string - with args",
+      executable   => sub { return  'perl', "-e" , 'exit 2;' },
+      exit_code    => 2,
+      comparo      => undef,
+    },
+    {
+      name         => "executable-code-ref-plus-args", 
+      description  => "Deprected 'executable' as a string - with more args",
+      executable   => sub { return  'perl', "-e" },
+      add_args     => [ 'exit 3' ],
+      exit_code    => 3,
+      comparo      => undef,
+    },
+  ]
+};
+  
+# Always end with a reference to the test specification hash reference.
+$test;
+  

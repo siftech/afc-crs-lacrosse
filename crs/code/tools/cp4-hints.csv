@@ -1,0 +1,15 @@
+name,bic,bic-validated-bool,num-files-in-commit,num-files-in-patch,files-in-patch,num-lines-in-patch,chars-in-files-to-patch
+cpv1,d030af5eb4c64470c8fd5a87a8f6aae547580aa3,TRUE,5,1,src/http/ngx_http_request.c,20,107646
+cpv2,0dbd46415432759475e6e4bb5adfaada6fb7d506,TRUE,4,1,src/http/ngx_http_core_module.c,13,140255
+cpv3,c502a1695c0e9d0345101a5f2a99ee0e3c890a4d,,17,1,src/http/ngx_http_request.c,16,104632
+cpv4,b9d6a2caf41565fb05c010ad0c8d2fd6bd3c4c42,,8,1,src/http/ngx_http_core_module.c,24,146335
+cpv5,b101d59b3dda654dee1deabc34816e2ca7c96d38,,10,2,src/core/ngx_cycle.c src/http/ngx_http_variables.c,34,108093
+cpv8,cf6f5b1d4d85c98b4e2e2fb6f694f996d944851a,TRUE,3,1,src/mail/ngx_mail_pop3_handler.c,13,12498
+cpv9,cc4b16fc10dcc579d5f697f3ff70c390b5e7c7d2,,7,1,src/core/ngx_cycle.c,71,39757
+cpv10,dcf9f055bf1863555869493d5ac5944b5327f128,,5,1,src/http/ngx_http_request.c,15,103343
+cpv11,a2f5fad3ef16615ed23d21264560748cdc21a385,TRUE,12,2,src/core/ngx_cycle.c src/http/ngx_http_variables.c,232,113785
+cpv12,348b50dbb52e7d6faad7d75ce9331dd9860131c4,TRUE,7,1,src/os/unix/ngx_linux_sendfile_chain.c,13,12121
+cpv13,316d57f895c4c915c5ce3af8b09972d47dd9984e,,7,1,src/mail/ngx_mail_pop3_handler.c,59,14214
+cpv14,9c5e32dcd9779c4cfe48c5377d0af8adc52a2be9,,3,1,src/http/ngx_http_script.c,12,44962
+cpv15,ef970a54395324307fffd11ab37266479ac37d4c,,3,1,src/http/modules/ngx_http_userid_filter_module.c,13,22036
+cpv17,b6c0a37554e300aa230ea2b8d7fe53dd8604f602,,3,1,src/mail/ngx_mail_smtp_handler.c,12,22989

@@ -1,0 +1,9 @@
+#!/usr/bin/env python3
+import os
+import sys
+
+dspy_path = os.path.expandvars("$LACROSSE_HOME/code/dspy")
+if dspy_path not in sys.path:
+    sys.path.append(dspy_path)
+
+print("Running gen_patch for")

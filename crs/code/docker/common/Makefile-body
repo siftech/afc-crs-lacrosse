@@ -1,0 +1,15 @@
+# If you only need this simple incantation for build, just define IMAGE before including
+# the common/Makefile-header and common/Makefile-body .
+# This file is kept separate from the header file so you can use just the header if you want (ala driller).
+
+export
+
+${IMAGE}: Dockerfile ${COMMON_FILE_PATHS}
+	echo DOCKER_TAG is ${DOCKER_TAG}
+	../../tools/docker container rm -f ${USER}-${IMAGE} 2>&1 >/dev/null || true
+	cp ${COMMON_FILE_PATHS} .
+	mv -f build.log last-build.log ||true
+	/usr/bin/time ../../prt/timestamp ../../tools/docker build ${NO_CACHE} -t ${IMAGE}:${DOCKER_TAG} . 2>&1 | tee build.log
+	rm ${COMMON_FILES}
+	${BUILD_AFTER_IMAGE}
+

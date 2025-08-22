@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+#set -e	# nah, there can be crap in /tmp/ this cannot delete, esp on shared server
+
+# extended globbing
+shopt -s extglob
+
+# As of 20250411, dir perms prevent this from stomping on other users.
+# If that changes, need to revisit this.  
+echo "Deleting comp server trash:"
+#ls -d /tmp/challengetask+([0-9])
+rm -rf /tmp/challengetask+([0-9])
+#ls -d /tmp/eval-+([0-9])
+rm -rf /tmp/eval-+([0-9])

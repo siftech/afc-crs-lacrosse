@@ -1,0 +1,72 @@
+do "./defaults.pl" || die "Can't do './defaults.pl': $@";
+
+$run_in_compose = 0;
+$final_smoketest = 0;
+$run_with_api = 1;
+$run_with_local_comp = 1;
+$task_script = "tika-delta-02.ts";
+
+our $cp_config = "../crs-sandbox-items/sift/mock-cp-config.yaml";
+
+# This will run the example-competition-server on local, so don't use for compeition
+
+# BEFORE RUNNING THE TEST, set a env var 'LACROSSE_GITHUB_PAT' to a
+#  GitHub PAT key with scope 'repo' and 'read:packages' under an AIxCC
+#  member account.
+# Also, pull this image: docker pull --platform=linux/amd64 ghcr.io/aixcc-finals/example-crs-architecture/competition-test-api:v1.2-rc1
+
+# 1. Spins up all our images (optimus and crs api).
+# 2. Spins up the example-competition-server container with
+#  tools/example-competition-server run in docker.
+# The example-competition-server will be served at circa_baseport + 501
+# 3. Triggers tasking to the example-compeition-server
+
+# If running the tools/afc-submit.py script by hand these env vars are neceesary
+# export COMPETITION_API_TEAM_ID=${COMPETITION_API_TEAM_ID:-"11111111-1111-1111-1111-111111111111"}
+# export COMPETITION_API_TEAM_SECRET=${COMPETITION_API_TEAM_SECRET:-"secret"}
+# export LAX_COMP_API_PORT=${LAX_COMP_API_PORT:-$(( CIRCA_BASEPORT + 501))}
+# export COMPETITION_API_ENDPOINT=${COMPETITION_API_TEAM_ENDPOINT:-"http://localhost:${LAX_COMP_API_PORT}"}
+# Note; some overlapping between "API_TEAM_ENDPOINT" and "API_ENDPOINT" is on purpose;
+
+sbcl_test();
+
+our $experiment = '
+  (push :msg *debug-list*)
+  (push :amp *debug-list*)
+  (push :target *debug-list*)
+  (setf *run-fake-bridge* t)
+  (setf *fake-fuzz* nil)
+  (setf *lacrosse* t)
+  (setf *fuzzer-timeout* "1m")
+  (setf *lax-final* t)
+  (setf *use-oss-fuzz* t)
+  (setf *use-llm-find-and-patch-vuln* nil)
+  (setf *use-llm-hypothesize-vulns-task* nil)
+  (setf *use-llm-patch-sans-pov-task* nil)
+  (setf *lax-final-one-ctask-mode* nil)
+';
+
+our $numfbs = 8;
+our $allocationmethod = "balanced";
+
+# Found and submitted passing patch:
+our $success_pattern = "TOP: Patch accepted for task";
+our $success_timeout = "2h";
+
+do "./common.pl" || die "Can't do './common.pl': $@";
+
+$ENV{'LAX_LOAD_CP_IMAGES'} = "false";
+
+$test = {
+    defaultIgnore => 1,
+    keywords => [ qw / lacrosse / ],
+    cleanup => \&condor_killer,
+    agents => [
+        @clean_and_start_agents,
+        cp_most_recent_scratch_to_results(),
+     ],
+};
+
+$test;
+
+# vim: set ft=perl :

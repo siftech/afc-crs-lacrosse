@@ -1,0 +1,89 @@
+#!/usr/bin/env python3
+import os
+import sys
+
+dspy_path = os.path.expandvars("$LACROSSE_HOME/code/dspy")
+if dspy_path not in sys.path:
+    sys.path.append(dspy_path)
+
+import gen_patch
+from record import records_directory
+
+args = sys.argv[1:]
+
+print("Top of gen-juliet-patch", len(args))
+
+if (len(args) < 4) or (len(args) > 5):
+    raise Exception("gen-lax-ref-patch needs to take 4 or 5 arguments: gen-lax-ref-patch <inputs_hyphen_separated> <pipeline_name> <model_name> <patch_path> <results_path>")
+
+# Default argument values
+default_patch_path = os.path.join(os.getcwd(), "patch")
+default_results_path = os.path.join(os.getcwd(), "results")
+
+inputs = args[0]
+pipeline_name = args[1]
+model_name = args[2]
+if len(args) >= 4:
+    patch_path = args[3]
+else:
+    patch_path = default_patch_path
+if len(args) >= 5:
+    results_path = args[4]
+else:
+    results_path = default_results_path
+
+print("gen-juliet-patch", inputs, pipeline_name, model_name, patch_path, results_path)
+
+# Remove the patch file early if it exists
+if os.path.exists(patch_path):
+    try:
+        os.remove(patch_path)
+        print(f"Removed existing patch file: {patch_path}")
+    except Exception as e:
+        print(f"Failed to remove {patch_path}: {e}")
+        sys.exit(1)  # Exit early if we can't remove it
+
+# MAYBE: We take an extra step in juliet of constructing a minimalist repo with the bad code, necessary includes, and the Makefile.
+#juliet_path = os.path.expandvars("$LACROSSE_HOME/../../lacrosseified-juliet"
+
+calldir = os.getcwd()
+src_dirname = "bad_source"
+trace_filename = "bad_err"
+source_path = os.path.join(calldir, src_dirname)
+# bad_file_relpath is relative to source_path
+bad_file_relpath = os.listdir(source_path)[0] 
+# bad_file_relpath = os.path.join(src_dirname, bad_file)
+trace_path = os.path.join(calldir, trace_filename)
+# bad_file_path = os.path.join(source_path, bad_file_relpath)
+
+def get_file_contents(path):
+    try:
+        assert os.path.isfile(path)
+        # Read the contents of the file
+        with open(path, "r", encoding="utf-8") as file:
+            file_contents = file.read()
+            return file_contents
+    except FileNotFoundError:
+        print(f"File not found: {path}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    return None
+
+def write_to_file(filename, content):
+    with open(filename, 'w') as f:
+        f.write(content)
+
+sanitizer_output = get_file_contents(trace_path)
+#bad_code = get_file_contents(bad_file_path)
+
+print(f"Running gen_patch for {os.path.basename(calldir)}")
+# print()
+
+# FIXME: Is there a wrapper-like way to set the results dir?
+with records_directory(results_path):
+    fn_patch = gen_patch.generate_patch_with_inputs(source_path, inputs, pipeline_name, model_name, sanitizer_output)
+
+# print(fn_patch)
+
+write_to_file(patch_path, fn_patch)
+print(f"Wrote patch to {patch_path}")

@@ -1,0 +1,22 @@
+#!/bin/sh
+set -eux
+
+mkdir /dev/pts
+mount -t devpts   devpts /dev/pts
+mount -t proc     proc   /proc
+mount -t sysfs    sys    /sys
+mount -t debugfs  debug  /sys/kernel/debug
+mount -t tmpfs    tmp    /tmp
+
+mount -t 9p \
+	-o trans=virtio,version=9p2000.L,msize=128M \
+	code /code
+mount -t 9p \
+	-o trans=virtio,version=9p2000.L,msize=128M \
+	here /here
+
+eval "$(resize)"
+
+while true; do
+	getty 0 /dev/ttyS0
+done

@@ -1,0 +1,56 @@
+do "./defaults.pl" || die "Can't do './defaults.pl': $@";
+
+$run_in_compose = 0;
+$final_smoketest = 0;
+$full_scan = 1;
+$run_with_api = 1;
+$run_with_local_comp = 1;
+$test_sarif = 1;
+# This false sarif is adjusted from an oobr to an oobw.
+$sarif_script = "sqlite3-full-false-oobw.json";
+$task_script = "sqlite-full.ts";
+
+our $cp_config = "../crs-sandbox-items/sift/mock-cp-config.yaml";
+
+sbcl_test();
+
+our $experiment = '
+  (push :msg *debug-list*)
+  (push :amp *debug-list*)
+  (push :target *debug-list*)
+  (setf *run-fake-bridge* t)
+  (setf *fake-fuzz* nil)
+  (setf *lacrosse* t)
+  (setf *fuzzer-timeout* "1m")
+  (setf *lax-final* t)
+  (setf *use-oss-fuzz* t)
+  (setf *use-llm-find-and-patch-vuln* t)
+  (setf *lax-final-one-ctask-mode* nil)
+';
+
+our $numfbs = 6;
+our $allocationmethod = "balanced";
+
+our $success_pattern = ":DECISION \"incorrect\"";
+our $failure_pattern = ":DECISION \"correct\"";
+	# this will be checked after the primary success_pattern
+our $local_success_pattern = "broadcast_sarif_status is accepted";
+our $success_timeout = "15m";
+
+do "./common.pl" || die "Can't do './common.pl': $@";
+
+$ENV{'LAX_LOAD_CP_IMAGES'} = "false";
+
+$test = {
+    defaultIgnore => 1,
+    keywords => [ qw / lacrosse / ],
+    cleanup => \&condor_killer,
+    agents => [
+        @clean_and_start_agents,
+        cp_most_recent_scratch_to_results(),
+     ],
+};
+
+$test;
+
+# vim: set ft=perl :

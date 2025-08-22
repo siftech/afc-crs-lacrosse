@@ -1,0 +1,102 @@
+#!/bin/bash
+
+# Ensure the script exits on any errors
+# set -e
+
+ref_dir=$(realpath .)
+
+# Check if the required arguments are provided
+if [ "$#" -ne 2 ]; then
+    echo "Args are $@"
+    echo "Usage: $0 <patch_path>"
+    exit 1
+fi
+
+PATCH_PATH=$1
+RESULTS_PATH=$2
+
+function myecho() {
+    local line="$1"
+    echo "test-patch: $line"
+}
+
+echo "test-juliet-patch"
+echo "Patch path is $PATCH_PATH"
+echo "Results path is $RESULTS_PATH"
+
+SOURCE_DIR="bad_source"
+SCRATCH_DIR="${RESULTS_PATH}/apply_scratch"
+SCRATCH_SOURCE_DIR="${SCRATCH_DIR}/${SOURCE_DIR}"
+JULIET_SUPPORT_DIR="${LACROSSE_HOME}/code/test/patch-test/juliet-support"
+
+echo "Scratch dir is $SCRATCH_DIR"
+
+# Clean the patch
+PATCH_DIR=$(dirname "$PATCH_PATH")
+CLEAN_PATCH_PATH="${PATCH_DIR}/clean_patch"
+sed -e '/^index /d' -e '/^diff --git /d' -e 's/^--- a\//--- /' -e 's/^+++ b\//+++ /' $PATCH_PATH > $CLEAN_PATCH_PATH
+
+# Remove SCRATCH_DIR if it exists, ignore errors if it doesn't
+rm -rf "$SCRATCH_DIR"
+
+# Recreate the directory (in case it was missing)
+mkdir -p "$SCRATCH_DIR"
+
+cp -r $SOURCE_DIR $SCRATCH_DIR
+
+cd $SCRATCH_SOURCE_DIR
+
+myecho "Apply the patch"
+git apply --check "$CLEAN_PATCH_PATH"
+apply_exit_code="$?"
+
+if [ "$apply_exit_code" -eq 0 ]; then
+    myecho "*PASS* apply"
+else
+    myecho "-FAIL- apply"
+    exit 125;
+fi
+
+git apply "$CLEAN_PATCH_PATH"
+
+myecho "Compile the patched code"
+
+SCRATCH_SOURCE_FILE=$(ls "$SCRATCH_SOURCE_DIR"/*.c "$SCRATCH_SOURCE_DIR"/*.cpp 2>/dev/null | head -n 1)
+echo "Scratch source file is $SCRATCH_SOURCE_FILE"
+SCRATCH_OUT_FILE="$(basename "${SCRATCH_SOURCE_FILE%.*}.out")"
+echo "Scratch out file is $SCRATCH_OUT_FILE"
+
+# Compile the patched code
+make -f $JULIET_SUPPORT_DIR/Makefile clean
+make -f $JULIET_SUPPORT_DIR/Makefile $SCRATCH_OUT_FILE
+
+# Check the exit status
+if [ $? -eq 0 ]; then
+    # myecho "Compile succeeded."
+    myecho "*PASS* build"
+else
+    # myecho "Compile failed."
+    myecho "-FAIL- build"
+    exit 1 # Optionally exit with an error
+fi
+
+myecho "Test the PoV"
+
+# For now assume there is only one .out in the source dir
+ASAN_OPTIONS='detect_leaks=0' ./*.out
+
+# Check the exit status
+if [ $? -eq 0 ]; then
+    myecho "Program ran to completion without ASan errors."
+    myecho "*PASS* run_pov"
+else
+    myecho "Program crashed, possibly due to an AddressSanitizer error."
+    myecho "-FAIL- run_pov"
+    exit 1
+fi
+
+# myecho "Currently no additional tests."
+# myecho "test complete"
+
+cd $ref_dir
+

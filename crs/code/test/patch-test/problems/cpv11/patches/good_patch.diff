@@ -1,0 +1,232 @@
+diff --git a/src/core/ngx_cycle.c b/src/core/ngx_cycle.c
+index d56a9be..9774b41 100644
+--- a/src/core/ngx_cycle.c
++++ b/src/core/ngx_cycle.c
+@@ -355,109 +355,106 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
+         return cycle;
+     }
+ 
+-    cycle->host_specs = ngx_alloc(sizeof(ngx_host_specs_t), log);
+-    if (cycle->host_specs == NULL) {
+-        ngx_destroy_pool(pool);
+-        return NULL;
+-    }
+-
+-    cycle->host_specs->host_cpu = ngx_alloc(sizeof(ngx_str_t), log);
+-    if (cycle->host_specs->host_cpu == NULL) {
+-        ngx_destroy_pool(pool);
+-        return NULL;
+-    }
+-    cycle->host_specs->host_cpu->data = (u_char*)"Unknown CPU\n";
+-
+-    ngx_memzero(line, NGX_MAX_HOST_SPECS_LINE);
+-    fp = fopen("/proc/cpuinfo", "r");
+-    if (fp != NULL) {
+-        temp_char = NULL;
+-        while (fgets(line, sizeof(line), fp) != NULL) {
+-            if (ngx_strncmp(line, "model name", 10) == 0) {
+-                temp_char = strchr(line, ':');
+-                if (temp_char != NULL) {
+-                    temp_char += 2;
+-                    cycle->host_specs->host_cpu->data = ngx_alloc(sizeof(line), log);
+-                    if (cycle->host_specs->host_cpu->data == NULL) {
+-                        break;
+-                    }
+-                    ngx_memzero(cycle->host_specs->host_cpu->data, sizeof(line));
+-                    cycle->host_specs->host_cpu->len = \
++    ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
++    if (ccf->remote_admin) {
++        cycle->host_specs = ngx_alloc(sizeof(ngx_host_specs_t), log);
++        if (cycle->host_specs == NULL) {
++            ngx_destroy_pool(pool);
++            return NULL;
++        }
++        cycle->host_specs->host_cpu = ngx_alloc(sizeof(ngx_str_t), log);
++        if (cycle->host_specs->host_cpu == NULL) {
++            return NULL;
++        }
++        cycle->host_specs->host_cpu->data = ngx_alloc(sizeof(line), log);
++        if (cycle->host_specs->host_cpu->data == NULL) {
++            return NULL;
++        }
++        cycle->host_specs->host_cpu->len = \
++        ngx_sprintf(cycle->host_specs->host_cpu->data, "%s", "Unknown CPU\n") -\
++        cycle->host_specs->host_cpu->data;
++
++        ngx_memzero(line, NGX_MAX_HOST_SPECS_LINE);
++        fp = fopen("/proc/cpuinfo", "r");
++        if (fp != NULL) {
++            temp_char = NULL;
++            while (fgets(line, sizeof(line), fp) != NULL) {
++                if (ngx_strncmp(line, "model name", 10) == 0) {
++                    temp_char = strchr(line, ':');
++                    if (temp_char != NULL) {
++                        temp_char += 2;
++                        ngx_memzero(cycle->host_specs->host_cpu->data, sizeof(line));
++                        cycle->host_specs->host_cpu->len = \
+                         ngx_sprintf(cycle->host_specs->host_cpu->data, "%s", temp_char) - \
+                         cycle->host_specs->host_cpu->data;
+-                    break;
+-                }
+-            }
++                         break;
++                     }
++                 }
++             }
++         }
++        fclose(fp);
++        cycle->host_specs->host_mem = ngx_alloc(sizeof(ngx_str_t), log);
++        if (cycle->host_specs->host_mem == NULL) {
++            return NULL;
++         }
++        cycle->host_specs->host_mem->data = ngx_alloc(sizeof(line), log);
++        if (cycle->host_specs->host_mem->data == NULL) {
++            return NULL;
+         }
+-    }
+-    fclose(fp);
+-
+-    cycle->host_specs->host_mem = ngx_alloc(sizeof(ngx_str_t), log);
+-    if (cycle->host_specs->host_mem == NULL) {
+-        ngx_destroy_pool(pool);
+-        return NULL;
+-    }
+-    cycle->host_specs->host_mem->data = (u_char*)"Unknown RAM\n";
+-
+-    ngx_memzero(line, NGX_MAX_HOST_SPECS_LINE);
+-    fp = fopen("/proc/meminfo", "r");
+-    if (fp != NULL) {
+-        temp_char = NULL;
+-        while (fgets(line, sizeof(line), fp) != NULL) {
+-            if (ngx_strncmp(line, "MemTotal:", 9) == 0) {
+-                temp_char = strchr(line, ':');
+-                if (temp_char != NULL) {
+-                    temp_char += 8;
+-                    cycle->host_specs->host_mem->data = ngx_alloc(sizeof(line), log);
+-                    if (cycle->host_specs->host_mem->data == NULL) {
+-                        break;
+-                    }
+-                    ngx_memzero(cycle->host_specs->host_mem->data, sizeof(line));
+-                    cycle->host_specs->host_mem->len = \
++        cycle->host_specs->host_mem->len = \
++        ngx_sprintf(cycle->host_specs->host_mem->data, "%s", "Unknown MEM\n") -\
++        cycle->host_specs->host_mem->data;
++
++        ngx_memzero(line, NGX_MAX_HOST_SPECS_LINE);
++        fp = fopen("/proc/meminfo", "r");
++        if (fp != NULL) {
++            temp_char = NULL;
++            while (fgets(line, sizeof(line), fp) != NULL) {
++                if (ngx_strncmp(line, "MemTotal:", 9) == 0) {
++                    temp_char = strchr(line, ':');
++                    if (temp_char != NULL) {
++                        temp_char += 8;
++                        ngx_memzero(cycle->host_specs->host_mem->data, sizeof(line));
++                        cycle->host_specs->host_mem->len = \
+                         ngx_sprintf(cycle->host_specs->host_mem->data, "%s", temp_char) - \
+                         cycle->host_specs->host_mem->data;
+-                    break;
+-                }
+-            }
++                         break;
++                     }
++                 }
++             }
++         }
++        fclose(fp);
++        cycle->host_specs->host_os = (ngx_str_t*)ngx_alloc(sizeof(ngx_str_t), log);
++        if (cycle->host_specs->host_os == NULL) {
++            return NULL;
++         }
++        cycle->host_specs->host_os->data = ngx_alloc(sizeof(line), log);
++        if (cycle->host_specs->host_os->data == NULL) {
++            return NULL;
+         }
+-    }
+-    fclose(fp);
+-
+-    cycle->host_specs->host_os = ngx_alloc(sizeof(ngx_str_t), log);
+-    if (cycle->host_specs->host_os == NULL) {
+-        ngx_destroy_pool(pool);
+-        return NULL;
+-    }
+-    cycle->host_specs->host_os->data = (u_char*)"Unknown OS\n";
+-
+-    ngx_memzero(line, NGX_MAX_HOST_SPECS_LINE);
+-    fp = fopen("/etc/os-release", "r");
+-    if (fp != NULL) {
+-        while (fgets(line, sizeof(line), fp) != NULL) {
+-            if (strncmp(line, "PRETTY_NAME", 11) == 0) {
+-                temp_char = strchr(line, '=');
+-                if (temp_char != NULL) {
+-                    temp_char += 1;
+-                    cycle->host_specs->host_os->data = ngx_alloc(sizeof(line), log);
+-                    if (cycle->host_specs->host_os->data == NULL) {
+-                        break;
+-                    }
+-                    ngx_memzero(cycle->host_specs->host_os->data, sizeof(line));
++        cycle->host_specs->host_os->len = \
++        ngx_sprintf(cycle->host_specs->host_os->data, "%s", "Unknown  OS\n") -\
++        cycle->host_specs->host_os->data;
++
++        ngx_memzero(line, NGX_MAX_HOST_SPECS_LINE);
++        fp = fopen("/etc/os-release", "r");
++        if (fp != NULL) {
++            while (fgets(line, sizeof(line), fp) != NULL) {
++                if (strncmp(line, "PRETTY_NAME", 11) == 0) {
++                    temp_char = strchr(line, '=');
++                    if (temp_char != NULL) {
++                        temp_char += 1;
++                        ngx_memzero(cycle->host_specs->host_os->data, sizeof(line));
+                         cycle->host_specs->host_os->len = \
+                         ngx_sprintf(cycle->host_specs->host_os->data, "%s", temp_char) - \
+-                    cycle->host_specs->host_os->data;
+-                    break;
+-                }
+-            }
+-        }
+-    }
+-    fclose(fp);
+-
+-    ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
+-
+-    if (!ccf->remote_admin) {
+-        ngx_free(cycle->host_specs);
+-    }
++                        cycle->host_specs->host_os->data;
++                         break;
++                     }
++                 }
++             }
++         }
++        fclose(fp);
++     }
+ 
+     if (ngx_test_config) {
+ 
+diff --git a/src/http/ngx_http_variables.c b/src/http/ngx_http_variables.c
+index b824058..5b59e5e 100644
+--- a/src/http/ngx_http_variables.c
++++ b/src/http/ngx_http_variables.c
+@@ -2867,9 +2867,18 @@ static ngx_int_t ngx_http_get_host_specs(ngx_http_request_t *r,
+     ngx_memzero(v->data, NGX_MAX_HOST_SPECS_LINE * 3);
+ 
+     temp = v->data;
+-    v->data = ngx_sprintf(v->data, "%s", r->cycle->host_specs->host_cpu->data);
+-    v->data = ngx_sprintf(v->data, "%s", r->cycle->host_specs->host_mem->data);
+-    v->data = ngx_sprintf(v->data, "%s", r->cycle->host_specs->host_os->data);
++
++    if (r->cycle->host_specs &&
++        r->cycle->host_specs->host_cpu &&
++        r->cycle->host_specs->host_mem &&
++        r->cycle->host_specs->host_os) {
++        v->data = ngx_sprintf(v->data, "%s", r->cycle->host_specs->host_cpu->data);
++        v->data = ngx_sprintf(v->data, "%s", r->cycle->host_specs->host_mem->data);
++        v->data = ngx_sprintf(v->data, "%s", r->cycle->host_specs->host_os->data);
++    } else {
++        v->data = ngx_sprintf(v->data, "%s", "Remote admin data is not allowed.\n");
++    }
++
+     v->len = v->data - temp;
+     v->data = temp;
+ 

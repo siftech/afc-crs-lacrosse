@@ -1,0 +1,14 @@
+#!/bin/bash
+# This changes PATH to have the current tool dir first and then runs its args; the idea is to use this
+# within ssh calls so that our docker can override /usr/bin/docker to insert sudo in front.
+# Why, then, have this? B/c we cannot get Jenkins' PATH modified *while sshing into other nodes* on the cluster,
+# so even tho we can get his PATH to lead to thisdir/docker on local calls, on ssh calls we need this nasty thing.
+# Since it doesnt exist in any other path...will he find it?  no, we'll have to point to it directly.
+# Why not just use nf-docker to point to the local docker call instead?  Because sometimes we don't own all the
+# code and cannot change all the docker calls... eg, prt/logwatcher.pl cannot be modified with NF-specific path gunk.
+
+# bash-ism to get location of script.
+thisdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && /bin/pwd )"
+
+export PATH=$thisdir:$PATH
+exec "$@"

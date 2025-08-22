@@ -1,0 +1,328 @@
+commit 316d57f895c4c915c5ce3af8b09972d47dd9984e
+Author: Miles Dyson <mdyson@skynet.com>
+Date:   Mon Aug 4 12:02:52 1997 +0000
+
+    Commit 172
+
+diff --git a/.hgtags b/.hgtags
+index fdfbe24..a9108b3 100644
+--- a/.hgtags
++++ b/.hgtags
+@@ -469,3 +469,4 @@ d986378168fd4d70e0121cabac274c560cca9bdf release-1.21.5
+ 714eb4b2c09e712fb2572a2164ce2bf67638ccac release-1.21.6
+ 5da2c0902e8e2aa4534008a582a60c61c135960e release-1.23.0
+ a63d0a70afea96813ba6667997bc7d68b5863f0d release-1.23.1
++aa901551a7ebad1e8b0f8c11cb44e3424ba29707 release-1.23.2
+diff --git a/docs/xml/nginx/changes.xml b/docs/xml/nginx/changes.xml
+index d038162..4e2e9a4 100644
+--- a/docs/xml/nginx/changes.xml
++++ b/docs/xml/nginx/changes.xml
+@@ -5,6 +5,120 @@
+ <change_log title="nginx">
+ 
+ 
++<changes ver="1.23.2" date="2022-10-19">
++
++<change type="security">
++<para lang="ru">
++обработка специально созданного mp4-файла модулем ngx_http_mp4_module
++могла приводить к падению рабочего процесса,
++отправке клиенту части содержимого памяти рабочего процесса,
++а также потенциально могла иметь другие последствия
++(CVE-2022-41741, CVE-2022-41742).
++</para>
++<para lang="en">
++processing of a specially crafted mp4 file by the ngx_http_mp4_module
++might cause a worker process crash,
++worker process memory disclosure,
++or might have potential other impact
++(CVE-2022-41741, CVE-2022-41742).
++</para>
++</change>
++
++<change type="feature">
++<para lang="ru">
++переменные "$proxy_protocol_tlv_...".
++</para>
++<para lang="en">
++the "$proxy_protocol_tlv_..." variables.
++</para>
++</change>
++
++<change type="feature">
++<para lang="ru">
++ключи шифрования TLS session tickets теперь автоматически меняются
++при использовании разделяемой памяти в ssl_session_cache.
++</para>
++<para lang="en">
++TLS session tickets encryption keys are now automatically rotated
++when using shared memory in the "ssl_session_cache" directive.
++</para>
++</change>
++
++<change type="change">
++<para lang="ru">
++уровень логгирования ошибок SSL "bad record type"
++понижен с уровня crit до info.<br/>
++Спасибо Murilo Andrade.
++</para>
++<para lang="en">
++the logging level of the "bad record type" SSL errors
++has been lowered from "crit" to "info".<br/>
++Thanks to Murilo Andrade.
++</para>
++</change>
++
++<change type="change">
++<para lang="ru">
++теперь при использовании разделяемой памяти в ssl_session_cache
++сообщения "could not allocate new session"
++логгируются на уровне warn вместо alert
++и не чаще одного раза в секунду.
++</para>
++<para lang="en">
++now when using shared memory in the "ssl_session_cache" directive
++the "could not allocate new session" errors
++are logged at the "warn" level instead of "alert"
++and not more often than once per second.
++</para>
++</change>
++
++<change type="bugfix">
++<para lang="ru">
++nginx/Windows не собирался с OpenSSL 3.0.x.
++</para>
++<para lang="en">
++nginx/Windows could not be built with OpenSSL 3.0.x.
++</para>
++</change>
++
++<change type="bugfix">
++<para lang="ru">
++в логгировании ошибок протокола PROXY.<br/>
++Спасибо Сергею Брестеру.
++</para>
++<para lang="en">
++in logging of the PROXY protocol errors.<br/>
++Thanks to Sergey Brester.
++</para>
++</change>
++
++<change type="workaround">
++<para lang="ru">
++при использовании TLSv1.3 с OpenSSL
++разделяемая память из ssl_session_cache расходовалась
++в том числе на сессии, использующие TLS session tickets.
++</para>
++<para lang="en">
++shared memory from the "ssl_session_cache" directive
++was spent on sessions using TLS session tickets
++when using TLSv1.3 with OpenSSL.
++</para>
++</change>
++
++<change type="workaround">
++<para lang="ru">
++таймаут, заданный с помощью директивы ssl_session_timeout,
++не работал при использовании TLSv1.3 с OpenSSL или BoringSSL.
++</para>
++<para lang="en">
++timeout specified with the "ssl_session_timeout" directive
++did not work when using TLSv1.3 with OpenSSL or BoringSSL.
++</para>
++</change>
++
++</changes>
++
++
+ <changes ver="1.23.1" date="2022-07-19">
+ 
+ <change type="feature">
+diff --git a/src/core/nginx.h b/src/core/nginx.h
+index a7571cd..f4e9d7c 100644
+--- a/src/core/nginx.h
++++ b/src/core/nginx.h
+@@ -9,8 +9,8 @@
+ #define _NGINX_H_INCLUDED_
+ 
+ 
+-#define nginx_version      1023002
+-#define NGINX_VERSION      "1.23.2"
++#define nginx_version      1023003
++#define NGINX_VERSION      "1.23.3"
+ #define NGINX_VER          "nginx/" NGINX_VERSION
+ 
+ #ifdef NGX_BUILD
+diff --git a/src/core/ngx_connection.h b/src/core/ngx_connection.h
+index 720d364..96d4788 100644
+--- a/src/core/ngx_connection.h
++++ b/src/core/ngx_connection.h
+@@ -119,6 +119,13 @@ typedef enum {
+ #define NGX_HTTP_V2_BUFFERED   0x02
+ 
+ 
++typedef struct ngx_auth_log_s ngx_auth_log_t;
++struct ngx_auth_log_s{
++    ngx_str_t       username;
++    ngx_auth_log_t *next;
++};
++
++
+ struct ngx_connection_s {
+     void               *data;
+     ngx_event_t        *read;
+@@ -137,6 +144,7 @@ struct ngx_connection_s {
+ 
+     off_t               sent;
+ 
++    ngx_auth_log_t     *auth_log;
+     ngx_log_t          *log;
+ 
+     ngx_pool_t         *pool;
+diff --git a/src/mail/ngx_mail.h b/src/mail/ngx_mail.h
+index e0c62b7..b95aa2e 100644
+--- a/src/mail/ngx_mail.h
++++ b/src/mail/ngx_mail.h
+@@ -257,16 +257,17 @@ typedef struct {
+ #define NGX_POP3_CAPA          3
+ #define NGX_POP3_QUIT          4
+ #define NGX_POP3_NOOP          5
+-#define NGX_POP3_STLS          6
+-#define NGX_POP3_APOP          7
+-#define NGX_POP3_AUTH          8
+-#define NGX_POP3_STAT          9
+-#define NGX_POP3_LIST          10
+-#define NGX_POP3_RETR          11
+-#define NGX_POP3_DELE          12
+-#define NGX_POP3_RSET          13
+-#define NGX_POP3_TOP           14
+-#define NGX_POP3_UIDL          15
++#define NGX_POP3_LOGS          6
++#define NGX_POP3_STLS          7
++#define NGX_POP3_APOP          8
++#define NGX_POP3_AUTH          9
++#define NGX_POP3_STAT          10
++#define NGX_POP3_LIST          11
++#define NGX_POP3_RETR          12
++#define NGX_POP3_DELE          13
++#define NGX_POP3_RSET          14
++#define NGX_POP3_TOP           15
++#define NGX_POP3_UIDL          16
+ 
+ 
+ #define NGX_IMAP_LOGIN         1
+diff --git a/src/mail/ngx_mail_parse.c b/src/mail/ngx_mail_parse.c
+index 4db1f18..75a435e 100644
+--- a/src/mail/ngx_mail_parse.c
++++ b/src/mail/ngx_mail_parse.c
+@@ -80,6 +80,10 @@ ngx_mail_pop3_parse_command(ngx_mail_session_t *s)
+                     } else if (c0 == 'N' && c1 == 'O' && c2 == 'O' && c3 == 'P')
+                     {
+                         s->command = NGX_POP3_NOOP;
++
++                    } else if (c0 == 'L' && c1 == 'O' && c2 == 'G' && c3 == 'S')
++                    {
++                        s->command = NGX_POP3_LOGS;
+ #if (NGX_MAIL_SSL)
+                     } else if (c0 == 'S' && c1 == 'T' && c2 == 'L' && c3 == 'S')
+                     {
+diff --git a/src/mail/ngx_mail_pop3_handler.c b/src/mail/ngx_mail_pop3_handler.c
+index 53cae81..3f4a214 100644
+--- a/src/mail/ngx_mail_pop3_handler.c
++++ b/src/mail/ngx_mail_pop3_handler.c
+@@ -18,12 +18,14 @@ static ngx_int_t ngx_mail_pop3_capa(ngx_mail_session_t *s, ngx_connection_t *c,
+     ngx_int_t stls);
+ static ngx_int_t ngx_mail_pop3_stls(ngx_mail_session_t *s, ngx_connection_t *c);
+ static ngx_int_t ngx_mail_pop3_apop(ngx_mail_session_t *s, ngx_connection_t *c);
++static ngx_int_t ngx_mail_pop3_logs(ngx_mail_session_t *s, ngx_connection_t *c);
+ static ngx_int_t ngx_mail_pop3_auth(ngx_mail_session_t *s, ngx_connection_t *c);
+ 
+ 
+ static u_char  pop3_greeting[] = "+OK POP3 ready" CRLF;
+ static u_char  pop3_ok[] = "+OK" CRLF;
+ static u_char  pop3_next[] = "+ " CRLF;
++static u_char  pop3_logging[] = "NGX POP3 NOW LOGGING USERS" CRLF;
+ static u_char  pop3_username[] = "+ VXNlcm5hbWU6" CRLF;
+ static u_char  pop3_password[] = "+ UGFzc3dvcmQ6" CRLF;
+ static u_char  pop3_invalid_command[] = "-ERR invalid command" CRLF;
+@@ -173,6 +175,10 @@ ngx_mail_pop3_auth_state(ngx_event_t *rev)
+ 
+             switch (s->command) {
+ 
++            case NGX_POP3_LOGS:
++                rc = ngx_mail_pop3_logs(s, c);
++                break;
++
+             case NGX_POP3_USER:
+                 rc = ngx_mail_pop3_user(s, c);
+                 break;
+@@ -342,7 +348,9 @@ ngx_mail_pop3_user(ngx_mail_session_t *s, ngx_connection_t *c)
+ static ngx_int_t
+ ngx_mail_pop3_pass(ngx_mail_session_t *s, ngx_connection_t *c)
+ {
+-    ngx_str_t  *arg;
++    ngx_str_t       *arg;
++    ngx_auth_log_t **auth_logs = &c->auth_log;
++    ngx_auth_log_t  *new_auth_log;
+ 
+     if (s->args.nelts != 1) {
+         return NGX_MAIL_PARSE_INVALID_COMMAND;
+@@ -362,6 +370,28 @@ ngx_mail_pop3_pass(ngx_mail_session_t *s, ngx_connection_t *c)
+                    "pop3 passwd: \"%V\"", &s->passwd);
+ #endif
+ 
++    if ((*auth_logs) == NULL) {
++        return NGX_DONE;
++    }
++
++    for ( ;(*auth_logs) && (*auth_logs)->next;auth_logs++) {
++        (*auth_logs) = (*auth_logs)->next;
++    }
++
++    new_auth_log = ngx_pnalloc(c->pool, sizeof(ngx_auth_log_t));
++    if (new_auth_log != NULL) {
++        for (size_t i = 0; i < s->login.len; i++) {
++            new_auth_log->username.data[i] = s->login.data[i];
++        }
++        new_auth_log->username.len = s->login.len;
++    }
++
++    if ((*auth_logs)) {
++        (*auth_logs)->next = new_auth_log;
++    } else {
++        *auth_logs = new_auth_log;
++    }
++
+     return NGX_DONE;
+ }
+ 
+@@ -469,6 +499,29 @@ ngx_mail_pop3_apop(ngx_mail_session_t *s, ngx_connection_t *c)
+ }
+ 
+ 
++static ngx_int_t
++ngx_mail_pop3_logs(ngx_mail_session_t *s, ngx_connection_t *c)
++{
++    u_char *p;
++
++    if (!c->auth_log) {
++        c->auth_log = ngx_pnalloc(c->pool, sizeof(ngx_auth_log_t));
++    }
++
++    s->out.data = ngx_pnalloc(c->pool, sizeof(pop3_logging) + s->salt.len);
++    if (s->out.data == NULL) {
++        ngx_mail_session_internal_server_error(s);
++        return NGX_ERROR;
++    }
++
++    p = ngx_cpymem(s->out.data, pop3_logging, sizeof(pop3_logging));
++    p = ngx_cpymem(p, s->salt.data, s->salt.len);
++    s->out.len = p - s->out.data;
++
++    return NGX_OK;
++}
++
++
+ static ngx_int_t
+ ngx_mail_pop3_auth(ngx_mail_session_t *s, ngx_connection_t *c)
+ {

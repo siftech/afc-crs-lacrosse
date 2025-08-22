@@ -1,0 +1,165 @@
+#!/bin/bash
+# Executes the sift/driller docker image
+
+read -r -d '' HELP << EOM
+Executes driller using the driller docker image.
+
+Usage: driller [options] [path to target binary]
+
+Example: driller -D ~/code/driller -t 3200 ~/targets/maze
+  Runs driller on the ~/targets/maze binary for 3200 seconds
+  using the driller code at ~/code/driller
+
+Options:
+  -h        Help
+  -o        Driller output directory            [default: None]
+  -c        AFL Threads                         [default: 1]
+  -d        Driller Threads                     [default: 1]
+  -t        Timeout in seconds                  [default: 600]
+  -I        Docker Image                        [default: sift/driller:latest]
+  -D        Driller code directory              [default: None]
+  -T        Tracer code directory               [default: None]
+  -x        Extra docker parameters             [default: None]
+
+Flags:
+  --daemon  Run as daemon
+  --keep    Keep the container after exiting
+  
+Any additional options will be passed to the driller call
+inside the docker container.
+
+If run as daemon, the stdin and stderr will be redirected to
+a file called {binary-name}.log in the output directory.
+EOM
+
+if [[ $# -eq 0 ]]; then
+    echo "$HELP"
+    exit 0
+fi
+
+# Converts symbolic link to full path
+# More portable version of readlink -f
+readlinkf(){ perl -MCwd -e 'print Cwd::abs_path shift' "$1";}
+
+TARGET_DIR=""
+TARGET_BIN=""
+OUTPUT_DIR=""
+AFL_THREADS=1
+DRILLER_THREADS=1
+TIMEOUT=600
+IMAGE="sift/driller:latest"
+DRILLER_CODE_DIR=""
+TRACER_CODE_DIR=""
+DOCKER_EXTRAS=""
+DAEMON=""
+KEEP="--rm"
+
+POSITIONAL=()
+while [[ $# -gt 0 ]]
+do
+    key="$1"
+    
+    case $key in
+	-h|--help)
+	    echo "$HELP"
+	    exit 0
+	    ;;
+	-o)
+	    OUTPUT_DIR=$(readlinkf $2)
+	    shift
+	    shift
+	    ;;
+	-c)
+	    AFL_THREADS="$2"
+	    shift # past argument
+	    shift # past value
+	    ;;
+	-d)
+	    DRILLER_THREADS="$2"
+	    shift # past argument
+	    shift # past value
+	    ;;
+	-t)
+	    TIMEOUT="$2"
+	    shift
+	    shift
+	    ;;
+	-I)
+	    IMAGE="$2"
+	    shift
+	    shift
+	    ;;
+	-D)
+	    DRILLER_CODE_DIR=$(readlinkf $2)
+	    shift
+	    shift
+	    ;;
+	-T)
+	    TRACER_CODE_DIR=$(readlinkf $2)
+	    shift
+	    shift
+	    ;;
+	-x)
+	    DOCKER_EXTRAS=$2
+	    shift
+	    shift
+	    ;;
+	--daemon)
+	    DAEMON="-d"
+	    shift
+	    ;;
+	--keep)
+	    KEEP=""
+	    shift
+	    ;;
+	*)    # unknown option
+	    if [[ $# -gt 1 ]]; then
+	       POSITIONAL+=("$1") # save it in an array for later
+	    else
+		# The last option should be the target binary
+		if ! [[ -x $key ]]; then
+		    echo Given target is not executable: $key >&2
+		    exit 1
+		fi
+		fullpath=$(readlinkf $key)
+		TARGET_DIR=$(dirname $fullpath)
+		TARGET_BIN=$(basename $fullpath)
+	    fi
+	    shift # past argument
+	    ;;
+    esac
+done
+
+set -- "${POSITIONAL[@]}"
+
+#echo Target directory: $TARGET_DIR
+#echo Target binary: $TARGET_BIN
+#echo Output directory: $OUTPUT_DIR
+#echo AFL threads: $AFL_THREADS
+#echo Driller threads: $DRILLER_THREADS
+#echo Timeout: $TIMEOUT
+#echo Image: $IMAGE
+#echo Driller code dir: $DRILLER_CODE_DIR
+#echo Docker extras: $DOCKER_EXTRAS
+#echo Daemon: $(if [ $DAEMON ]; then echo true; else echo false; fi)
+#echo Keep: $(if [ $KEEP ]; then echo false; else echo true; fi)
+#echo $@
+
+if ! [ $TARGET_DIR ]; then
+    echo "ERROR: No target directory given." >&2
+    exit 1
+fi
+
+docker run $DAEMON $KEEP $DOCKER_EXTRAS \
+       $(if [ $DRILLER_CODE_DIR ]; then echo "-v $DRILLER_CODE_DIR:/home/angr/angr-dev/driller"; fi) \
+       $(if [ $OUTPUT_DIR ]; then echo "-v $OUTPUT_DIR:/home/angr/driller-results"; fi) \
+       $(if [ $TRACER_CODE_DIR ]; then echo "-v $TRACER_CODE_DIR:/home/angr/angr-dev/tracer"; fi) \
+       -v $TARGET_DIR:/home/angr/bin \
+       $IMAGE \
+       run-driller -d $DRILLER_THREADS -c $AFL_THREADS \
+       -t $TIMEOUT -w /home/angr/driller-results \
+       $(if [ $DAEMON ]; then echo "--daemon"; fi) \
+       $@ \
+       /home/angr/bin/$TARGET_BIN
+       
+       

@@ -1,0 +1,87 @@
+ INFO: Running with entropic power schedule (0xFF, 100).
+ INFO: Seed: 2509603836
+ INFO: Loaded 1 modules   (80 inline 8-bit counters): 80 [0x564429392d78, 0x564429392dc8), 
+ INFO: Loaded 1 PC tables (80 PCs): 80 [0x564429392dc8,0x5644293932c8), 
+ /out/pov_harness: Running 1 inputs 100 time(s) each.
+ Running: /work/tmp_blob
+ =================================================================
+ ==17==ERROR: AddressSanitizer: heap-use-after-free on address 0x503000037f60 at pc 0x5644291833fe bp 0x7ffd06774400 sp 0x7ffd067743f8
+ READ of size 8 at 0x503000037f60 thread T0
+     #0 0x5644291833fd in ngx_http_get_host_specs /src/harnesses/bld/src/http/ngx_http_variables.c:2870:64
+     #1 0x56442917ae2c in ngx_http_get_indexed_variable /src/harnesses/bld/src/http/ngx_http_variables.c:647:9
+     #2 0x564429188884 in ngx_http_script_copy_var_len_code /src/harnesses/bld/src/http/ngx_http_script.c:944:17
+     #3 0x564429183fc8 in ngx_http_complex_value /src/harnesses/bld/src/http/ngx_http_script.c:83:16
+     #4 0x564429140b6c in ngx_http_send_response /src/harnesses/bld/src/http/ngx_http_core_module.c:1769:9
+     #5 0x56442918b125 in ngx_http_script_return_code /src/harnesses/bld/src/http/ngx_http_script.c:1506:21
+     #6 0x56442920fb3a in ngx_http_rewrite_handler /src/harnesses/bld/src/http/modules/ngx_http_rewrite_module.c:180:9
+     #7 0x56442913ceee in ngx_http_core_rewrite_phase /src/harnesses/bld/src/http/ngx_http_core_module.c:929:10
+     #8 0x56442913cbb9 in ngx_http_core_run_phases /src/harnesses/bld/src/http/ngx_http_core_module.c:875:14
+     #9 0x56442913cbb9 in ngx_http_handler /src/harnesses/bld/src/http/ngx_http_core_module.c:858:5
+     #10 0x56442915dbce in ngx_http_process_request /src/harnesses/bld/src/http/ngx_http_request.c:2133:5
+     #11 0x56442916206b in ngx_http_process_request_headers /src/harnesses/bld/src/http/ngx_http_request.c:1529:13
+     #12 0x5644290f720c in ngx_event_process_posted /src/harnesses/bld/src/event/ngx_event_posted.c:34:9
+     #13 0x564429091a47 in LLVMFuzzerTestOneInput /src/harnesses/bld/src/harnesses/pov_harness.cc:323:5
+     #14 0x564428f43780 in fuzzer::Fuzzer::ExecuteCallback(unsigned char const*, unsigned long) /src/llvm-project/compiler-rt/lib/fuzzer/FuzzerLoop.cpp:614:13
+     #15 0x564428f2df14 in fuzzer::RunOneTest(fuzzer::Fuzzer*, char const*, unsigned long) /src/llvm-project/compiler-rt/lib/fuzzer/FuzzerDriver.cpp:327:6
+     #16 0x564428f339aa in fuzzer::FuzzerDriver(int*, char***, int (*)(unsigned char const*, unsigned long)) /src/llvm-project/compiler-rt/lib/fuzzer/FuzzerDriver.cpp:862:9
+     #17 0x564428f5fda2 in main /src/llvm-project/compiler-rt/lib/fuzzer/FuzzerMain.cpp:20:10
+     #18 0x7f9149c22082 in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x24082) (BuildId: 0702430aef5fa3dda43986563e9ffcc47efbd75e)
+     #19 0x564428f249ed in _start (/out/pov_harness+0xb59ed)
+ 
+ 0x503000037f60 is located 0 bytes inside of 24-byte region [0x503000037f60,0x503000037f78)
+ freed by thread T0 here:
+     #0 0x564429051a76 in free /src/llvm-project/compiler-rt/lib/asan/asan_malloc_linux.cpp:52:3
+     #1 0x5644290caab8 in ngx_init_cycle /src/harnesses/bld/src/core/ngx_cycle.c:459:9
+     #2 0x564429091143 in InitializeNginx /src/harnesses/bld/src/harnesses/pov_harness.cc:202:11
+     #3 0x564429091ad8 in LLVMFuzzerTestOneInput /src/harnesses/bld/src/harnesses/pov_harness.cc:301:21
+     #4 0x564428f43780 in fuzzer::Fuzzer::ExecuteCallback(unsigned char const*, unsigned long) /src/llvm-project/compiler-rt/lib/fuzzer/FuzzerLoop.cpp:614:13
+     #5 0x564428f2df14 in fuzzer::RunOneTest(fuzzer::Fuzzer*, char const*, unsigned long) /src/llvm-project/compiler-rt/lib/fuzzer/FuzzerDriver.cpp:327:6
+     #6 0x564428f339aa in fuzzer::FuzzerDriver(int*, char***, int (*)(unsigned char const*, unsigned long)) /src/llvm-project/compiler-rt/lib/fuzzer/FuzzerDriver.cpp:862:9
+     #7 0x564428f5fda2 in main /src/llvm-project/compiler-rt/lib/fuzzer/FuzzerMain.cpp:20:10
+     #8 0x7f9149c22082 in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x24082) (BuildId: 0702430aef5fa3dda43986563e9ffcc47efbd75e)
+ 
+ previously allocated by thread T0 here:
+     #0 0x564429051d1e in malloc /src/llvm-project/compiler-rt/lib/asan/asan_malloc_linux.cpp:69:3
+     #1 0x564429102de4 in ngx_alloc /src/harnesses/bld/src/os/unix/ngx_alloc.c:22:9
+     #2 0x5644290ca28c in ngx_init_cycle /src/harnesses/bld/src/core/ngx_cycle.c:358:25
+     #3 0x564429091143 in InitializeNginx /src/harnesses/bld/src/harnesses/pov_harness.cc:202:11
+     #4 0x564429091ad8 in LLVMFuzzerTestOneInput /src/harnesses/bld/src/harnesses/pov_harness.cc:301:21
+     #5 0x564428f43780 in fuzzer::Fuzzer::ExecuteCallback(unsigned char const*, unsigned long) /src/llvm-project/compiler-rt/lib/fuzzer/FuzzerLoop.cpp:614:13
+     #6 0x564428f2df14 in fuzzer::RunOneTest(fuzzer::Fuzzer*, char const*, unsigned long) /src/llvm-project/compiler-rt/lib/fuzzer/FuzzerDriver.cpp:327:6
+     #7 0x564428f339aa in fuzzer::FuzzerDriver(int*, char***, int (*)(unsigned char const*, unsigned long)) /src/llvm-project/compiler-rt/lib/fuzzer/FuzzerDriver.cpp:862:9
+     #8 0x564428f5fda2 in main /src/llvm-project/compiler-rt/lib/fuzzer/FuzzerMain.cpp:20:10
+     #9 0x7f9149c22082 in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x24082) (BuildId: 0702430aef5fa3dda43986563e9ffcc47efbd75e)
+ 
+ SUMMARY: AddressSanitizer: heap-use-after-free /src/harnesses/bld/src/http/ngx_http_variables.c:2870:64 in ngx_http_get_host_specs
+ Shadow bytes around the buggy address:
+   0x503000037c80: fa fa 00 00 00 00 fa fa 00 00 00 fa fa fa fd fd
+   0x503000037d00: fd fd fa fa fd fd fd fd fa fa fd fd fd fd fa fa
+   0x503000037d80: 00 00 00 00 fa fa fd fd fd fd fa fa fd fd fd fd
+   0x503000037e00: fa fa 00 00 00 00 fa fa 00 00 00 00 fa fa 00 00
+   0x503000037e80: 00 00 fa fa 00 00 00 00 fa fa 00 00 00 00 fa fa
+ =>0x503000037f00: 00 00 06 fa fa fa 00 00 07 fa fa fa[fd]fd fd fa
+   0x503000037f80: fa fa 00 00 00 00 fa fa 00 00 00 fa fa fa 00 00
+   0x503000038000: 00 fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+   0x503000038080: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+   0x503000038100: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+   0x503000038180: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+ Shadow byte legend (one shadow byte represents 8 application bytes):
+   Addressable:           00
+   Partially addressable: 01 02 03 04 05 06 07 
+   Heap left redzone:       fa
+   Freed heap region:       fd
+   Stack left redzone:      f1
+   Stack mid redzone:       f2
+   Stack right redzone:     f3
+   Stack after return:      f5
+   Stack use after scope:   f8
+   Global redzone:          f9
+   Global init order:       f6
+   Poisoned by user:        f7
+   Container overflow:      fc
+   Array cookie:            ac
+   Intra object redzone:    bb
+   ASan internal:           fe
+   Left alloca redzone:     ca
+   Right alloca redzone:    cb
+ ==17==ABORTING

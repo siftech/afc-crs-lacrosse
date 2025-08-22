@@ -1,0 +1,21 @@
+#!/bin/bash
+# This is a oneliner that will compile the matchmaker within the non-rsync code directory.
+# There are hardcoded paths and images in here. Do not expect it to work for you on anyother project.
+
+PROGNAME=$(basename "$0")
+warn()  { echo "$PROGNAME: ${@}" 1>&2; }
+die()   { warn "${@}"; exit 1; }
+dbug()   { test -z $DEBUG || warn "${@}"; }
+
+# example usage:
+   #dbug This only prints if DEBUG is defined
+   #test -e foo || die file foo must exist
+   #test -z $FOO && die Environment variable FOO must be defined
+
+# bash-ism to get location of script.  Must use /bin/pwd to get absolute path.
+thisdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && /bin/pwd )"
+dbug thisdir is $thisdir
+
+#chmod -R a+rwx $thisdir/../matchmaker
+make -C $thisdir/../matchmaker really_clean
+HOST_USERNAME=root HOST_GROUPNAME=${USER} HOST_USERID=`id -u $HOST_USERNAME`  HOST_GROUPID=`id -g $HOST_USERNAME` HOST_LOGDIR=. docker run --rm -e HOST_USERNAME -e HOST_GROUPNAME -v /tmp/host_username_realuserdir:/realuser -v $thisdir/..:/lacrosse neo-fuzz-ccl:latest /bin/bash -c "make -C /lacrosse/matchmaker"

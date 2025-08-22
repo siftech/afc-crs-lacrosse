@@ -1,0 +1,92 @@
+{
+  "runs": [
+    {
+      "artifacts": [
+        {
+          "location": {
+            "index": 0,
+            "uri": "tika-parsers/tika-parsers-standard/tika-parsers-standard-modules/tika-parser-audiovideo-module/src/main/java/org/apache/tika/parser/m3/M3U8Parser.java"
+          }
+        }
+      ],
+      "automationDetails": {
+        "id": "/"
+      },
+      "conversion": {
+        "tool": {
+          "driver": {
+            "name": "GitHub Code Scanning"
+          }
+        }
+      },
+      "results": [
+        {
+          "correlationGuid": "ccd24a0e-ca84-4da2-8e80-58b52d212f1e",
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "index": 0,
+                  "uri": "tika-parsers/tika-parsers-standard/tika-parsers-standard-modules/tika-parser-audiovideo-module/src/main/java/org/apache/tika/parser/m3/M3U8Parser.java"
+                },
+                "region": {
+                  "endColumn": 14,
+                  "endLine": 173,
+                  "startColumn": 13,
+                  "startLine": 170
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "The M3U8Parser contains a buffer that can be overwritten. This buffer is allocated in the heap portion of memory.\n"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "5d298421bffbf8cc:6"
+          },
+          "properties": {
+            "github/alertNumber": 1,
+            "github/alertUrl": "https://api.github.com/repos/aixcc-afc/round-exhibition3-tika/code-scanning/alerts/1"
+          },
+          "rule": {
+            "id": "CWE-918",
+            "index": 0
+          },
+          "ruleId": "CWE-918"
+        }
+      ],
+      "tool": {
+        "driver": {
+          "name": "CodeScan++",
+          "rules": [
+            {
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "fullDescription": {
+                "text": "The web server uses a heap to store data from a buffer. This buffer contains unchecked bounds that can lead to arbitrary code execution."
+              },
+              "helpUri": "https://cwe.mitre.org/",
+              "id": "CWE-918",
+              "properties": {},
+              "shortDescription": {
+                "text": "Heap-based Buffer Overflow"
+              }
+            }
+          ],
+          "version": "1.0.0"
+        }
+      },
+      "versionControlProvenance": [
+        {
+          "branch": "refs/heads/challenges/tk-delta-02",
+          "repositoryUri": "https://github.com/aixcc-afc/round-exhibition3-tika",
+          "revisionId": "ddb8a6d80da8e351e9f43020a616cf12dbe92b51"
+        }
+      ]
+    }
+  ],
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0"
+}

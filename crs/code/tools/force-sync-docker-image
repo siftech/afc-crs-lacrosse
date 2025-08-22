@@ -1,0 +1,48 @@
+#!/bin/bash
+# give this an image name that is in the local docker engine and it will distribute it to the cluster
+# note should add a force option for when a new version must go out even if one exists out there.
+# and that should also avoid the -e /tmp/$1.gz check at the start
+
+# bash-ism to get location of script.
+toolsdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && pwd )"
+rsynccode=${toolsdir}/../../rsync/code	# should be right whether started in rsync/code or your dev code/
+
+if [[ $(list-cluster-nodes | wc -l) -le 1 ]]
+then
+  echo "No other hosts to sync to, exiting."
+  exit 0
+fi
+
+echo First rsyncing code b/c we need some tools over there
+$toolsdir/rsync-code
+
+ ##FIXME make sure /tmp has enuf space or this will hang forever, ugh
+  echo Saving the local docker image to /tmp/$1.gz .  This takes a long time.
+  time ${toolsdir}/docker save $1 |gzip > /tmp/$1.gz
+  echo Done saving the local docker image
+
+chmod a+rw /tmp/$1.gz	# add perms so others can replace if needed
+
+doit () {
+    host=$1;
+    echo Ensuring docker engine is running on $host
+    $toolsdir/sshc $host "${rsynccode}/tools/start-docker-engine"
+    echo Copying image $2 to $host
+    scp /tmp/$2.gz $host:/tmp
+    $toolsdir/sshc $host "chmod a+rw /tmp/$2.gz"
+    echo Loading image $2 on $host.  This takes a long time.
+    $toolsdir/sshc $host "${rsynccode}/tools/docker load < /tmp/$2.gz"
+    $toolsdir/sshc $host "rm -f /tmp/$2.gz"
+}
+
+for h in $($toolsdir/list-cluster-nodes); do
+   if [ $h == `hostname` ] ; then
+	   echo Skipping $h;
+   else
+     doit $h $1 &
+   fi
+done
+
+wait 
+rm -f /tmp/*.gz	# remove all .gz in case some crap got left behind by a failed run
+echo Done syncing docker image $1

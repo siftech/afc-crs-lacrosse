@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# make-and-test-patch-on-cpvs my_patcher my_patch.diff
+
+# Check if the required arguments are provided
+if [ $# -lt 2 ]; then
+    echo "Usage: $0 <pipeline_name> <patch_name>"
+    exit 1
+fi
+
+pipeline_name=$1
+model_name=$2
+patch_name=$3
+
+subdir_key="patches/good_patch.diff" # Probably need to change this to something less nginx-specific
+# subdir_key="patches/ngx_http_userid_filter_module.c_claude-3.5-sonnet_direct_5v2jj6h1.patch" # cpv15
+
+echo
+echo "STEP 1: RUN THE PIPELINE $pipeline_name WITH MODEL $model_name ON ALL CPVS"
+# FIXME Adapt to new structure
+run-on-subdirs-containing $subdir_key gen-lax-ref-patch $pipeline_name $model_name patches/$patch_name
+
+echo
+echo "STEP 2: TEST THE PATCH $patch_name ALL CPVS"
+test-patch-on-cpvs $patch_name

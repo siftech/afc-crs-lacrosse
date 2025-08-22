@@ -1,0 +1,41 @@
+# Hey EMACS, this should be in -*- perl -*- mode
+# ------------------------------------------------------------
+# COPYRIGHT START
+# Copyright (c) 2014, Smart Information Flow Technologies (SIFT).
+# COPYRIGHT END
+# ------------------------------------------------------------
+use PRT::Perf qw(bigger_is_better);
+use FindBin;
+
+$test = {
+
+  # This test isn't run by default --- WE EXPECT IT TO FAIL.  Instead,
+  # the test fail-monitors is run by default.  That test runs this one
+  # (and other similar must-fail tests) explicitly, and verifies the
+  # expected failure.
+  defaultIgnore => 1,
+
+  description => "CGC Optimus",
+  keywords => [ qw / perf / ],
+  agents => [
+    {
+      name         => "optimus",
+      description  => "Runs optimus on a fixed workload",
+      command      => ["cat", "$FindBin::RealBin/selftest/perffail5-src.log"],
+      exit_code    => 0,
+      comparo      => new PRT::LineComparo( key_fact_regexp => "^This" ),
+      perfchecks   => [
+        {
+          regex => "^(CB[0-9]+) +([a-zA-Z0-9_]*) +([0-9.]+)",
+          tests => [
+            { labels => ['.*', 'FileSize'], compFn => bigger_is_better(abs => 100) },
+            { labels => ['.*', 'MemUse'],   compFn => bigger_is_better(abs => 100) },
+            { labels => ['.*', 'ExecTime'], compFn => bigger_is_better(abs => 0.1) },
+          ],
+        },
+      ],
+    },
+  ],
+};
+# Always end with a reference to the test specification hash reference.
+$test;

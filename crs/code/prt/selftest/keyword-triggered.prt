@@ -1,0 +1,46 @@
+# Hey EMACS, this should be in -*- perl -*- mode
+# ------------------------------------------------------------
+# COPYRIGHT START
+# COPYRIGHT END
+# ------------------------------------------------------------
+#
+
+my $true;
+my $false;
+
+if ( -e "/bin/true" ) {
+  $true = "/bin/true";
+} elsif (-e "/usr/bin/true") {
+  $true = "/usr/bin/true";
+} else {
+  die "Cannot find \"true\" executable in /bin or /usr/bin.";
+}
+
+if ( -e "/bin/false" ) {
+  $false = "/bin/false";
+} elsif (-e "/usr/bin/false") {
+  $false = "/usr/bin/false";
+} else {
+  die "Cannot find \"false\" executable in /bin or /usr/bin.";
+}
+
+
+
+$test = { 
+  description => "test if can tell whether test was triggered by a specific keyword",
+	# NOTE this only works if run with -k keyword! So it is not a default test...so need --all too
+  keywords => [ qw / prt self-test keyword / ],  
+  defaultIgnore => 1,	# ignored by default
+  agents => [ 
+    {
+      name         => "true", 
+      #command   => ["/bin/echo",sub { return(PRT::triggered_by_keyword("keyword") ?  "/bin/true" : "/bin/false");}],
+      command   => [sub { return(PRT::triggered_by_keyword("keyword") ?  $true : $false);}],
+      exit_code    => 0,
+      comparo      => undef,
+    },
+  ]
+};
+  
+# Always end with a reference to the test specification hash reference.
+$test;

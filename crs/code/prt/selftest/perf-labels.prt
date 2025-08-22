@@ -1,0 +1,45 @@
+# Hey EMACS, this should be in -*- perl -*- mode
+# ------------------------------------------------------------
+# COPYRIGHT START
+# Copyright (c) 2014, Smart Information Flow Technologies (SIFT).
+# COPYRIGHT END
+# ------------------------------------------------------------
+use PRT::Perf;
+use FindBin;
+
+$test = {
+  description => "Tests of various lengths of words for labels",
+  keywords => [ qw / perf / ],
+  agents => [
+    {
+      name         => "complex",
+      description  => "Runs some fixed workload",
+      command      => ["cat", "$FindBin::RealBin/selftest/perf-labels-src.log"],
+      exit_code    => 0,
+      comparo      => new PRT::LineComparo( key_fact_regexp => "^This" ),
+      perfchecks   => [
+        { # note forth and and fifth groups are optional
+          regex => "^FUBAR val ([a-z0-9]+) <- ([a-zA-Z0-9_]*) ([a-z]*) ([A-Z]*)? ([a-z]*)?",
+          value => 1, # value is NOT the last one --- because 3rd party s/w, etc.
+          labelIndices => [2, 3, 5], # ignore 4th group
+          defaultCompFn => PRT::Perf::smaller_is_better(pct => 0.10),
+          tests => [
+            { labels => ['.*', 'air', 'speed'],
+              compFn => PRT::Perf::bigger_is_better(pct => 0.05)  },
+            { labels => ['.*', 'land', 'speed']  },
+            { labels => ['.*', 'water', 'speed'] },
+            { labels => ['.*', 'color'],
+              compFn => PRT::Perf::same_string },
+            { labels => ['.*', 'bigOK'],
+              compFn => PRT::Perf::numeric_in_range(limitBelowPct => 0.05) },
+            { labels => ['.*', 'capBoth'],
+              compFn => PRT::Perf::numeric_in_range(limitBelowPct => 0.05,
+                                                    limitAbovePct => 0.1) }
+          ]
+        },
+      ],
+    },
+  ],
+};
+# Always end with a reference to the test specification hash reference.
+$test;

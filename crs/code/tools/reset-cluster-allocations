@@ -1,0 +1,26 @@
+#!/bin/bash
+
+#echo Warning, resetting nextcluster counter can cause problems due to files existing from prior runs with re-used cluster ID in rendezvous dirs
+#echo Suggest editing empty-*-cluster-allocations to plus-up the initial counter and re-running 
+
+# bash-ism to get location of script.
+thisdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && pwd )"
+# #echo thisdir is $thisdir
+
+# now we get conditional on which cluster we are on.  This is one of the few scripts that
+# has this conditionalization, the others mostly get node names from the contents of the cluster-allocation file
+
+export host=`hostname`;
+#echo host is $host
+
+if [ $host == "pixel-phantom" ]; then 
+    cp $thisdir/empty-pixel-phantom-cluster-allocations /tmp/cluster-allocation
+elif [ $host == "pixel-phantom-fb0" ]; then 
+    cp $thisdir/empty-pixel-phantom-fb0-cluster-allocations /tmp/cluster-allocation
+else
+    echo "Unknown cluster host; edit this script for a new cluster"
+    exit 1;
+fi
+
+chmod a+rw /tmp/cluster-allocation
+$thisdir/kill-stray-condor-processes

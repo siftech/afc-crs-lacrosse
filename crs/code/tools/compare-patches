@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# Define relative paths to the files
+relfile1="records/fnpatch"
+relfile2="good_patch.diff"
+
+# Convert relative paths to absolute paths based on the calling directory
+file1="$(realpath "$relfile1")"
+file2="$(realpath "$relfile2")"
+
+emacs -nw --eval "(progn
+  (split-window-right)
+  (other-window 1)
+  (find-file \"$file2\")
+  (other-window 1)
+  (find-file \"$file1\"))"

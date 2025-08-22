@@ -1,0 +1,37 @@
+# Ignore everything by default
+*
+
+# Allow the README
+!README.md
+
+# Allow .gitignore itself
+!.gitignore
+
+# Allow juliet support
+!juliet-support/
+!juliet-support/*
+!juliet-support/*/*
+
+# Allow "problems" directory itself but ignore its contents
+!problems/
+problems/*
+
+# Allow select subdirectories of "problems"
+!problems/*/
+!problems/juliet_CWE416_Use_After_Free__return_freed_ptr_01/*
+!problems/juliet_CWE416_Use_After_Free__return_freed_ptr_01/*/*
+
+# Allow specific files in any subdirectory under "problems"
+!problems/*/bic
+!problems/*/bic_delta
+!problems/*/bic_stderr.log
+!problems/*/harness
+!problems/*/harness_name
+!problems/*/head_stderr.log
+!problems/*/patches/
+!problems/*/patches/good_patch.diff
+!problems/*/vuln.blob
+
+# Allow "results" directory but ignore its contents
+!results/
+results/**/*

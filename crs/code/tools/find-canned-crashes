@@ -1,0 +1,15 @@
+#!/bin/bash
+# canned crashes for program X[.y] must be named pov-X
+# first arg=directory to search, second is X
+#find $1 -name pov-$2 | xargs -L1 readlink -e
+# and should be in same dir as target...so just pass this target
+
+FULL_FILENAME=$1
+FILENAME=${FULL_FILENAME##*/}
+fn=${FILENAME%%.*}
+#echo fn is $fn
+dn=$(dirname $(readlink -f "$1"))
+#echo dn is $dn
+
+find "$dn" -name "pov-$fn" -print
+

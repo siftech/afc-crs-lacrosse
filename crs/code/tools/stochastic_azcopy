@@ -1,0 +1,22 @@
+#!/bin/bash
+# usage: stochastic_azcopy.sh <success_pct> <src_url> <dest_dir>
+
+success_pct=$1
+src_url=$2
+dest_dir=$3
+
+rand=$(( RANDOM % 100 ))
+
+echo "Stochastic azcopy (random=$rand, threshold=$success_pct)" >&2
+# Print the current time in HH:MM:SS format
+echo "Current time: $(date +%T)"
+
+if (( rand < success_pct )); then
+  echo "Stochastic azcopy: letting real command run" >&2
+  azcopy copy "$src_url" "$dest_dir"
+else
+  corrupted_url=$(echo "$src_url" | sed 's|blob.core.windows.net|tls-timeout.test|')
+  echo "Stochastic azcopy: simulating TLS failure with corrupted URL: $corrupted_url" >&2
+  azcopy copy "$corrupted_url" "$dest_dir"
+fi
+	  

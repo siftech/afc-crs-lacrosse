@@ -1,0 +1,71 @@
+#!/usr/bin/env perl
+# releasing cluster resources recorded in tmpfile owned by this user
+
+use File::Basename qw ( fileparse );
+use Data::Dumper qw(Dumper);
+
+#----------------------------------------------
+# file locking
+
+use Fcntl qw(:flock SEEK_END);
+
+sub lock {
+        my ($fh) = @_;
+        flock($fh, LOCK_EX) or die "Cannot lock file $!\n";
+        # and, in case someone appended while we were waiting...
+        #seek($fh, 0, SEEK_END) or die "Cannot seek - $!\n";
+    }
+
+sub unlock {
+        my ($fh) = @_;
+        flock($fh, LOCK_UN) or die "Cannot unlock file- $!\n";
+    }
+
+#----------------------------------------------
+# do the actual cluster host usage removal
+
+my $user = $ENV{'USER'};
+my $fh;
+#warn "Trying to remove cluster allocation for user $user\n";
+
+my ($program, $pdir, $psuffix) = fileparse($0, qr/\.[^.]*/);
+my $fn = "/tmp/cluster-allocation";
+if (! -e $fn) { 
+	warn "$fn doesnt exist: $!; resetting"; 
+        system("$pdir/reset-cluster-allocations");
+	}
+my $data = do {
+      if (open $fh, '+<', $fn) {lock($fh); local $/; <$fh> }
+      else { undef }
+      };
+eval $data;	# this reloads the hashes from $fn
+
+# get cluster IDs from username
+my @user_clusters = grep { $cluster_owners{$_} eq $user } keys %cluster_owners;
+#warn "User's clusters are @user_clusters\n";
+
+# Get space sep string of hostnames from user clusters (or undef)
+$hosts_used = $cluster_hosts{ $_ } foreach @user_clusters;
+
+if (not (defined $hosts_used)) { warn "User $user has no clusters in use, they may already have been removed; exiting successfully\n";  exit 0;}
+
+warn "found used hosts to release: $hosts_used\n";
+
+my @hosts_used= split(/ /,$hosts_used);
+
+for my $host (@hosts_used) { $used{$host}--; }
+
+for my $cluster (@user_clusters) {
+  delete $cluster_hosts{$cluster}; 
+  delete $cluster_owners{$cluster};
+}
+
+# write the revised status back out
+seek($fh, 0, 0) or die "Cannot seek - $!\n"; # go back to start of file
+truncate $fh,0;
+
+my $dd = Data::Dumper->new([\@hosts, \%cores, \%used, \%cluster_hosts, \%cluster_owners, $nextcluster],[qw(*hosts *cores *used *cluster_hosts *cluster_owners *nextcluster)]);
+print $fh $dd->Dump;
+unlock($fh);
+close $fh;
+

@@ -1,0 +1,3 @@
+This checks that out-of-bounds values fail.
+
+FUBAR val 95 <- ID_1 capBoth X y

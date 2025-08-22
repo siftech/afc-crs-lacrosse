@@ -1,0 +1,53 @@
+#!/usr/bin/env perl
+# releasing cluster resources recorded in tmpfile
+
+use File::Basename qw ( fileparse );
+use Data::Dumper qw(Dumper);
+
+#----------------------------------------------
+# file locking
+
+use Fcntl qw(:flock SEEK_END);
+
+sub lock {
+        my ($fh) = @_;
+        flock($fh, LOCK_EX) or die "Cannot lock file $!\n";
+        # and, in case someone appended while we were waiting...
+        #seek($fh, 0, SEEK_END) or die "Cannot seek - $!\n";
+    }
+
+sub unlock {
+        my ($fh) = @_;
+        flock($fh, LOCK_UN) or die "Cannot unlock file- $!\n";
+    }
+#----------------------------------------------
+# do the actual cluster host usage removal
+
+my $cluster= shift;	# cluster id is first and only arg
+warn "Trying to remove cluster allocation for cluster $cluster\n";
+my ($program, $pdir, $psuffix) = fileparse($0, qr/\.[^.]*/);
+
+  my $fn = "/tmp/cluster-allocation";
+  if (! -e $fn) { 
+	warn "$fn doesnt exist: $!; resetting"; 
+        system("$pdir/reset-cluster-allocations");
+	}
+  do $fn;	# this reloads the hashes from $fn
+
+  $hosts_used= $cluster_hosts{$cluster};	# yields a space sep string of hostnames or undef
+  if (not (defined $hosts_used)) { warn "Session $cluster is not recorded, it may already have been removed; exiting successfully\n";  exit 0;}
+  warn "found used hosts to release: $hosts_used\n";
+
+  my @hosts_used= split(/ /,$hosts_used);
+
+    for my $host (@hosts_used) { $used{$host}--; }
+    delete $cluster_hosts{$cluster};
+
+	# write the revised status back out
+    open(my $allocfile, ">", $fn) or die "Can't open $fn for write: $!";
+    lock($allocfile);
+    seek($allocfile, 0, 0) or die "Cannot seek - $!\n"; # go back to start of file
+    my $dd = Data::Dumper->new([\@hosts, \%cores, \%used, \%cluster_hosts, \%cluster_owners, $nextcluster],[qw(*hosts *cores *used *cluster_hosts *cluster_owners *nextcluster)]);
+    print $allocfile $dd->Dump;
+    unlock($allocfile);
+    close $allocfile;

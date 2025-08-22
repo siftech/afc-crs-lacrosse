@@ -1,0 +1,47 @@
+*** heap_overflow_01_stdin.c	2024-04-04 13:23:15.826184693 -0500
+--- /var/folders/5s/cx04gv9j1mq4gvcv2lw70s400000gn/T/fixed_codeufic5x38.c	2024-04-04 14:14:48.782612590 -0500
+*************** heap_of2 = malloc(HEAP_SIZE);
+*** 25,44 ****
+  printf("Heap Address 2 of %d bytes: %p\r\n", HEAP_SIZE, heap_of2);
+  printf("Copying contents of argv[1] to Heap Address 1\r\n\r\n");
+  scanf("%s", line);
+! strcpy(heap_of, line);
+  //free(heap_of);
+  free(heap_of2);
+  
+  printf("You entered %s \r\n", heap_of);
+  printf("Try Again\r\n");
+  
+  return 0;
+  }
+  
+  void dat_shell(){
+- 
+  printf("Congrats! I will now execute /bin/sh - b1ack0wl\r\n");
+  system("/bin/sh -c");
+  exit(0);
+- 
+  }
+--- 25,46 ----
+      printf("Heap Address 2 of %d bytes: %p\r\n", HEAP_SIZE, heap_of2);
+      printf("Copying contents of argv[1] to Heap Address 1\r\n\r\n");
+      scanf("%s", line);
+!     strncpy(heap_of, line, HEAP_SIZE - 1); // Use strncpy() with appropriate size limit
+!     heap_of[HEAP_SIZE - 1] = '\0'; // Ensure null termination
+      //free(heap_of);
+      free(heap_of2);
+  
+      printf("You entered %s \r\n", heap_of);
+      printf("Try Again\r\n");
+  
++     free(heap_of); // Free the allocated memory
++ 
+      return 0;
+  }
+  
+  void dat_shell(){
+      printf("Congrats! I will now execute /bin/sh - b1ack0wl\r\n");
+      system("/bin/sh -c");
+      exit(0);
+  }
++ 

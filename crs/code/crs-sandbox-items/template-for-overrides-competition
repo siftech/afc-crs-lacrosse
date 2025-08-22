@@ -1,0 +1,163 @@
+# This file is used just for exposing host ports for local Docker Compose development
+# Competitors: You may modify this file to make local development easier.
+# However, this file will not impact services at competition, only local development.
+
+# We recommend you only bind ports to 127.0.0.1 in this file & have a GitHub action checking this.
+# If you need to bind to other interfaces, putting a comment in this file containing only "exposed-port-check: disable" will turn off that check.
+
+---
+services:
+  # sandbox/compose.yaml
+  load-cp-images:
+    restart: "no"
+    volumes:
+      - type: bind
+        source: ${PWD}/cp_root
+        target: /cp_root
+        bind:
+          propagation: rprivate
+
+  mock-crs:
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+
+  dind:
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '8'
+    #       memory: 8GB
+    #     reservations:
+    #       cpus: '1'
+    #       memory: 256M
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      - type: bind
+        source: ${PWD}/dind_cache
+        target: /var/lib/docker
+        bind:
+          propagation: rprivate
+
+  capi:
+    entrypoint:
+      - "bash"
+      - "-xc"
+      - "chmod 777 /crs_scratch && mkdir -p /home/appuser && printf '[safe]\ndirectory = *\n' > /home/appuser/.gitconfig && /code/entrypoint.sh"
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      - type: bind
+        source: ${PWD}/capi_logs
+        target: /var/log/capi
+        bind:
+          propagation: rprivate
+      - type: bind
+        source: ${PWD}/cp_root
+        target: /cp_root
+        bind:
+          propagation: rprivate
+  
+  iapi:
+    configs:
+      - source: nginx_local_config
+        target: /etc/nginx/templates/default.conf.template
+    depends_on:
+      capi:
+        condition: service_healthy
+
+  # top-level compose.yaml
+  crs:
+    depends_on:
+      load-cp-images:
+        condition: service_completed_successfully
+    networks:
+      - crs-internal
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy/build of crs code
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+
+  nix-copy:
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: XXXNUMFBSNODE1XXX
+  FUZZBOMB@:
+    networks:
+      - crs-internal
+    ports:
+      - XXXSLIMEPORTXXX:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: XXXNUMFBSNODE2XXX
+  FUZZBOMB@:
+    networks:
+      - crs-internal
+    ports:
+      - XXXSLIMEPORTXXX:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND
+##DUPL: XXXNUMFBSNODE3XXX
+  FUZZBOMB@:
+    networks:
+      - crs-internal
+    ports:
+      - XXXSLIMEPORTXXX:4005
+    volumes:
+      - type: bind
+        source: ${PWD}/crs_scratch
+        target: /crs_scratch
+        bind:
+          propagation: rprivate
+      # FIXME this is scary. It is mounting the local version of crs over the top of the Dockerfile copy>
+      - type: bind
+        source: ${PWD}/crs
+        target: /lacrosse
+        bind:
+          propagation: rprivate
+##DUPLEND

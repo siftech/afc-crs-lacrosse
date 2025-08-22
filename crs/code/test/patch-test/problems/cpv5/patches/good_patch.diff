@@ -1,0 +1,34 @@
+diff --git a/src/core/ngx_cycle.c b/src/core/ngx_cycle.c
+index d56a9be..0fd8297 100644
+--- a/src/core/ngx_cycle.c
++++ b/src/core/ngx_cycle.c
+@@ -57,13 +57,12 @@ ngx_con_his_t *
+ ngx_get_con_his(ngx_con_his_t *con_his_list, size_t number)
+ {
+     ngx_con_his_t *target = con_his_list;
+-    size_t counter = 0;
+ 
+     if (!target || number == 1 || !number) {
+         return target;
+     }
+ 
+-    for ( ; counter <= number; counter++) {
++    for ( ; target && target->next; target++) {
+         target = target->next;
+     }
+ 
+diff --git a/src/http/ngx_http_variables.c b/src/http/ngx_http_variables.c
+index b824058..31c19e4 100644
+--- a/src/http/ngx_http_variables.c
++++ b/src/http/ngx_http_variables.c
+@@ -2848,8 +2848,8 @@ ngx_http_get_last_ip_variable(ngx_http_request_t *r,
+     ngx_http_variable_value_t *v, uintptr_t data)
+ {
+     ngx_con_his_t *last_ip = ngx_get_con_his(r->connection_history, r->request_counter);
+-    v->data = last_ip->addr_text.data;
+-    v->len = last_ip->addr_text.len;
++    v->data = (last_ip) ? last_ip->addr_text.data : (u_char*)"NONE\n";
++    v->len = (last_ip) ? last_ip->addr_text.len : 5;
+ 
+     return NGX_OK;
+ }

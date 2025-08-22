@@ -1,0 +1,59 @@
+{
+  "properties": {
+    "file": {
+      "format": "file-path",
+      "title": "File",
+      "type": "string",
+      "description": "Pathname of input file, the file to be patched."
+    },
+    "patch_file": {
+      "format": "path",
+      "title": "Patch File",
+      "type": "string",
+      "description": "Pathname to which the patch file should be written."
+    },
+    "patched_file": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "path"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Patched File",
+      "description": "If supplied, a pathname to which the patched file should be written."
+    },
+    "patch_function": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Patch Function",
+      "description": "If known, the name of the function to patch."
+    },
+    "line_number": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Line Number",
+      "description": "If known, a line number that's likely to be flawed. E.g., a line number executed immediately before sanitizer trip"
+    }
+  },
+  "required": [
+    "file",
+    "patch_file",
+  ],
+  "title": "PatchFileInputs",
+  "type": "object"
+}

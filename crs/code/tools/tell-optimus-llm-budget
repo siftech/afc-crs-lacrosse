@@ -1,0 +1,31 @@
+#!/bin/bash
+
+# Tell OPTIMUS agent about the spending of the current model.
+
+PROGNAME=$(basename "$0")
+warn()  { echo "$PROGNAME: ${@}" 1>&2; }
+die()   { warn "${@}"; exit 1; }
+dbug()   { test -z $DEBUG || warn "${@}"; }
+
+# bash-ism to get location of script.  Must use /bin/pwd to get absolute path.
+thisdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && /bin/pwd )"
+dbug thisdir is $thisdir
+
+dbug all args are "$@"
+
+test -z "$USER" && export USER="${HOME##*/}"
+export CONTAINER_PREFIX=${CONTAINER_PREFIX:-$USER}       # Allow a diff container prefix
+dbug CONTAINER_PREFIX is $CONTAINER_PREFIX
+export CIRCA_BASEPORT=${CIRCA_BASEPORT:-10000}
+dbug CIRCA_BASEPORT is $CIRCA_BASEPORT
+
+#model=$1
+spent=$1
+budget=$2 # max amount allowed to spend
+
+# vc_id=$4
+# pc_id=$5
+
+optimus_message="((:type :llm-budget) (:spent \"$spent\") (:budget \"$budget\"))"
+echo ${optimus_message}
+$thisdir/../matchmaker/tell-amp -n OPTIMUS0-AMP-${CIRCA_BASENAME}-ACCEPTOR "${optimus_message}"

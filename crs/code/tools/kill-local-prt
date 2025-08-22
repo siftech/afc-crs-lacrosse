@@ -1,0 +1,9 @@
+#!/bin/bash
+
+doit () {
+    echo Killing prt on localhost
+    pkill -u $USER --signal 9 -f prt
+}
+
+doit
+exit 0;

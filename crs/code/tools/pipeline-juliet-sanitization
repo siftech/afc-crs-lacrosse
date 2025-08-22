@@ -1,0 +1,37 @@
+#!/bin/bash
+
+#Assume working in the local directory unless otherwise stated
+WORKING_PATH=.
+
+#If an argument has been given for the path, then use that instead of local .
+if [ $# -gt 0 ]; then
+    WORKING_PATH=$1
+fi
+
+#This does the initial compilation process to get .out executables
+#NOTE: This needs the justbad and justgood script files in this directory to run
+CUR_DIR=`pwd`
+cp Makefile ${WORKING_PATH}/
+cd ${WORKING_PATH}
+make clean
+make all
+cd ${CUR_DIR}
+
+#This checks for non-deterministic executables and throws them into another directory (out of sight, out of mind)
+#NOTE: This needs the isnt-alway-bad script file in this directory to run
+./set-aside-isnt-always-bad ${WORKING_PATH}
+
+#Generates alternative c and cpp files with the local includes fully replaced
+./replace-includes-local ${WORKING_PATH}
+
+##ISSUE: Moving the alternative c and cpp files into another directory means the
+##  `make all` command does not compile them... perhaps cp the Makefile?
+#Need to rerun the makefile in order to compile the modified c and cpp files
+#  NOTE: The subset that are not deterministic will not receive these alternative files and thus are not compiled again in any way
+#make all
+
+#Run the compiled executable programs and store the error outputs (sanitizer log)
+./collect-sanitizer-scripts ${WORKING_PATH}
+
+#To avoid `make clean` erasing all the final hard work, store the generated .good.c(pp), .bad.c(pp), and .out files in the appropriate directories
+./organize-files ${WORKING_PATH}

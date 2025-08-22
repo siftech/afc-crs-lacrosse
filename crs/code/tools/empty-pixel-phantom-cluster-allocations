@@ -1,0 +1,20 @@
+@hosts = (
+           'pixel-phantom.<AZURE_HOST>',
+           'pixel-phantom-fb0.<AZURE_HOST>',
+           'pixel-phantom-fb1.<AZURE_HOST>',
+         );
+%cores = (
+           'pixel-phantom.<AZURE_HOST>' => 128,
+           'pixel-phantom-fb0.<AZURE_HOST>' => 128,
+           'pixel-phantom-fb1.<AZURE_HOST>' => 128,
+         );
+%used = (
+          'pixel-phantom.<AZURE_HOST>' => 0,
+          'pixel-phantom-fb0.<AZURE_HOST>' => 0,
+          'pixel-phantom-fb1.<AZURE_HOST>' => 0,
+        );
+%cluster_hosts = (
+                 );
+%cluster_owners = (
+                );
+$nextcluster = '1';

@@ -1,0 +1,29 @@
+#!/bin/bash
+
+# Ensure the script exits on any errors
+set -e
+
+ref_dir=$(pwd)
+
+# Check if the required arguments are provided
+if [ "$#" -ne 2 ]; then
+    echo "Args are $@"
+    echo "Usage: $0 <patch_path>"
+    exit 1
+fi
+
+PATCH_PATH=$1
+RESULTS_PATH=$2
+
+POV_BLOB_PATH="vuln.blob"
+HARNESS=$(cat "harness_name")
+CP_PATH="$LACROSSE_HOME/../../challenge-004-nginx-cp"
+
+#echo "Patch path is $PATCH_PATH"
+#echo "POV blob path is $POV_BLOB_PATH"
+#echo "Harness is $HARNESS"
+#echo "CP path is $CP_PATH"
+
+test-patch $PATCH_PATH $POV_BLOB_PATH $HARNESS $CP_PATH $RESULTS_PATH
+
+

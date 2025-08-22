@@ -1,0 +1,140 @@
+Running 13 tests:
+  comparo-failures ............ FAILURE: could not find a match to rubric line 1:
+  One
+.No lines of the rubric had been matched.
+FAILURE: could not find a match to rubric line 3:
+  Foo
+.Last match was to rubric line 2
+  Threeby results line 3
+threeFAILURE: fact in results line 2 does not match fact in rubric line 2
+  Two
+  two
+.Last match was to rubric line 1
+  oneby results line 1
+oneFAILURE: could not find a match to rubric line 4:
+  Four
+.Last match was to rubric line 3
+  thrEEby results line 3
+threeFAIL
+ - Agent 1 'line_comparo' (exit: 0): FAIL
+ - Agent 2 'line_comparo_nocase' (exit: 0): FAIL
+ - Agent 3 'strict_line_comparo' (exit: 0): FAIL
+ - Agent 4 'strict_line_comparo_nocase' (exit: 0): FAIL
+  fail_daemon_must_survive0 ... ** Daemon daemon died and was labeled must_survive - aborting test
+FAIL
+ - Agent 1 'daemon' (exit: 0): FAIL
+ - Agent 2 'sleeper' (exit: 0): NOT COMPARED
+  fail_daemon_must_survive1 ... ** Daemon daemon died and all_daemons_must_survive is true - aborting test
+FAIL
+ - Agent 1 'daemon' (exit: 0): FAIL
+ - Agent 2 'sleeper' (exit: 0): NOT COMPARED
+  fail_exit_default ........... 
+** Agent 'default' exited with code 1, but test expected 0
+** check_exit_code for default returned 1 - aborting test
+FAIL
+ - Agent 1 'default' (exit: 1): FAIL
+  fail_exit_expect0 ........... 
+** Agent 'expect0' exited with code 1, but test expected 0
+** check_exit_code for expect0 returned 1 - aborting test
+FAIL
+ - Agent 1 'expect0' (exit: 1): FAIL
+  fail_exit_expect1 ........... 
+** Agent 'expect1' exited with code 0, but test expected 1
+** check_exit_code for expect1 returned 1 - aborting test
+FAIL
+ - Agent 1 'expect1' (exit: 0): FAIL
+  fail_unordered .............. Comparing results file /cygdrive/c/musliner/SIFT/tools/prt/selftest/results/prt-suite-2016-07-29-091538-SIFT-Dell7240/fail_unordered-2016-07-29-091542-SIFT-Dell7240/unordered1.log to rubric /cygdrive/c/musliner/SIFT/tools/prt/selftest/rubrics/fail_unordered/unordered1.log
+Processing rubric lines:
+   - Line [one] matches the key_fact_regexp, yielding fact: [one]
+   - Line [two] matches the key_fact_regexp, yielding fact: [two]
+   - Line [three] matches the key_fact_regexp, yielding fact: [three]
+Processing result lines:
+   - Line [one] matches the key_fact_regexp, yielding fact: [one]
+   - Line [two] matches the key_fact_regexp, yielding fact: [two]
+   - Line [four] matches the key_fact_regexp, yielding fact: [four]
+FAILURE - Rubric fact [three] not found in results
+Comparing results file /cygdrive/c/musliner/SIFT/tools/prt/selftest/results/prt-suite-2016-07-29-091538-SIFT-Dell7240/fail_unordered-2016-07-29-091542-SIFT-Dell7240/unordered2.log to rubric /cygdrive/c/musliner/SIFT/tools/prt/selftest/rubrics/fail_unordered/unordered2.log
+Processing rubric lines:
+   - Line [one] matches the key_fact_regexp, yielding fact: [one]
+   - Line [two] matches the key_fact_regexp, yielding fact: [two]
+   - Line [three] matches the key_fact_regexp, yielding fact: [three]
+Processing result lines:
+   - Line [Two] matches the key_fact_regexp, yielding fact: [Two]
+   - Line [one] matches the key_fact_regexp, yielding fact: [one]
+   - Line [three] matches the key_fact_regexp, yielding fact: [three]
+FAILURE - Rubric fact [two] not found in results
+Comparing results file /cygdrive/c/musliner/SIFT/tools/prt/selftest/results/prt-suite-2016-07-29-091538-SIFT-Dell7240/fail_unordered-2016-07-29-091542-SIFT-Dell7240/unordered3.log to rubric /cygdrive/c/musliner/SIFT/tools/prt/selftest/rubrics/fail_unordered/unordered3.log
+Processing rubric lines:
+   - Line [FOOone] matches the key_fact_regexp, yielding fact: [FOOone]
+   - Line [FOOtwo] matches the key_fact_regexp, yielding fact: [FOOtwo]
+   - Line [FOOthree] matches the key_fact_regexp, yielding fact: [FOOthree]
+Processing result lines:
+   - Line [FOOOOOthree] matches the key_fact_regexp, yielding fact: [FOOOOOthree]
+   - Line [FOOtwo] matches the key_fact_regexp, yielding fact: [FOOtwo]
+   - Line [FOOone] matches the key_fact_regexp, yielding fact: [FOOone]
+FAILURE - Rubric fact [FOOthree] not found in results
+Comparing results file /cygdrive/c/musliner/SIFT/tools/prt/selftest/results/prt-suite-2016-07-29-091538-SIFT-Dell7240/fail_unordered-2016-07-29-091542-SIFT-Dell7240/unordered4.log to rubric /cygdrive/c/musliner/SIFT/tools/prt/selftest/rubrics/fail_unordered/unordered4.log
+Processing rubric lines:
+   - Line [FOOtwo] matches the key_fact_regexp, yielding fact: [FOOtwo]
+   - Line [FOOthree] matches the key_fact_regexp, yielding fact: [FOOthree]
+Processing result lines:
+   - Line [FOOthree] matches the key_fact_regexp, yielding fact: [FOOthree]
+   - Line [FOOtwo] matches the key_fact_regexp, yielding fact: [FOOtwo]
+   - Line [FOOone] matches the key_fact_regexp, yielding fact: [FOOone]
+	FAILURE - Matching fact not in rubric: FOOone
+Comparing results file /cygdrive/c/musliner/SIFT/tools/prt/selftest/results/prt-suite-2016-07-29-091538-SIFT-Dell7240/fail_unordered-2016-07-29-091542-SIFT-Dell7240/unordered5.log to rubric /cygdrive/c/musliner/SIFT/tools/prt/selftest/rubrics/fail_unordered/unordered5.log
+Processing rubric lines:
+   - Line [FOOone] matches the key_fact_regexp, yielding fact: [FOOone]
+   - Line [FOOtwo] matches the key_fact_regexp, yielding fact: [FOOtwo]
+   - Line [FOOthree] matches the key_fact_regexp, yielding fact: [FOOthree]
+Processing result lines:
+   - Line [FOOtwo] matches the key_fact_regexp, yielding fact: [FOOtwo]
+   - Line [FOOone] matches the key_fact_regexp, yielding fact: [FOOone]
+FAILURE - Rubric fact [FOOthree] not found in results enough times
+Comparing results file /cygdrive/c/musliner/SIFT/tools/prt/selftest/results/prt-suite-2016-07-29-091538-SIFT-Dell7240/fail_unordered-2016-07-29-091542-SIFT-Dell7240/unordered6.log to rubric /cygdrive/c/musliner/SIFT/tools/prt/selftest/rubrics/fail_unordered/unordered6.log
+Processing rubric lines:
+   - Line [FOOone] matches the key_fact_regexp, yielding fact: [FOOone]
+   - Line [FOOtwo] matches the key_fact_regexp, yielding fact: [FOOtwo]
+   - Line [FOOthree] matches the key_fact_regexp, yielding fact: [FOOthree]
+Processing result lines:
+   - Line [FOOone] matches the key_fact_regexp, yielding fact: [FOOone]
+   - Line [FOOthree] matches the key_fact_regexp, yielding fact: [FOOthree]
+   - Line [FOOtwo] matches the key_fact_regexp, yielding fact: [FOOtwo]
+   - Line [FOOone] matches the key_fact_regexp, yielding fact: [FOOone]
+FAILURE - Rubric fact [FOOone] found in results too many times
+FAIL
+ - Agent 1 'unordered1' (exit: 0): FAIL
+ - Agent 2 'unordered2' (exit: 0): FAIL
+ - Agent 3 'unordered3' (exit: 0): FAIL
+ - Agent 4 'unordered4' (exit: 0): FAIL
+ - Agent 5 'unordered5' (exit: 0): FAIL
+ - Agent 6 'unordered6' (exit: 0): FAIL
+  negative-tests .............. FAILURE: could not find a match to results line 4:
+  four
+.Last match was to rubric line 3
+  threeby results line 3
+threeFAILURE: could not find a match to rubric line 4:
+  four
+.Last match was to rubric line 3
+  threeby results line 3
+threeFAIL
+ - Agent 1 'strict_line_comparo_extra_results' (exit: 0): FAIL
+ - Agent 2 'strict_line_comparo_extra_rubric' (exit: 0): FAIL
+  perffail0 ................... For 'CB21'/'FileSize': smaller_is_better,  target 1042 with 20% above allowed, got 2000
+FAIL
+ - Agent 1 'optimus' (exit: 0): FAIL
+  perffail1 ................... For 'CB21'/'FileSize': smaller_is_better,  target 1000 with 20% above allowed, got 2000
+For 'CB22'/'FileSize': smaller_is_better,  target 2000 with 20% above allowed, got 4000
+FAIL
+ - Agent 1 'optimus' (exit: 0): FAIL
+  perffail2 ................... For 'ID_1'/'bigOK':  target 100 allowing 5 percent below, got 95
+FAIL
+ - Agent 1 'complex' (exit: 0): FAIL
+  perffail3 ................... For 'ID_1'/'capBoth':  target 100 allowing 5 percent below, got 95
+FAIL
+ - Agent 1 'complex' (exit: 0): FAIL
+  perffail4 ................... For 'ID_2'/'capBoth':  target 100 with 10% above allowed, got 111
+FAIL
+ - Agent 1 'complex' (exit: 0): FAIL
+0 of 13 tests passed.
+Failures: comparo-failures, fail_daemon_must_survive0, fail_daemon_must_survive1, fail_exit_default, fail_exit_expect0, fail_exit_expect1, fail_unordered, negative-tests, perffail0, perffail1, perffail2, perffail3, perffail4.

@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# Call like this from the code/test/patch-test dir:
+# viz-patch-results results/cpv*
+
+results_files=$@
+
+echo "results_glob=$results_files"
+
+VIZ_DIR="$LACROSSE_HOME/code/dspy/patch_progress_viz"
+
+poetry -C "$VIZ_DIR" run $VIZ_DIR/server.py --results $results_files

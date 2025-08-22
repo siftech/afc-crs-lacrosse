@@ -1,0 +1,17 @@
+{
+  "details": {
+    "cwes": [
+      "CWE-79"
+    ],
+    "description": "Failure to handle an error condition properly allows for cross-site scripting.\n",
+    "locations": [
+      {
+        "path_from_root": "threads.c",
+        "startLine": 210,
+        "startColumn": 1,
+        "endLine": 220,
+        "endColumn": 0
+      }
+    ]
+  }
+}

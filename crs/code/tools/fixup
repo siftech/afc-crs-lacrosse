@@ -1,0 +1,28 @@
+#!/bin/bash
+# super cheeze to fix up dir made by makefile by rebuilding all the bad .c/.cpp files and running them
+# to get new stderr files w/o hint-laden dirnames/filenames
+
+# so super routine now is:
+# copy up any s0? subdir contents
+# copy the canonical makefile and run make accordingly
+# fixup
+
+# cp -f s0?/* .
+# LACROSSE_HOME=~/matt-asc-crs-lacrosse/crs/ m
+# cd juliet_code_cleaned/bad_functions_only/
+# ~/matt-asc-crs-lacrosse/crs/code/tools/fixup
+
+
+# one of these should work to get the reqd .o files
+# well, in retro, we'll just copy all the s0? ones up and then hulk smash them all
+cp ../../*.o .
+#cp ../../../*.o .
+
+echo Cleaning...
+rm -f ../../stderr_files/stderr_bad/*
+
+echo Building...
+find . -type f \( -name "*.c" -o -name "*.cpp" \) | parallel     g++ {} -o {.}.out -fsanitize=address -g     -I /home/musliner/matt-asc-crs-lacrosse/crs//code/tools/testcasesupport/     -DINCLUDEMAIN -DOMITGOOD io.o std_thread.o -lpthread -lm
+
+echo Running...
+/bin/ls *.out| parallel "ASAN_OPTIONS='detect_leaks=0' ./{} > ../../stdout_files/stdout_bad/{}_stdout.txt 2> ../../stderr_files/stderr_bad/{}_stderr.txt"

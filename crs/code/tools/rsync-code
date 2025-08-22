@@ -1,0 +1,60 @@
+#!/bin/bash
+
+# bash-ism to get location of script.
+toolsdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && pwd )"
+
+# from now on, the "deployed" code that gets run is in LACROSSE_HOME/rsync/code ... consistent across all ways of running
+codedir=$toolsdir/../../rsync/code
+
+localhostonly=$1
+#echo localhostonly is [$localhostonly]
+
+thishost=`hostname -f`
+
+doit () {
+    host=$1;
+    $toolsdir/sshc $host "mkdir -p $codedir"
+   
+    echo "Syncing necessary code to cluster host $host"
+    rc=1
+    attempt=0
+    while [ $rc -ne 0 ]
+     do
+  	attempt=$(($attempt + 1))
+  	echo "Attempt $attempt at rsync to $host."
+ 	#rsync -v -r -a
+	# is there some way to do a whitelist instead, for whatclib specifically?
+	# we only need signatures and target/release/whatclib
+ 	rsync -v -r -a --delete --force \
+		--exclude \.svn --exclude \*.out --exclude \*.tar --exclude \*.xz --exclude \*.err --exclude \*.log \
+		--exclude \*.swp --exclude \*.bak --exclude \*.md --exclude \*.ml --exclude \*.sub \
+		--exclude \*.pdf --exclude \*.pptx \
+		--exclude cfg --exclude stp --exclude=release/bin32/fuzzball --exclude=release/bin32/fuzzball.real \
+		--exclude morph/  \
+		--exclude ext/graph-utils/data \
+		--exclude AFLplusplus-HB/fuzzing-data/.nobackup \
+		--exclude test/rubrics --exclude test/results --exclude test/experiments  \
+		-e "$toolsdir/sshc"  $toolsdir/../ $host:$codedir/; 
+  	rc=$?
+  	if [ $rc -eq 0 ]
+  	then
+    		echo "rsync finished to $host."
+  	else
+    		echo "rsync failed to $host: $rc."
+  	fi
+     done
+}
+
+
+if [ -z $localhostonly ] || [ $localhostonly == 0 ]; then
+  for h in $($toolsdir/list-cluster-nodes); do
+   doit $h  &
+  done
+else
+   echo Syncing to localhost only
+   doit $thishost
+fi 
+
+wait 
+echo "rsync-code complete"
+exit 0

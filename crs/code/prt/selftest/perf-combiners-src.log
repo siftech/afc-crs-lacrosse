@@ -1,0 +1,35 @@
+This is OPTIMUS
+Here are the results for each Challenge Binary
+
+CB1 dft 9
+CB1 dft 6
+CB1 dft 5
+CB1 dft 10
+
+CB1 over 9
+CB1 over 6
+CB1 over 5
+CB1 over 10
+
+CB1 ignore 10
+CB1 ignore 5
+CB1 ignore 2
+CB1 ignore 999
+
+CB1 sum 1
+CB1 sum 2
+CB1 sum 3
+CB1 sum 4
+
+CB1 max 3
+CB1 max 10
+CB1 max 5
+CB1 max 6
+
+CB1 min 101
+CB1 min 103
+CB1 min 102
+CB1 min 10
+CB1 min 104
+CB1 min 106
+CB1 min 105

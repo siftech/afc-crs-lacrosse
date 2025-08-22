@@ -1,0 +1,42 @@
+#!/bin/bash
+
+# A script of convenience for queueing up multiple patch tests
+
+#pt code_delta_sani choose_ftp_rewrite_func sonnet37 problems/cpv*
+#pt code_delta_sani choose_ftp_rewrite_func gpt4o problems/cpv*
+#pt code_delta_sani choose_ftp_rewrite_func sonnet3 problems/cpv*
+
+#pt code-delta-sani-blob discover_then_patch_vulns_self_cont gpt4o problems/cpv*
+#pt code-delta-sani-blob discover_then_patch_vulns_self_cont sonnet37-gpt4o problems/cpv*
+#pt code-delta-sani-blob discover_then_patch_vulns sonnet37-gpt4o problems/cpv*
+
+#pt code-delta discover_then_patch_vulns sonnet37-gpt4o problems/cpv*
+#pt code-delta discover_then_patch_vulns gpt4o problems/cpv*
+#pt code-delta discover_then_patch_vulns sonnet37 problems/cpv*
+#pt code-delta-sani discover_then_patch_vulns sonnet37-gpt4o problems/cpv*
+#pt code-delta-sani discover_then_patch_vulns gpt4o problems/cpv*
+#pt code-delta-sani discover_then_patch_vulns sonnet37 problems/cpv*
+#pt code-delta-sani-blob discover_then_patch_vulns sonnet37-gpt4o problems/cpv*
+#pt code-delta-sani-blob discover_then_patch_vulns gpt4o problems/cpv*
+#pt code-delta-sani-blob discover_then_patch_vulns sonnet37 problems/cpv*
+
+pt code-sani-blob discover_then_patch_vulns_w_feedback sonnet37-gpt4o problems/cpv*
+pt code-sani-blob discover_then_patch_vulns_w_feedback gpt4o problems/cpv*
+pt code-sani-blob discover_then_patch_vulns_w_feedback sonnet37 problems/cpv*
+
+#pt code-sani discover_then_patch_vulns_w_feedback sonnet37-gpt4o problems/cpv*
+#pt code-sani discover_then_patch_vulns_w_feedback gpt4o problems/cpv*
+#pt code-sani discover_then_patch_vulns_w_feedback sonnet37 problems/cpv*
+
+pt code-delta discover_then_patch_vulns_w_feedback sonnet37-gpt4o problems/cpv*
+pt code-delta discover_then_patch_vulns_w_feedback gpt4o problems/cpv*
+pt code-delta discover_then_patch_vulns_w_feedback sonnet37 problems/cpv*
+pt code-delta-sani discover_then_patch_vulns_w_feedback sonnet37-gpt4o problems/cpv*
+pt code-delta-sani discover_then_patch_vulns_w_feedback gpt4o problems/cpv*
+pt code-delta-sani discover_then_patch_vulns_w_feedback sonnet37 problems/cpv*
+pt code-delta-sani-blob discover_then_patch_vulns_w_feedback sonnet37-gpt4o problems/cpv*
+pt code-delta-sani-blob discover_then_patch_vulns_w_feedback gpt4o problems/cpv*
+pt code-delta-sani-blob discover_then_patch_vulns_w_feedback sonnet37 problems/cpv*
+
+
+

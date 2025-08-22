@@ -1,0 +1,23 @@
+#!/bin/bash
+thisdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && /bin/pwd )"
+
+make_timestamp () { date +"%Y-%m-%d %H:%M:%S.%3N"; }
+
+PROGNAME=$(basename "$0")
+warn()  { echo "$(make_timestamp) $PROGNAME: ${@}" 1>&2; }
+die()   { warn "${@}"; exit 1; }
+dbug()   { test -z $DEBUG || warn "${@}"; }
+
+mmhealth=$thisdir/../matchmaker/mmhealth
+if [ ! -f $mmhealth ]; then
+    warn "$mmhealth executable does not exist!"
+    # FIXME return error code?
+fi
+until $mmhealth
+do
+    ss -tulpn
+    warn "Unhealthy. Trying again in one second."
+    sleep 1;
+done
+$mmhealth
+warn "Last mmhealth exit code: $?"

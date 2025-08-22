@@ -1,0 +1,187 @@
+#!/bin/bash
+# Starts image (first arg) (and attaches with -i, or detaches with -d) to the container.
+# Define DEBUG env var on way in if you want debugging output, ala DEBUG=1 start-image foo
+
+set -x
+
+if [ "$#" == "0" ]; then
+	echo "Usage: $0 imagename [other-docker-run-args]"
+	exit 1
+fi
+
+PROGNAME=$(basename "$0")
+warn()  { echo "$PROGNAME: ${@}" 1>&2; }
+die()   { warn "${@}"; exit 1; }
+dbug()   { test -z $DEBUG || warn "${@}"; }
+
+# example usage:
+   #dbug This only prints if DEBUG is defined
+   #test -e foo || die file foo must exist
+   #test -z $FOO && die Environment variable FOO must be defined
+
+# bash-ism to get location of script.  Must use /bin/pwd to get absolute path.
+thisdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && /bin/pwd )"
+dbug thisdir is $thisdir
+
+IMAGE=$1
+dbug image arg is $IMAGE
+shift	# drop the first arg
+
+test -z "$USER" && USER="${HOME##*/}"
+dbug USER is $USER
+
+export CIRCA_BASEPORT=${CIRCA_BASEPORT:-10000}
+dbug CIRCA_BASEPORT is $CIRCA_BASEPORT
+
+export CIRCA_MM_HOST=${CIRCA_MM_HOST:-"localhost"}
+
+export CIRCA_BASENAME=${CIRCA_BASENAME:-${USER}}
+dbug CIRCA_BASENAME is $CIRCA_BASENAME
+
+if [ -n "${DOCKER_HOST}" ]; then        # we're in docker rootless, disable realuser
+    export HOST_USERNAME=root
+	# if in rootless docker and CIRCA_MM_HOST is localhost or
+	# same as `hostname`, then use the special rootless loopback address.  
+	# Although other stuff about multi-agent NF is probably broken,
+	# still trying to keep this part right.
+    if [ ${CIRCA_MM_HOST} = `hostname` ] || [ ${CIRCA_MM_HOST} = "localhost" ]; then
+    	export CIRCA_MM_HOST=10.0.2.2
+        dbug NOTE inside rootless docker, so loopback is different and CIRCA_MM_HOST is $CIRCA_MM_HOST
+    fi
+elif [[ ( -f "/home/${USER}/bin/docker" ) && ( ! -z "$IN_DOCKER") ]]; then
+    export HOST_USERNAME=$USER
+else
+    export HOST_USERNAME=$USER
+fi
+dbug CIRCA_MM_HOST is $CIRCA_MM_HOST
+dbug HOST_USERNAME is $HOST_USERNAME
+
+
+export CONTAINER_PREFIX=${CONTAINER_PREFIX:-$USER}       # Set default container prefix if not already s$
+dbug CONTAINER_PREFIX is $CONTAINER_PREFIX
+
+NAME=${CONTAINER_PREFIX}-${IMAGE}       # default
+
+# stash the original args except image, for later use
+allargs=$@
+dbug allargs is $allargs
+
+# scan args to see if someone used --name to change containername away from default
+while [[ $# -gt 0 ]]
+do
+    case "$1" in
+        --name)
+            NAME="$2"
+            shift
+            shift
+            ;;
+	*)
+	    shift;
+	    ;;
+    esac
+done
+export NAME=$NAME
+dbug NAME is $NAME
+
+if $thisdir/check-for-running-container $IMAGE $NAME; then exit 0; fi
+
+
+export PRT_LISP=${PRT_LISP:-alisp}
+dbug PRT_LISP is $PRT_LISP
+
+#export CIRCA_CCL_LISP_UTILS_HOME=${CIRCA_CCL_LISP_UTILS_HOME:-${CIRCA_HOME/code/lisp-utils}}
+#echo CIRCA_CCL_LISP_UTILS_HOME is $CIRCA_CCL_LISP_UTILS_HOME
+# NOTE above must be an absolute path or docker will puke
+
+# make sure there is a REALUSER_DIR in /tmp, to pass into container so /realuser.sh can get your uid/gid
+export REALUSER_DIR=${REALUSER_DIR:-/tmp/$HOST_USERNAME-realuserdir}	# if already have a REALUSER_DIR, dont override...it's from the docker host and we're in a container
+mkdir -p $REALUSER_DIR
+dbug REALUSER_DIR is $REALUSER_DIR
+# revised version: we pass in all user/group info in env vars; USER already was done that way
+export HOST_GROUPNAME=$(ls -ld . | awk '{print $4}')  # this is more portable that prior call to (GNU) stat
+dbug HOST_GROUPNAME is $HOST_GROUPNAME
+
+if [[ ! -z "${HOST_USERID}" ]]; then
+    dbug HOST_USERID is $HOST_USERID
+    dbug HOST_GROUPID is $HOST_GROUPID
+elif [[ ( ! -n "${DOCKER_HOST}" ) && ( -z "$IN_DOCKER") ]]; then
+    export HOST_USERID=`id -u $HOST_USERNAME`
+    dbug HOST_USERID is $HOST_USERID
+    export HOST_GROUPID=`id -g $HOST_USERNAME`
+    dbug HOST_GROUPID is $HOST_GROUPID
+else
+    export HOST_USERID=`id -u $USER`
+    dbug HOST_USERID is $HOST_USERID
+    export HOST_GROUPID=`id -g $USER`
+    dbug HOST_GROUPID is $HOST_GROUPID
+fi
+
+
+export HOST_DOCKERGROUPID=`getent group docker|cut -d ":" -f 3`
+
+# Set default docker tag
+export DOCKER_TAG=${DOCKER_TAG:-"latest"}
+dbug DOCKER_TAG is $DOCKER_TAG
+
+dbug Starting $NAME
+
+# Below, the /var/run/docker mount allows docker calls inside the container to talk to host docker engine.
+# We set DOCKER_HOSTNAME in case you want name of the outside host; dont make it DOCKER_HOST, that borks up the docker remoting.
+# The /etc/localtime mount gets the timezone aligned inside the container.
+#   Unfort, the /etc/localtime mount is busted on MacOS: https://github.com/docker/for-mac/issues/2396
+case $OSTYPE in
+ linux*)
+   TIMEZONE_MOUNT="-v /etc/localtime:/etc/localtime"
+   dbug on linux TIMEZONE_MOUNT is ${TIMEZONE_MOUNT}
+   ;;
+ darwin*)
+   TIMEZONE_MOUNT=""
+   dbug on mac TIMEZONE_MOUNT is ${TIMEZONE_MOUNT}
+   ;;
+ *)
+   TIMEZONE_MOUNT=""
+   warn WARNING: Not running in a recognized Linux or Mac OS, this may need to be ported!
+   ;;
+esac
+
+# for backwards compat, this version still does the /realuser mount..but since it also sets the HOST_USERID,
+# the updated realuser.sh prefers that and ignores /realuser mount
+# SSH_AUTH_SOCK allows ssh-agent from host to work for container
+
+# Note we call thisdir/docker, not allowing PATH to come into play, b/c on jenkins' ssh calls to remote hosts, he has no PATH fixed
+# to include thisdir before /usr/bin, so now we get our docker version that checks to see if need sudo before docker call.
+$thisdir/docker run -t --privileged \
+	--security-opt seccomp=unconfined \
+	-e RUNC_NO_NEW_KEYRING=1 \
+	-e CIRCA_BASEPORT -e CIRCA_BASENAME -e CIRCA_MM_HOST \
+	-e PRT_LISP \
+	-e REALUSER_DIR \
+	-e HOST_USERNAME \
+	-e HOST_USERID\
+	-e HOST_GROUPNAME \
+	-e HOST_GROUPID\
+	-e HOST_DOCKERGROUPID\
+	-e DOCKER_IMAGENAME=$IMAGE\
+	-e DOCKER_CONTAINERNAME=$NAME\
+	-e CONTAINER_PREFIX\
+	-e IN_DOCKER=1\
+	-e SSH_AUTH_SOCK \
+	-e DEBUG \
+        -e DOCKER_TAG \
+        -e XDG_RUNTIME_DIR \
+        -e DOCKER_HOST \
+	-v /var/run/docker.sock:/var/run/docker.sock \
+        -v /run/user/${HOST_USERID}:/run/user/${HOST_USERID} \
+	-v /tmp:/tmp\
+        ${TIMEZONE_MOUNT} \
+	--name ${NAME} \
+       $allargs $IMAGE:${DOCKER_TAG} bash
+
+
+# Removing for lacrosse
+#	-e "DOCKER_HOSTNAME=`hostname -f`" \
+
+       #$allargs $IMAGE /realuser.sh bash
+
+	# cant actually do this mount like this b/c when starting image from w/in a container it breaks
+	#-v ${thisdir}/realuser.sh:/realuser.sh \

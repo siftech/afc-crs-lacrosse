@@ -1,0 +1,64 @@
+# Hey EMACS, this should be in -*- perl -*- mode
+# ------------------------------------------------------------
+# COPYRIGHT START
+# Copyright (c) 2014, Smart Information Flow Technologies (SIFT).
+# COPYRIGHT END
+# ------------------------------------------------------------
+#
+# PRT (PRS Regression Tester) sample test specification file
+#
+
+# Use a verbatim line comparo.
+my $comparo = new PRT::LineComparo(
+    # show_comparisons => 2,
+    );
+
+# Test specification hash reference -- The name of the variable is not
+# important, EXCEPT that it must be "returned" by this file; i.e. it
+# must be the the last reference in the file
+$test = {
+  # Name: single-word (no spaces) name of the test
+  # Default: basename of filename sans .prt file extension
+  # name => "sample",
+
+  # Description: arbitrary text for human consumption only
+  # Default: "<no-description>"
+  description => "Checks the exit_code portion of the test spec",
+
+  # Keywords: arbitrary list of key words by which can be used to
+  #    filter the tests when running or showing results, etc...
+  # Default: [ ] - empty list
+  keywords => [ qw / prt test-specification / ],
+
+  # DefaultIgnore: if true, will skip this test unless either:
+  #   a) the filename or test-name is explicitly listed on the command line
+  #   b) the `--all` argument is given to prt
+  # Default: undef/0/false
+   defaultIgnore => 1,
+
+  # Test-Harness Includes: array ref of *.inc files to include in ALL
+  #    agents, presumably needed as part of the test framework.
+  # Default: [ ] - empty list
+  # includes => [ "test-harness.inc" ],
+
+  # Inter-Agent Delay: delay (in seconds) between each agent startup
+  # Default: 0 (seconds)
+  # agent_delay => 1,
+
+  # Agents: Array-ref of agents, each of which MUST specify:
+  #  - name: PRS name of the agent, without spaces
+  #  - inc:  array ref of include files
+  agents => [
+      {
+        name         => "default",
+        command   => [ "bash", "-c", "echo default agent, exiting with code 0; exit 1" ],
+	    complete_before_continuing => 1,
+        comparo      => undef,
+      },
+    ]
+  };
+
+# you could put other code here, but not sure what that would serve.
+
+# Always end with a reference to the test specification hash reference.
+$test;

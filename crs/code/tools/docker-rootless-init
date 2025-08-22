@@ -1,0 +1,110 @@
+#!/bin/bash
+# SIFT-specific setup of `docker-rootless` for a user.
+# Is a MUCH simplified version of `dockerd-rootless-setuptool.sh`,
+# with some SIFT specific tweaks, unique to our environment/needs.
+#
+# NOTE:
+#   - this script is maintained by the SYSOPS team
+#   - do *NOT* modify and run your own, as it will likely break as `docker` is upgraded
+#   - we maintain this as needed as updates to `docker` occur.
+
+# Usage:
+# This script is idempotent (can be re-run w/out any issues).
+
+# deny running as root
+if [ "$(id -u)" = "0" ]; then
+  echo "Refusing to install rootless Docker as the root user" 1>&2
+  exit 1
+fi
+
+# set CFG_DIR
+CFG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}"
+SVC_DIR="${CFG_DIR}/systemd/user"
+
+# Script to start the user dockerd
+EXEC_SCRIPT=/usr/bin/dockerd-rootless.sh
+
+EXEC_SCRIPT=/usr/local/sbin/dockerd-rootless-wrapper.sh
+
+SVC_FILE="${SVC_DIR}/docker.service"
+# This block is **nearly** verbatim copy of what is in
+#    /usr/bin/dockerd-rootless-setuptool.sh
+# but modified for the wrapper script mentioned above.
+SVC_FILE_DATA=$(cat <<-EOF
+	[Unit]
+	Description=Docker Application Container Engine (Rootless)
+	Documentation=https://docs.docker.com/go/rootless/
+
+	[Service]
+	Environment=PATH=/usr/bin:/sbin:/usr/sbin:$PATH
+	ExecStart=${EXEC_SCRIPT}
+	ExecReload=/bin/kill -s HUP \$MAINPID
+	TimeoutSec=0
+	RestartSec=2
+	Restart=always
+	StartLimitBurst=3
+	StartLimitInterval=60s
+	LimitNOFILE=infinity
+	LimitNPROC=infinity
+	LimitCORE=infinity
+	TasksMax=infinity
+	Delegate=yes
+	Type=simple
+	KillMode=mixed
+
+	[Install]
+	WantedBy=default.target
+EOF
+)
+
+# Setup/install service
+do_install() {
+  if ! (cmp -s <(echo "${SVC_FILE_DATA}") "${SVC_FILE}"); then
+    if [ ! -d ${SVC_DIR} ] ;then
+      echo "# Creating directories for service file..."
+      mkdir -p ${SVC_DIR}
+    fi
+
+    echo "# Writing service file (${SVC_FILE})..."
+    echo "${SVC_FILE_DATA}" > "${SVC_FILE}"
+
+    echo "# Setting permissions..."
+    chmod 0664 "${SVC_FILE}"
+
+    echo "# Loading service file..."
+    systemctl --user daemon-reload
+
+    echo "# Starting docker daemon..."
+    systemctl --user start docker.service
+  fi
+}
+
+do_uninstall() {
+  if [ -e "${SVC_FILE}" ]; then
+    echo "# Stopping docker daemon..."
+    systemctl --user stop docker.service
+
+    echo "# Removing service file (${SVC_FILE})..."
+    rm -f "${SVC_FILE}"
+  fi
+}
+
+# Show some usage instructions
+do_instructions() {
+	cat <<-"INSTRUCTIONS"
+		# -----------------------------------------------------------------------------
+		# ---                       DOCKER INSTRUCTIONS                         ---
+		# -----------------------------------------------------------------------------
+
+	INSTRUCTIONS
+
+# This is an option, but requires SUDO, and I don't see any real need...
+# To have your PERSONAL docker.service start on system startup, run
+#     systemctl --user enable docker
+#     sudo loginctl enable-linger \$(whoami)
+}
+
+# Show instrucitons, followed by doing the setup/install
+#do_uninstall
+do_install
+do_instructions

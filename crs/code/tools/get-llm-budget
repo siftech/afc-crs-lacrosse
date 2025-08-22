@@ -1,0 +1,52 @@
+#!/bin/bash
+
+# Curl litellm competition API for current LLM spending.
+# $ curl --location ${AIXCC_LITELLM_HOSTNAME}/health -H "Autherization: Bearer ${LITELLM_KEY}"
+# 
+# Lisp agent to run this every 5m or so. 
+
+set -e
+set -x
+
+PROGNAME=$(basename "$0")
+warn()  { echo "$PROGNAME: ${@}" 1>&2; }
+die()   { warn "${@}"; exit 1; }
+dbug()   { test -z $DEBUG || warn "${@}"; }
+
+# bash-ism to get location of script.  Must use /bin/pwd to get absolute path.
+thisdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && /bin/pwd )"
+dbug thisdir is $thisdir
+
+
+CURL="curl --location --silent"
+LITELLM="${AIXCC_LITELLM_HOSTNAME}"
+KEY="${LITELLM_KEY}"
+
+# Make directory to record budget history
+mkdir -p ${thisdir}/spending
+STAMP=$(date '+%d%m-%H:%M')
+
+# Check LiteLLM health
+$CURL ${LITELLM}/health -H "Authorization: Bearer ${KEY}" > ${thisdir}/spending/health.json
+HEALTHY=$(jq < ${thisdir}/spending/health.json -r '.healthy_count')
+
+# echo "${HEALTHY} litellm models are healthy." 
+
+if [ "$HEALTHY" == "0" ]; then
+    echo "LITELMM has no healhty models!!"
+    exit 0
+fi
+
+$CURL -X GET ${LITELLM}/key/info -H "Content-Type: application/json" -H "Authorization: Bearer ${KEY}" > ${thisdir}/spending/${STAMP}-spending.json
+
+SPENT=$(jq < ${thisdir}/spending/${STAMP}-spending.json -r '.info.spend')
+MAX=$(jq < ${thisdir}/spending/${STAMP}-spending.json -r '.info.max_budget')
+MODEL_SPENT=$(jq < ${thisdir}/spending/${STAMP}-spending.json -r '.info.model_spend')
+MODEL_MAX=$(jq < ${thisdir}/spending/${STAMP}-spending.json -r '.info.model_max_budget')
+
+#echo "Total spent:                   ${SPENT}"
+#echo "Current budget max:            ${MAX}"
+#echo "Total spent per Model:         ${MODEL_SPENT}"
+#echo "Current budget max per Model:  ${MODEL_MAX}"
+
+$thisdir/tell-optimus-llm-budget ${SPENT} ${MAX}

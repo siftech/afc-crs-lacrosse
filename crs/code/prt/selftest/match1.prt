@@ -1,0 +1,24 @@
+# ------------------------------------------------------------
+# COPYRIGHT START
+# Copyright (c) 2014, Smart Information Flow Technologies (SIFT).
+# COPYRIGHT END
+# ------------------------------------------------------------
+use PRT::GenericLineComparo;
+my $cmp = new PRT::GenericLineComparo();
+$cmp->{patternMatch} = 1;
+
+$test = { 
+  defaultIgnore => 1,
+  description => "Test the pattern-matching comparo",
+  keywords => [ qw / prt newline / ],  
+  agents => [ 
+      {
+        name         => "agent", 
+        description  => "Write some lines that we'll match to patterns in the tubric.",
+        command   => ["bash", "-c" , 'echo "P 11"; echo "P 2 11"; echo "11 P 2 33"; echo "1 33"' ],
+        comparo      => $cmp,
+      },
+    ]
+  };
+
+$test;

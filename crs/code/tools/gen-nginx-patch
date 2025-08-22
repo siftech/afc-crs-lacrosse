@@ -1,0 +1,143 @@
+#!/usr/bin/env python3
+print("Top of gen-nginx-patch")
+
+import os
+import sys
+import subprocess
+
+dspy_path = os.path.expandvars("$LACROSSE_HOME/code/dspy")
+if dspy_path not in sys.path:
+    sys.path.append(dspy_path)
+
+import gen_patch
+from record import records_directory
+from advice import FAIL_APPLY_ADVICE, FAIL_BUILD_ADVICE, FAIL_POV_ADVICE, FAIL_FUNC_TESTS_ADVICE
+
+args = sys.argv[1:]
+
+print("Gen-nginx-patch args", len(args))
+
+if (len(args) < 4) or (len(args) > 5):
+    raise Exception("gen-nginx-patch needs to take 4 or 5 arguments: gen-nginx-patch <inputs_hyphen_separated> <pipeline_name> <model_name> <patch_path> <results_path>")
+
+# Default argument values
+default_patch_path = os.path.join(os.getcwd(), "patch")
+default_results_path = os.path.join(os.getcwd(), "results")
+
+inputs = args[0]
+pipeline_name = args[1]
+model_name = args[2]
+if len(args) >= 4:
+    patch_path = args[3]
+else:
+    patch_path = default_patch_path
+if len(args) >= 5:
+    results_path = args[4]
+else:
+    results_path = default_results_path
+
+print("gen-nginx-patch", inputs, pipeline_name, model_name, patch_path, results_path)
+
+# Remove the patch file early if it exists
+if os.path.exists(patch_path):
+    try:
+        os.remove(patch_path)
+        print(f"Removed existing patch file: {patch_path}")
+    except Exception as e:
+        print(f"Failed to remove {patch_path}: {e}")
+        sys.exit(1)  # Exit early if we can't remove it
+
+calldir = os.getcwd()
+print(f"calldir is {calldir}")
+source_path = os.path.expandvars("$LACROSSE_HOME/../../challenge-004-nginx-source")
+cp_path = os.path.expandvars("$LACROSSE_HOME/../../challenge-004-nginx-cp")
+cp_src_path = os.path.join(cp_path, "src/nginx")
+bic_trace_path = os.path.join(calldir, "bic_stderr.log")
+head_trace_path = os.path.join(calldir, "head_stderr.log")
+bic_path = os.path.join(calldir, "bic")
+bic_delta_path = os.path.join(calldir, "bic_delta")
+vuln_path = os.path.join(calldir, "vuln.blob")
+harness_path = os.path.join(calldir, "harness")
+
+def get_file_contents(path):
+    try:
+        assert os.path.isfile(path)
+        # Read the contents of the file
+        with open(path, "r", encoding="utf-8") as file:
+            file_contents = file.read()
+            return file_contents
+    except FileNotFoundError:
+        print(f"File not found: {path}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    return None
+
+def write_to_file(filename, content):
+    with open(filename, 'w') as f:
+        f.write(content)
+
+bic_sanitizer_output = get_file_contents(bic_trace_path)
+head_sanitizer_output = get_file_contents(head_trace_path)
+bic = get_file_contents(bic_path).strip()
+delta = get_file_contents(bic_delta_path)
+vuln = get_file_contents(vuln_path)
+harness = get_file_contents(harness_path)
+
+print(f"Running gen_patch for {os.path.basename(calldir)}")
+# print()
+
+def validate_patch(patch_content, attempt_scratch_dir):
+    print("validate_patch", len(patch_content), attempt_scratch_dir)
+    
+    patch_path = os.path.join(attempt_scratch_dir, "patch.diff")
+    print("patch_path:", patch_path)
+    
+    print("patch_content:")
+    print(patch_content)
+
+    write_to_file(patch_path, patch_content)
+    
+    try:
+        validate_cmd = f"test-nginx-patch {patch_path} {attempt_scratch_dir}"
+        print("validate_cmd:", validate_cmd)
+
+        val_result = subprocess.run(validate_cmd,
+                                      shell=True,
+                                      capture_output=True,
+                                      text=True,
+                                      check=True)
+    except subprocess.CalledProcessError as e:
+        print("validate_cmd failed!")
+        print("validate_cmd fail stdout:")
+        print(e.stdout)
+        print("validate_cmd fail stderr:")
+        print(e.stderr)
+        this_advice = None
+        if "test-patch: -FAIL- apply" in e.stdout:
+            this_advice = FAIL_APPLY_ADVICE
+            score = 0
+        elif "test-patch: -FAIL- build" in e.stdout:
+            this_advice = FAIL_BUILD_ADVICE
+            score = 1
+        elif "test-patch: -FAIL- run_pov" in e.stdout:
+            this_advice = FAIL_POV_ADVICE
+            score = 2
+        elif "test-patch: -FAIL- run_tests" in e.stdout:
+            this_advice = FAIL_FUNC_TESTS_ADVICE
+            score = 3
+        return (False, this_advice, score)
+
+    print("validate_cmd succeeded!")
+    print("validate_cmd success stdout:")
+    print(val_result.stdout)
+    return (True, None, 4)
+
+with records_directory(results_path):
+    fn_patch, validated, score = gen_patch.generate_patch_with_inputs(cp_src_path, inputs, pipeline_name, model_name, head_sanitizer_output, delta, vuln, harness, patch_validator=validate_patch)
+    print("patch_validated=", validated)
+    print("patch_score=", score)
+
+# print(fn_patch)
+
+write_to_file(patch_path, fn_patch)
+print(f"Wrote patch to {patch_path}")

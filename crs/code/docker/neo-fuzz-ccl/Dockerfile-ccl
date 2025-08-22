@@ -1,0 +1,59 @@
+# NOTE you cannot use inline comments-- do not put a comment at end of line, you'll get a very obscure error.
+
+FROM ubuntu:16.04
+
+COPY slime-v2.20.tar.gz /
+RUN (cd /usr/local/; tar zxf /slime-v2.20.tar.gz; ln -s slime-2.20 slime) && rm -f /slime-v2.20.tar.gz
+
+# Clean up APT when done, in same command, so layer doesnt lock in the stuff
+# 04-18-18 MAD install flex so matchmaker can build
+# Install acl to give access to /var/run/docker.sock
+RUN apt-get update; apt-get -y install build-essential gosu vim sudo curl flex acl ssh rsync patchelf && apt-get clean; rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+
+# Now install a ccl.  (Based on https://github.com/daewok/lisp-devel-docker)
+ADD ccl-1.11.5-linuxx86.tar.gz /usr/local/src
+ENV CCL_DEFAULT_DIRECTORY /usr/local/src/ccl
+#   This is how daewok/lisp-devel does it.  
+# Poss counter-intuitive, but I do prefer making ccl64 the default.
+RUN ln -s /usr/local/src/ccl/scripts/ccl64 /usr/local/bin/ccl && \
+    ln -s /usr/local/src/ccl/scripts/ccl /usr/local/bin/ccl32
+
+#   ccl1.11.5 includes asdf 3.1.5, but we need asdf 3.3 for launch-program
+# Let's just poke a newer asdf straight into its distro...
+COPY asdf-3.3.1.6.lisp /usr/local/src/ccl/tools/
+RUN (cd /usr/local/src/ccl/tools/; mv asdf.lisp asdf-3.1.5.lisp; ln -s asdf-3.3.1.6.lisp asdf.lisp)
+
+# Ubuntu comes with /bin/sh linked to dash; that can cause issues b/c doesnt support expected redirection syntax.
+# web suggested just linking bash to it...but.. that seems wrong given diff b/w bourne shell expected syntax, but whatever.
+RUN ln -f /bin/bash /bin/sh
+
+# Here's the realuser stuff we have from other projects, to make the user ID same as who runs it (on cgc-submit)
+
+RUN groupadd sift && useradd -m -g sift realuser && adduser realuser sudo
+
+# Above makes a /home/realuser dir but it will have the wrong uid, b/c later when
+# we use the realuser/gosu magic to get the uid of the person running the docker, this uid will (probably) be diff.
+# Easiest workaround is to just open up perms on the docker homedir, which doesnt matter/get-saved.
+# Note password for 'sudo' in docker image is sift .
+
+RUN chmod -R 777 /home/realuser /usr/local/slime-2.20 && \
+        echo root:sift | chpasswd
+
+# get Docker; sudo apt-get docker does not give you the thing you want; this does.
+#	 per https://stackoverflow.com/questions/30379381/docker-command-not-found-even-though-installed-with-apt-get
+RUN curl -sSL https://get.docker.com/ | sh
+
+# this stuff often changes, so do it near-last to leverage caching
+COPY realuser.sh clinit.cl bashrc /
+RUN ln -s /clinit.cl /home/realuser/.clinit.cl && \
+	ln -s /clinit.cl /root/.clinit.cl && \
+	ln -s /clinit.cl /root/ccl-init.lisp && \
+	ln -s /clinit.cl /home/realuser/ccl-init.lisp && \
+	ln -s -f /bashrc /root/.bashrc && \
+	ln -s -f /bashrc /home/realuser/.bashrc && \
+	touch /home/realuser/.uDrawGraph3.1.1 && \
+	mkdir /neo-fuzz 
+
+ENTRYPOINT ["/bin/sh", "/realuser.sh"]
+CMD ["/bin/bash"]

@@ -1,0 +1,32 @@
+#!/bin/bash
+
+# Usage: ./script.sh <src_dir> <prefix> <dest_dir>
+
+if [ "$#" -ne 3 ]; then
+    echo "Usage: $0 <src_dir> <prefix> <dest_dir>"
+    exit 1
+fi
+
+src_dir="$1"
+prefix="$2"
+dest_dir="$3"
+
+mkdir -p "$dest_dir"
+
+find "$src_dir" -type f -name "${prefix}*" | while read -r file; do
+    base=$(basename "$file")
+    uuid=$(uuidgen)
+
+    # Split filename into name and extension
+    name="${base%.*}"
+    ext="${base##*.}"
+
+    if [ "$name" = "$base" ]; then
+	# No extension
+	new_name="${base}_${uuid}"
+    else
+	new_name="${name}_${uuid}.${ext}"
+    fi
+
+    cp "$file" "$dest_dir/$new_name"
+done

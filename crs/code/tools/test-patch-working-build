@@ -1,0 +1,98 @@
+#!/bin/bash
+
+# Ensure the script exits on any errors
+set -e
+
+# Check if the required arguments are provided
+if [ "$#" -ne 4 ]; then
+    echo "Usage: $0 <patch_path> <blob_path> <harness> <cp_path>"
+        exit 1
+	fi
+
+THIS_DIR=$(realpath .)
+
+# Read the arguments
+PATCH_PATH=$1
+BLOB_PATH=$2
+HARNESS=$3
+CP_PATH=$4
+
+echo "Patch path is $PATCH_PATH"
+echo "Blob path is $BLOB_PATH"
+echo "Harness is $HARNESS"
+echo "CP path is $CP_PATH"
+
+log="test-patch.log"
+
+echo "Running docker ps..."
+docker ps --format "{{.Names}}"
+
+echo "Filtering with grep..."
+# Get the old container name, if it exists
+
+if docker ps --format "{{.Names}}" | grep -q .; then
+    old_container=$(docker ps --format "{{.Names}}" | grep -m 1 "neo-fuzz-ccl")
+else
+    echo "No containers are running."
+    old_container=""
+fi
+
+if [[ -z $old_container ]]; then
+    echo "There is no existing container. Go ahead and create one."
+else
+    echo "There is an existing container called $old_container. Killing it to get the right mounts."
+    docker stop $old_container
+    docker rm -f $old_container
+fi
+
+FULL_CP_PATH=$(realpath $CP_PATH)
+DOCKER_SCRATCH="/patch"
+DOCKER_CP="/home/mmclure/projects/lacrosse/sift-gitlab/asc-crs-lacrosse/crs/code/challenge-004-nginx-cp"
+
+echo "Full CP path is $FULL_CP_PATH"
+echo "THIS_DIR path is $THIS_DIR"
+
+#ensure-image neo-fuzz-ccl -d --mount type=bind,source=$FULL_CP_PATH,target=$DOCKER_CP,bind-propagation=rprivate --mount type=bind,source=$THIS_DIR,target=$DOCKER_SCRATCH,bind-propagation=rprivate > $log 
+ensure-image neo-fuzz-ccl -d --mount type=bind,source=$THIS_DIR,target=$DOCKER_SCRATCH,bind-propagation=rprivate > $log
+
+# Get the container name
+container=$(docker ps --format "{{.Names}}" | grep -m 1 "neo-fuzz-ccl")
+echo "container is $container"
+
+# Clean up
+echo
+echo "TEST-PATCH: make cpsrc-clean"
+echo
+docker exec $container sh -c "cd $DOCKER_CP && make cpsrc-clean" >> $log
+echo
+echo "TEST-PATCH: make docker-clean"
+echo
+docker exec $container sh -c "cd $DOCKER_CP && make docker-clean" >> $log
+
+# Setup
+echo
+echo "TEST-PATCH: make cpsrc-prepare"
+echo
+docker exec $container sh -c "cd $DOCKER_CP && make cpsrc-prepare" >> $log
+echo
+echo "TEST-PATCH: make docker-pull"
+echo
+docker exec $container sh -c "cd $DOCKER_CP && make docker-pull" >> $log
+echo
+echo "TEST-PATCH: make docker-build"
+echo
+docker exec $container sh -c "cd $DOCKER_CP && make docker-build" >> $log
+echo
+echo "TEST-PATCH: make docker-config-local"
+echo
+docker exec $container sh -c "cd $DOCKER_CP && make docker-config-local" >> $log
+
+docker exec $container sh -c "chmod 777 $DOCKER_CP/work $DOCKER_CP/out $DOCKER_CP/src"
+
+# Build
+echo
+echo "TEST-PATCH: ./run.sh -vx build $DOCKER_SCRATCH/$PATCH_PATH nginx"
+echo
+docker exec $container sh -c "cd $DOCKER_CP && ./run.sh -vx build $DOCKER_SCRATCH/$PATCH_PATH nginx"
+
+# docker exec $container sh -c "cd /home/mmclure/projects/lacrosse/sift-gitlab/challenge-004-nginx-cp && ./run.sh -vx build $DOCKER_SCRATCH/$PATCH_PATH nginx"

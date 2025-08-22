@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+set -e
+toolsdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd -P "$( dirname "$SOURCE" )" && pwd )"
+pushd "$toolsdir"
+
+echo "Cleaning up compose agents"
+cp ../crs-sandbox-items/competition/cp_config.yaml ../../../cp_config/cp_config.yaml
+cp ../crs-sandbox-items/competition/compose.yaml ../../../compose.yaml
+cp ../crs-sandbox-items/competition/compose_local_overrides.yaml ../../../compose_local_overrides.yaml
+cp ../crs-sandbox-items/competition/experiment.lisp ../experiment.lisp
+cp ../crs-sandbox-items/competition/kompose_competition_overrides.yaml ../../../kompose_competition_overrides.yaml
+cp ../crs-sandbox-items/competition/kompose_development_overrides.yaml ../../../kompose_development_overrides.yaml

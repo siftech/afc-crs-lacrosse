@@ -1,0 +1,4 @@
+#!/bin/bash
+# print the path of most recent run.sh command, below cwd
+
+realpath `ls -d -1 -t out/output/* |head -1`
